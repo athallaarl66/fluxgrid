@@ -3,9 +3,24 @@ import type { NextRequest } from "next/server";
 
 const publicRoutes = ["/login"];
 
+const skipRoutes = [
+  "/api/",
+  "/_next/",
+  "/favicon.ico",
+];
+
 export function proxy(request: NextRequest) {
-  const token = request.cookies.get("token")?.value;
   const { pathname } = request.nextUrl;
+
+  if (skipRoutes.some((r) => pathname.startsWith(r))) {
+    return NextResponse.next();
+  }
+
+  if (pathname.endsWith(".svg")) {
+    return NextResponse.next();
+  }
+
+  const token = request.cookies.get("token")?.value;
 
   const isPublic = publicRoutes.some((route) => pathname.startsWith(route));
 
@@ -21,7 +36,3 @@ export function proxy(request: NextRequest) {
 
   return NextResponse.next();
 }
-
-export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|.*\\.svg).*)"],
-};
