@@ -305,3 +305,181 @@ Level 1          Level 2               Level 3
 ```
 
 - **Future**: On new tenant registration, call `ChartOfAccountSeeder.SeedAsync(db, tenantId)` with the new tenant's ID.
+
+## 12. Frontend — Route & Page
+
+### Route Structure
+| Route | File | Description |
+|-------|------|-------------|
+| `/finance/layout.tsx` | `app/finance/layout.tsx` | Authenticated shell: `AuthProvider` + `Sidebar` + `Header` + `Footer` (mirrors `dashboard/layout.tsx`) |
+| `/finance/chart-of-accounts` | `app/finance/chart-of-accounts/page.tsx` | Main COA page — client component that orchestrates all sub-components |
+
+### Sidebar Navigation
+- **Nav item**: `Wallet` icon → label "Finance" → href `/finance`
+- **Sub-item**: "Chart of Accounts" → href `/finance/chart-of-accounts`
+- Rendered with chevron indicator when active; sub-items shown in an indented, bordered list below the parent.
+- Active state: parent highlights when a child is active (`pathname.startsWith(child.href)`).
+
+### Route Guard (7.3)
+```
+UNAUTHENTICATED (no user in context)
+  → redirect /login?redirect=/finance/chart-of-accounts
+
+FORBIDDEN (API returns 403)
+  → show "Access Denied" page with:
+      - AlertTriangle icon
+      - "Access Denied" heading
+      - "You do not have the required permission (finance.coa.read)"
+      - "Contact your administrator" note
+
+OTHER ERRORS (network error, 500)
+  → show error state with Retry button
+
+LOADING
+  → show Skeleton placeholders (8 rows with staggered indentation)
+
+EMPTY (no accounts exist)
+  → show empty state via CoaTreeView:
+      - "No accounts yet" / "No accounts match your search"
+      - Contextual helper text
+```
+
+### Page State Machine
+```
+authLoading ──→ [Skeleton]
+    ↓
+no user ──→ redirect /login
+    ↓
+isError ──→ error state (403 → permission denied, else retry)
+    ↓
+isLoading ──→ skeleton rows
+    ↓
+data ──→ CoaToolbar + CoaTreeView (desktop) / CoaMobileList (mobile)
+```
+
+## 13. Frontend — Components
+
+### Component Tree
+```
+page.tsx
+├── CoaToolbar
+│   ├── Search input (300ms debounce)
+│   └── "New Account" Button (→ opens AccountFormModal)
+├── CoaTreeView (desktop, ≥768px)
+│   └── CoaTreeItem (recursive per depth)
+│       ├── Expand/collapse chevron (hidden if no children)
+│       ├── Account code (tabular-nums monospace)
+│       ├── Account name
+│       ├── Badge ("Inactive", only if !isActive)
+│       └── Action menu (kebab button → Edit / Deactivate)
+├── CoaMobileList (mobile, <768px)
+│   └── Flat list item
+│       ├── Code + status badge
+│       ├── Name (truncated)
+│       ├── Breadcrumb path (e.g., "Assets > Current Assets > Cash")
+│       └── Chevron (→ opens edit)
+├── AccountFormModal (dialog overlay)
+│   ├── Code input (required)
+│   ├── Name input (required)
+│   ├── Type select (auto-filled from parent, disabled if parent set)
+│   ├── Combobox (parent account selector)
+│   ├── Active/Inactive toggle (Badge click)
+│   └── Cancel / Create|Update buttons
+└── DeactivateConfirmModal (dialog overlay)
+    ├── "Are you sure?" message
+    └── Cancel / Deactivate buttons
+```
+
+### File Inventory
+
+| File | Lines | Type | Responsibility |
+|------|-------|------|----------------|
+| `components/finance/CoaTreeView.tsx` | ~55 | Client | Receives `AccountResponse[]` + `searchQuery`; filters tree recursively; renders empty state or maps to `CoaTreeItem` |
+| `components/finance/CoaTreeItem.tsx` | ~95 | Client | Single node: expand/collapse by depth, kebab action menu with `useState` toggle, inline overlay dismissal |
+| `components/finance/CoaToolbar.tsx` | ~35 | Client | Search input with debounce (300ms `setTimeout` in `useEffect`), "New Account" `Button` |
+| `components/finance/AccountFormModal.tsx` | ~135 | Client | Controlled form: `useState` per field, `useEffect` to reset on open, `findAccount` recursive lookup for parent type inheritance |
+| `components/finance/Combobox.tsx` | ~100 | Client | Searchable dropdown: `useState` for open/query, `useEffect` outside-click listener, filters by code/name |
+| `components/finance/CoaMobileList.tsx` | ~75 | Client | Flat list using `flattenTree()` utility, renders breadcrumb path per item |
+
+### Key Behaviors
+
+**Expand/Collapse** (CoaTreeItem)
+- Top-level accounts (`depth === 0`) start expanded.
+- Clicking the chevron toggles `expanded` state.
+- Chevron is hidden (invisible but preserves layout) for leaf nodes.
+
+**Search Filter** (CoaTreeView)
+- `filterTree()` recursively filters children: a node is shown if it matches OR any descendant matches.
+- Filter is client-side only (no API call per keystroke).
+- Parent nodes auto-expand when they contain matching descendants.
+
+**Form Type Inheritance** (AccountFormModal)
+- When `parentId` changes and is non-null, `handleParentChange` looks up the parent's type and auto-sets it.
+- Type dropdown is disabled when a parent is selected.
+- User can override by clearing parent first, then selecting type.
+
+**Combobox Click-Outside** (Combobox)
+- `useEffect` with `document.addEventListener("mousedown", ...)` dismisses dropdown.
+- Cleanup on unmount.
+
+**Action Menu** (CoaTreeItem)
+- Kebab button shows on hover (`group-hover:opacity-100`).
+- Click toggles `menuOpen` state.
+- Full-screen invisible overlay (`fixed inset-0 z-10`) closes menu on any outside click.
+- Edit → calls `onEdit(account)` prop → opens `AccountFormModal` in edit mode.
+- Deactivate → calls `onDeactivate(account)` prop → opens confirmation dialog.
+
+**Responsive** (page.tsx)
+- Desktop (≥768px): `hidden md:block` → `CoaTreeView`
+- Mobile (<768px): `md:hidden` → `CoaMobileList`
+- Mobile items show breadcrumb path instead of tree indentation.
+
+## 14. Frontend — Data Flow
+
+### Types (`lib/coa-types.ts`)
+```typescript
+type AccountType = "ASSET" | "LIABILITY" | "EQUITY" | "REVENUE" | "EXPENSE";
+
+interface AccountResponse {
+  id: string; code: string; name: string;
+  parentId: string | null;
+  type: AccountType;
+  isActive: boolean;
+  children: AccountResponse[];
+}
+
+interface CreateAccountRequest {
+  code: string; name: string;
+  parentId?: string | null;
+  type?: string; isActive?: boolean;
+}
+
+type UpdateAccountRequest = Partial<CreateAccountRequest>;
+
+// Utility
+function flattenTree(accounts, level, parentPath): FlatAccount[];
+interface FlatAccount extends AccountResponse {
+  level: number; path: string;  // e.g. "Assets > Current Assets > Cash"
+}
+```
+
+### TanStack Query Hooks (`hooks/useCoa.ts`)
+
+| Hook | Method | Mutation Key | Query Invalidation |
+|------|--------|-------------|-------------------|
+| `useCoaTree()` | GET | `["coa"]` | — |
+| `useCreateAccount()` | POST | — | `["coa"]` on success |
+| `useUpdateAccount()` | PUT | — | `["coa"]` on success |
+| `useDeactivateAccount()` | DELETE | — | `["coa"]` on success |
+
+- All use `apiClient` from `@/lib/api-client` with `credentials: "include"`.
+- Query config: `staleTime: 30_000`, `retry: 1` (from global `<Providers>`).
+- On mutation success, the `["coa"]` query is invalidated → tree auto-refetches.
+
+### API Endpoints Consumed
+```
+GET    /api/v1/finance/chart-of-accounts   → AccountResponse[]
+POST   /api/v1/finance/chart-of-accounts   → AccountResponse  (201)
+PUT    /api/v1/finance/chart-of-accounts/{id} → AccountResponse (200)
+DELETE /api/v1/finance/chart-of-accounts/{id} → AccountResponse (200)
+```
