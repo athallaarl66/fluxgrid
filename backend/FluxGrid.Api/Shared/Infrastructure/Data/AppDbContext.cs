@@ -11,6 +11,8 @@ public class AppDbContext : DbContext
     public DbSet<User> Users => Set<User>();
     public DbSet<Role> Roles => Set<Role>();
     public DbSet<ChartOfAccount> ChartOfAccounts => Set<ChartOfAccount>();
+    public DbSet<JournalEntry> JournalEntries => Set<JournalEntry>();
+    public DbSet<JournalEntryLine> JournalEntryLines => Set<JournalEntryLine>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -71,6 +73,36 @@ public class AppDbContext : DbContext
             entity.Property(e => e.Timestamp).HasDefaultValueSql("NOW()");
             entity.HasIndex(e => new { e.ResourceType, e.ResourceId });
             entity.HasIndex(e => e.Timestamp);
+        });
+
+        modelBuilder.Entity<JournalEntry>(entity =>
+        {
+            entity.ToTable("journal_entries");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.EntryNo).IsUnique();
+            entity.Property(e => e.EntryNo).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.TransactionDate).IsRequired();
+            entity.Property(e => e.Description).IsRequired();
+            entity.Property(e => e.Status).HasMaxLength(20).IsRequired().HasDefaultValue("DRAFT");
+            entity.Property(e => e.TotalAmount).HasColumnType("decimal(18,2)").IsRequired();
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
+
+            entity.HasMany(e => e.Lines)
+                  .WithOne(e => e.Entry)
+                  .HasForeignKey(e => e.EntryId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<JournalEntryLine>(entity =>
+        {
+            entity.ToTable("journal_entry_lines");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Debit).HasColumnType("decimal(18,2)").HasDefaultValue(0);
+            entity.Property(e => e.Credit).HasColumnType("decimal(18,2)").HasDefaultValue(0);
+            entity.HasOne(e => e.Account)
+                  .WithMany()
+                  .HasForeignKey(e => e.AccountId)
+                  .OnDelete(DeleteBehavior.Restrict);
         });
     }
 }

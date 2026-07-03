@@ -76,6 +76,7 @@ builder.Services.AddScoped<ICacheService, MemoryCacheService>();
 builder.Services.AddScoped<DomainEventDispatcher>();
 builder.Services.AddScoped<DashboardService>();
 builder.Services.AddScoped<ChartOfAccountService>();
+builder.Services.AddScoped<JournalEntryService>();
 builder.Services.AddScoped<AuditService>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -107,5 +108,6 @@ app.MapGet("/api/health", () => Results.Ok(new { status = "healthy" }));
 app.MapAuthEndpoints();
 app.MapDashboardEndpoints();
 app.MapChartOfAccountEndpoints();
+app.MapJournalEntryEndpoints();
 
 app.Run();
