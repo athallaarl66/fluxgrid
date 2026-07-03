@@ -48,7 +48,7 @@ export default function DashboardPage() {
   const { data: modules, isLoading, isError, refetch, isFetching } = useDashboard();
 
   return (
-    <div className="p-5 space-y-6">
+    <div className="p-5 space-y-6 animate-fade-in">
       <div>
         <h1 className="text-2xl font-semibold leading-tight tracking-tight text-foreground">
           Operational Overview

@@ -11,9 +11,8 @@ import {
   useUpdateAccount,
   useDeactivateAccount,
 } from "@/hooks/useCoa";
-import { CoaTreeView } from "@/components/finance/CoaTreeView";
+import { CoaTable } from "@/components/finance/CoaTable";
 import { CoaMobileList } from "@/components/finance/CoaMobileList";
-import { CoaToolbar } from "@/components/finance/CoaToolbar";
 import { AccountFormModal } from "@/components/finance/AccountFormModal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -180,7 +179,7 @@ export default function ChartOfAccountsPage() {
   }
 
   return (
-    <div className="p-5 space-y-5">
+    <div className="p-5 space-y-5 animate-fade-in">
       <div>
         <h1 className="text-2xl font-semibold leading-tight tracking-tight text-foreground">
           Chart of Accounts
@@ -190,26 +189,28 @@ export default function ChartOfAccountsPage() {
         </p>
       </div>
 
-      <CoaToolbar onSearch={handleSearch} onNewAccount={handleNewAccount} />
-
       {isLoading ? (
-        <div className="space-y-2">
+        <div className="space-y-2 animate-fade-in">
           {Array.from({ length: 8 }).map((_, i) => (
             <Skeleton
               key={i}
-              className="h-10 w-full rounded-lg"
-              style={{ marginLeft: `${(i % 4) * 24}px`, width: `${100 - (i % 4) * 5}%` }}
+              className="h-9 w-full rounded"
+              style={{ width: `${100 - (i % 4) * 10}%` }}
             />
           ))}
         </div>
       ) : (
         <>
           <div className="hidden md:block">
-            <CoaTreeView
+            <CoaTable
               accounts={accounts ?? []}
               onEdit={handleEdit}
               onDeactivate={handleDeactivate}
               searchQuery={searchQuery}
+              onSearchChange={handleSearch}
+              onNewAccount={handleNewAccount}
+              isFetching={isFetching}
+              onRefresh={() => refetch()}
             />
           </div>
           <div className="md:hidden">

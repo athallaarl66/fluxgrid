@@ -75,7 +75,7 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 px-3 space-y-0.5">
-        {navItems.map((item) => {
+        {navItems.map((item, idx) => {
           const isActive = pathname === item.href;
           const childActive = isChildActive(pathname, item.children);
           const isExpanded = expanded === item.href || childActive;

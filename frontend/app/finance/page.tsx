@@ -41,7 +41,7 @@ export default function FinancePage() {
   if (!user) return null;
 
   return (
-    <div className="p-5 space-y-6">
+    <div className="p-5 space-y-6 animate-fade-in">
       <div className="flex items-center gap-3">
         <div className="flex size-10 items-center justify-center rounded-lg bg-accent">
           <Wallet className="size-5 text-accent-foreground" />
