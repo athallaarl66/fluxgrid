@@ -5,7 +5,9 @@ using FluxGrid.Api.Modules.Dashboard.Application;
 using FluxGrid.Api.Modules.Finance.API;
 using FluxGrid.Api.Modules.Finance.Application;
 using FluxGrid.Api.Shared.Infrastructure.Audit;
+using FluxGrid.Api.Shared.Infrastructure.Caching;
 using FluxGrid.Api.Shared.Infrastructure.Data;
+using FluxGrid.Api.Shared.Infrastructure.Events;
 using FluxGrid.Api.Shared.Infrastructure.Seed;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -54,6 +56,9 @@ builder.Services.AddCors(options =>
     });
 });
 
+builder.Services.AddMemoryCache();
+builder.Services.AddScoped<ICacheService, MemoryCacheService>();
+builder.Services.AddScoped<DomainEventDispatcher>();
 builder.Services.AddScoped<DashboardService>();
 builder.Services.AddScoped<ChartOfAccountService>();
 builder.Services.AddScoped<AuditService>();

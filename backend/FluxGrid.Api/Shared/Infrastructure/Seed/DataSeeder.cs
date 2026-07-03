@@ -7,6 +7,8 @@ namespace FluxGrid.Api.Shared.Infrastructure.Seed;
 
 public static class DataSeeder
 {
+    public static readonly Guid DefaultTenantId = Guid.Parse("00000000-0000-0000-0000-000000000001");
+
     public static async Task SeedAsync(AppDbContext db)
     {
         if (await db.Roles.AnyAsync()) return;
@@ -61,5 +63,7 @@ public static class DataSeeder
 
         db.Users.Add(adminUser);
         await db.SaveChangesAsync();
+
+        await ChartOfAccountSeeder.SeedAsync(db, DefaultTenantId);
     }
 }
