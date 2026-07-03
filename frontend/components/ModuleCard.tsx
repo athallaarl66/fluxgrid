@@ -1,6 +1,5 @@
 "use client";
 
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Package, Wallet, Users, ClipboardList } from "lucide-react";
@@ -33,34 +32,34 @@ export function ModuleCard({ module, hasPermission }: ModuleCardProps) {
       }}
       title={!hasPermission ? "You lack permission" : undefined}
     >
-      <Card
+      <div
         className={cn(
-          "group border border-[#e5debf] bg-white transition-colors duration-200 hover:bg-[#f7f3f0]",
+          "rounded-lg border border-border bg-card transition-colors duration-200",
+          hasPermission && "hover:bg-muted",
           !hasPermission && "opacity-40",
         )}
       >
-        <CardContent className="flex items-start gap-3 p-4">
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-[#f6f0d7]">
-            <Icon className="size-5 text-[#706d59]" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between gap-2">
-              <h3 className="text-sm font-semibold text-[#1c1b1a]">
-                {module.name}
-              </h3>
-              <Badge
-                variant="secondary"
-                className="shrink-0 bg-[#d4e7ab] text-[#586838] text-[11px] font-semibold rounded-full px-2 py-0.5"
-              >
-                {module.metric}
-              </Badge>
+        <div className="p-4">
+          <div className="flex items-start gap-3">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded bg-primary-container dark:bg-muted">
+              <Icon className="size-5 text-accent-foreground" />
             </div>
-            <p className="mt-0.5 text-[13px] leading-[1.4] text-[#49473e] truncate">
-              {module.description}
-            </p>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-sm font-semibold text-foreground">
+                  {module.name}
+                </h3>
+                <Badge className="shrink-0 bg-secondary-container text-on-secondary-container text-[11px] font-semibold rounded-full px-2 py-0.5 border-0">
+                  {module.metric}
+                </Badge>
+              </div>
+              <p className="mt-0.5 text-[13px] leading-[1.4] text-muted-foreground truncate">
+                {module.description}
+              </p>
+            </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </a>
   );
 }

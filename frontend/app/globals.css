@@ -39,8 +39,12 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  --color-primary-container: var(--primary-container);
+  --color-on-primary-container: var(--on-primary-container);
+  --color-secondary-container: var(--secondary-container);
+  --color-on-secondary-container: var(--on-secondary-container);
   --radius-sm: calc(var(--radius) * 0.5);
-  --radius-md: calc(var(--radius) * 1);
+  --radius-md: calc(var(--radius) * 1.5);
   --radius-lg: calc(var(--radius) * 2);
   --radius-xl: calc(var(--radius) * 3);
 }
@@ -79,36 +83,45 @@
   --sidebar-accent-foreground: #706d59;
   --sidebar-border: #e5debf;
   --sidebar-ring: #9cab84;
+  --primary-container: #f6f0d7;
+  --on-primary-container: #706d59;
+  --secondary-container: #d4e7ab;
+  --on-secondary-container: #586838;
 }
 
 .dark {
-  --background: #1c1b1a;
-  --foreground: #f4f0ed;
-  --card: #31302e;
-  --card-foreground: #f4f0ed;
-  --popover: #31302e;
-  --popover-foreground: #f4f0ed;
+  --background: #1a1a18;
+  --foreground: #e8e4df;
+  --card: #242422;
+  --card-foreground: #e8e4df;
+  --popover: #242422;
+  --popover-foreground: #e8e4df;
   --primary: #ccc7af;
   --primary-foreground: #1e1c0d;
   --secondary: #bbce94;
   --secondary-foreground: #141f00;
-  --muted: #31302e;
-  --muted-foreground: #cac6bb;
-  --accent: #546434;
+  --muted: #2a2a28;
+  --muted-foreground: #b8b4ab;
+  --accent: #4a5a2a;
   --accent-foreground: #d4e7ab;
   --destructive: #ffb4ab;
   --destructive-foreground: #93000a;
-  --border: #49473e;
-  --input: #49473e;
+  --border: #353532;
+  --input: #353532;
   --ring: #9cab84;
-  --sidebar: #31302e;
-  --sidebar-foreground: #f4f0ed;
+  --radius: 0.25rem;
+  --sidebar: #1e1e1c;
+  --sidebar-foreground: #e8e4df;
   --sidebar-primary: #ccc7af;
   --sidebar-primary-foreground: #1e1c0d;
-  --sidebar-accent: #546434;
+  --sidebar-accent: #4a5a2a;
   --sidebar-accent-foreground: #d4e7ab;
-  --sidebar-border: #49473e;
+  --sidebar-border: #353532;
   --sidebar-ring: #9cab84;
+  --primary-container: #2a2a28;
+  --on-primary-container: #ccc7af;
+  --secondary-container: #3a4a1a;
+  --on-secondary-container: #bbce94;
 }
 
 @layer base {
