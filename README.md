@@ -4,8 +4,7 @@
 > Dirancang sebagai Mini ERP (à la Odoo/SAP) dengan arsitektur production-grade.
 
 **Author:** AI Engineer  
-**Tech Stack:** .NET 8 (C#) + Next.js (TypeScript) + shadcn/ui + TanStack Query  
-**Deployment:** Docker-based (Koyeb)
+**Tech Stack:** .NET 8 (C#) + Next.js (TypeScript) + shadcn/ui + TanStack Query
 
 ---
 
@@ -29,8 +28,8 @@ Atau dengan Docker:
 docker-compose up
 ```
 
-- Frontend: `http://localhost:3000`
-- Backend API: `http://localhost:5000`
+- Frontend:
+- Backend API:
 
 ---
 
@@ -50,12 +49,12 @@ fluxgrid/
 
 ## Modules
 
-| Module | Description |
-|--------|-------------|
-| **WMS** | Warehouse Management — inbound/outbound, stock ledger |
-| **Finance** | General Ledger — double-entry, P&L, balance sheet |
-| **HR** | Employee data, attendance, payroll, recruitment AI |
-| **Task & Project** | Kanban board, time tracking, dependency graph |
+| Module             | Description                                           |
+| ------------------ | ----------------------------------------------------- |
+| **WMS**            | Warehouse Management — inbound/outbound, stock ledger |
+| **Finance**        | General Ledger — double-entry, P&L, balance sheet     |
+| **HR**             | Employee data, attendance, payroll, recruitment AI    |
+| **Task & Project** | Kanban board, time tracking, dependency graph         |
 
 Dokumentasi detail: [`docs/features/`](./docs/features/)
 
@@ -65,4 +64,4 @@ Dokumentasi detail: [`docs/features/`](./docs/features/)
 
 ---
 
-*FluxGrid ERP v2.0 — Mini ERP for industries where data integrity isn't optional.*
+_FluxGrid ERP v2.0 — Mini ERP for industries where data integrity isn't optional._

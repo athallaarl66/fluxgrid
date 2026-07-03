@@ -1,5 +1,7 @@
 using System.Text;
 using FluxGrid.Api.Auth;
+using FluxGrid.Api.Modules.Dashboard.API;
+using FluxGrid.Api.Modules.Dashboard.Application;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 
@@ -42,6 +44,7 @@ builder.Services.AddCors(options =>
     });
 });
 
+builder.Services.AddScoped<DashboardService>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -60,5 +63,6 @@ app.UseAuthorization();
 app.MapGet("/api/health", () => Results.Ok(new { status = "healthy" }));
 
 app.MapAuthEndpoints();
+app.MapDashboardEndpoints();
 
 app.Run();
