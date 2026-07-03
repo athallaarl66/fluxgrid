@@ -258,18 +258,19 @@ Caching is implemented via `ICacheService` interface (`Shared/Infrastructure/Cac
 Seeded via `ChartOfAccountSeeder` (`Shared/Infrastructure/Seed/ChartOfAccountSeeder.cs`) — idempotent (skips if accounts already exist for tenant).
 
 - **Tenant**: Uses `DefaultTenantId` (`00000000-0000-0000-0000-000000000001`) for initial tenant.
-- **Trigger**: Called from `DataSeeder.SeedAsync` after roles and admin user are created.
+- **Trigger**: Called from `DataSeeder.SeedAsync` every startup (even if roles already exist).
+- **Format**: Declarative tuple array `(code, name, type, parentCode)` — parent di-refer via kode, bukan object reference.
 - **Template**: Standard IFRS/GAAP baseline COA — 33 accounts total (5 top-level + 28 sub-accounts):
 
 ```
 Level 1          Level 2               Level 3
 1000 Assets
 ├── 1100 Current Assets
-│   ├── 1110 Cash at Bank
+│   ├── 1110 Cash in Bank
 │   ├── 1120 Accounts Receivable
 │   ├── 1130 Inventory
 │   └── 1140 Prepaid Expenses
-└── 1200 Non-Current Assets
+└── 1200 Fixed Assets
     ├── 1210 Land
     ├── 1220 Buildings
     ├── 1230 Machinery & Equipment
@@ -280,7 +281,7 @@ Level 1          Level 2               Level 3
 │   ├── 2110 Accounts Payable
 │   ├── 2120 Accrued Expenses
 │   └── 2130 Short-Term Debt
-└── 2200 Non-Current Liabilities
+└── 2200 Long-term Liabilities
     ├── 2210 Long-Term Debt
     └── 2220 Deferred Tax Liabilities
 
@@ -321,10 +322,14 @@ Level 1          Level 2               Level 3
 - Rendered with chevron indicator when active; sub-items shown in an indented, bordered list below the parent.
 - Active state: parent highlights when a child is active (`pathname.startsWith(child.href)`).
 
-### Route Guard (7.3)
+### Header
+- **Right side**: Theme toggle, Notifications, Grid menu, User avatar (Logout dropdown).
+- **Logout**: POST `/api/auth/logout` → clear httpOnly cookie `token` → redirect `/login`.
+
+### Route Guard
 ```
 UNAUTHENTICATED (no user in context)
-  → redirect /login?redirect=/finance/chart-of-accounts
+  → useEffect redirect /login?redirect=/finance/chart-of-accounts
 
 FORBIDDEN (API returns 403)
   → show "Access Denied" page with:
@@ -337,12 +342,11 @@ OTHER ERRORS (network error, 500)
   → show error state with Retry button
 
 LOADING
-  → show Skeleton placeholders (8 rows with staggered indentation)
+  → show Skeleton placeholders
 
 EMPTY (no accounts exist)
-  → show empty state via CoaTreeView:
+  → show empty state in CoaTable:
       - "No accounts yet" / "No accounts match your search"
-      - Contextual helper text
 ```
 
 ### Page State Machine
@@ -355,7 +359,7 @@ isError ──→ error state (403 → permission denied, else retry)
     ↓
 isLoading ──→ skeleton rows
     ↓
-data ──→ CoaToolbar + CoaTreeView (desktop) / CoaMobileList (mobile)
+data ──→ CoaTable (desktop) / CoaMobileList (mobile)
 ```
 
 ## 13. Frontend — Components
@@ -363,16 +367,23 @@ data ──→ CoaToolbar + CoaTreeView (desktop) / CoaMobileList (mobile)
 ### Component Tree
 ```
 page.tsx
-├── CoaToolbar
-│   ├── Search input (300ms debounce)
-│   └── "New Account" Button (→ opens AccountFormModal)
-├── CoaTreeView (desktop, ≥768px)
-│   └── CoaTreeItem (recursive per depth)
-│       ├── Expand/collapse chevron (hidden if no children)
-│       ├── Account code (tabular-nums monospace)
-│       ├── Account name
-│       ├── Badge ("Inactive", only if !isActive)
-│       └── Action menu (kebab button → Edit / Deactivate)
+├── CoaTable (desktop, ≥768px)
+│   ├── Search input (filter by code/name)
+│   ├── Type filter dropdown (All / ASSET / LIABILITY / EQUITY / REVENUE / EXPENSE)
+│   ├── Refresh button
+│   ├── "New Account" Button (→ opens AccountFormModal)
+│   ├── Table header: Code | Name | Parent | Type | Status | Actions
+│   ├── Table rows:
+│   │   ├── Code (tabular-nums monospace)
+│   │   ├── Name (bold for top-level)
+│   │   ├── Parent name (from breadcrumb path)
+│   │   ├── Type badge (color-coded per category)
+│   │   ├── Status dot (green=active / red=inactive)
+│   │   └── Actions (Edit pencil + Deactivate trash, show on hover)
+│   └── Pagination footer
+│       ├── Rows per page selector (5 / 10 / 20 / 50)
+│       ├── Page info (1–10 of 33)
+│       └── Page number buttons (first, prev, 1…n…last, next)
 ├── CoaMobileList (mobile, <768px)
 │   └── Flat list item
 │       ├── Code + status badge
@@ -384,7 +395,7 @@ page.tsx
 │   ├── Name input (required)
 │   ├── Type select (auto-filled from parent, disabled if parent set)
 │   ├── Combobox (parent account selector)
-│   ├── Active/Inactive toggle (Badge click)
+│   ├── Active/Inactive toggle (dot hijau/merah)
 │   └── Cancel / Create|Update buttons
 └── DeactivateConfirmModal (dialog overlay)
     ├── "Are you sure?" message
@@ -395,24 +406,24 @@ page.tsx
 
 | File | Lines | Type | Responsibility |
 |------|-------|------|----------------|
-| `components/finance/CoaTreeView.tsx` | ~55 | Client | Receives `AccountResponse[]` + `searchQuery`; filters tree recursively; renders empty state or maps to `CoaTreeItem` |
-| `components/finance/CoaTreeItem.tsx` | ~95 | Client | Single node: expand/collapse by depth, kebab action menu with `useState` toggle, inline overlay dismissal |
-| `components/finance/CoaToolbar.tsx` | ~35 | Client | Search input with debounce (300ms `setTimeout` in `useEffect`), "New Account" `Button` |
+| `components/finance/CoaTable.tsx` | ~190 | Client | Flat table with search, type filter, pagination, hover actions |
+| `components/finance/CoaMobileList.tsx` | ~75 | Client | Flat list using `flattenTree()` utility, renders breadcrumb path per item |
 | `components/finance/AccountFormModal.tsx` | ~135 | Client | Controlled form: `useState` per field, `useEffect` to reset on open, `findAccount` recursive lookup for parent type inheritance |
 | `components/finance/Combobox.tsx` | ~100 | Client | Searchable dropdown: `useState` for open/query, `useEffect` outside-click listener, filters by code/name |
-| `components/finance/CoaMobileList.tsx` | ~75 | Client | Flat list using `flattenTree()` utility, renders breadcrumb path per item |
+| `components/Header.tsx` | ~120 | Client | Header bar with theme toggle, notifications, grid menu, user avatar with Logout dropdown |
+| `components/Sidebar.tsx` | ~160 | Client | Fixed sidebar with nav items, expandable children, active state tracking |
 
 ### Key Behaviors
 
-**Expand/Collapse** (CoaTreeItem)
-- Top-level accounts (`depth === 0`) start expanded.
-- Clicking the chevron toggles `expanded` state.
-- Chevron is hidden (invisible but preserves layout) for leaf nodes.
+**Pagination** (CoaTable)
+- Page sizes: 5, 10, 20, 50 rows per page.
+- Page number buttons with ellipsis for large page counts.
+- Reset to page 0 on search query or type filter change.
 
-**Search Filter** (CoaTreeView)
-- `filterTree()` recursively filters children: a node is shown if it matches OR any descendant matches.
-- Filter is client-side only (no API call per keystroke).
-- Parent nodes auto-expand when they contain matching descendants.
+**Search & Filter** (CoaTable)
+- Search by code or name (client-side, instant).
+- Type filter dropdown (All, ASSET, LIABILITY, EQUITY, REVENUE, EXPENSE).
+- Both filters stack.
 
 **Form Type Inheritance** (AccountFormModal)
 - When `parentId` changes and is non-null, `handleParentChange` looks up the parent's type and auto-sets it.
@@ -423,17 +434,14 @@ page.tsx
 - `useEffect` with `document.addEventListener("mousedown", ...)` dismisses dropdown.
 - Cleanup on unmount.
 
-**Action Menu** (CoaTreeItem)
-- Kebab button shows on hover (`group-hover:opacity-100`).
-- Click toggles `menuOpen` state.
-- Full-screen invisible overlay (`fixed inset-0 z-10`) closes menu on any outside click.
-- Edit → calls `onEdit(account)` prop → opens `AccountFormModal` in edit mode.
-- Deactivate → calls `onDeactivate(account)` prop → opens confirmation dialog.
+**Logout** (Header)
+- Klik avatar user → dropdown menu → "Logout".
+- POST `/api/auth/logout` → server hapus httpOnly cookie `token` → redirect `/login`.
 
 **Responsive** (page.tsx)
-- Desktop (≥768px): `hidden md:block` → `CoaTreeView`
+- Desktop (≥768px): `hidden md:block` → `CoaTable`
 - Mobile (<768px): `md:hidden` → `CoaMobileList`
-- Mobile items show breadcrumb path instead of tree indentation.
+- Mobile items show breadcrumb path instead of table.
 
 ## 14. Frontend — Data Flow
 
@@ -506,12 +514,19 @@ DELETE /api/v1/finance/chart-of-accounts/{id} → AccountResponse (200)
 | **Staff** | Cuma bisa lihat (read-only) |
 
 ### Frontend
-- Tree view di `/finance/chart-of-accounts` dengan expand/collapse
-- Search real-time (filter di frontend tanpa API call)
-- Responsive: tree view di desktop, flat list dengan breadcrumb di mobile
+- **CoaTable** di `/finance/chart-of-accounts` — flat table dengan kolom Code, Name, Parent, Type, Status, Actions
+- Type badge warna per kategori (biru=ASSET, amber=LIABILITY, ungu=EQUITY, hijau=REVENUE, merah=EXPENSE)
+- Status dot hijau (active) / merah (inactive)
+- Pagination (5/10/20/50 rows) dengan page number buttons
+- Search real-time + filter by Type dropdown
+- Responsive: table di desktop, flat list dengan breadcrumb di mobile
 - Form create/edit dengan parent combobox, auto-inherit account type
+- Logout via avatar dropdown di header (POST `/api/auth/logout`)
 - Toast notification sukses/gagal
-- Loading skeleton, error state dengan retry, empty state## 16. Future: User & Role Management
+- Fade-in animations di page load
+- Loading skeleton, error state dengan retry, empty state
+
+## 16. Future: User & Role Management
 
 Saat ini cuma ada 1 akun seed (`admin`). Ke depannya Super Admin dapat:
 - Membuat akun baru (CRUD user)
