@@ -11,6 +11,8 @@ public static class Permissions
     public const string FinanceRead = "Finance:Read";
     public const string FinanceWrite = "Finance:Write";
     public const string FinanceAdmin = "Finance:Admin";
+    public const string FinanceCoaRead = "finance.coa.read";
+    public const string FinanceCoaManage = "finance.coa.manage";
 
     public const string HrRead = "HR:Read";
     public const string HrWrite = "HR:Write";
@@ -22,7 +24,7 @@ public static class Permissions
     public static readonly string[] All = [
         DashboardRead,
         WmsRead, WmsWrite, WmsAdmin,
-        FinanceRead, FinanceWrite, FinanceAdmin,
+        FinanceRead, FinanceWrite, FinanceAdmin, FinanceCoaRead, FinanceCoaManage,
         HrRead, HrWrite, HrPayrollProcess,
         TaskRead, TaskWrite
     ];

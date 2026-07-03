@@ -2,6 +2,8 @@ using System.Text;
 using FluxGrid.Api.Auth;
 using FluxGrid.Api.Modules.Dashboard.API;
 using FluxGrid.Api.Modules.Dashboard.Application;
+using FluxGrid.Api.Modules.Finance.API;
+using FluxGrid.Api.Modules.Finance.Application;
 using FluxGrid.Api.Shared.Infrastructure.Data;
 using FluxGrid.Api.Shared.Infrastructure.Seed;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -52,6 +54,7 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddScoped<DashboardService>();
+builder.Services.AddScoped<ChartOfAccountService>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -81,5 +84,6 @@ app.MapGet("/api/health", () => Results.Ok(new { status = "healthy" }));
 
 app.MapAuthEndpoints();
 app.MapDashboardEndpoints();
+app.MapChartOfAccountEndpoints();
 
 app.Run();

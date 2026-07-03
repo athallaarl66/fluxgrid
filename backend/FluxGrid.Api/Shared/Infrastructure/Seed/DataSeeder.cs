@@ -27,7 +27,7 @@ public static class DataSeeder
             Permissions = [
                 Permissions.DashboardRead,
                 Permissions.WmsRead, Permissions.WmsWrite,
-                Permissions.FinanceRead, Permissions.FinanceWrite,
+                Permissions.FinanceRead, Permissions.FinanceWrite, Permissions.FinanceCoaRead, Permissions.FinanceCoaManage,
                 Permissions.HrRead, Permissions.HrWrite,
                 Permissions.TaskRead, Permissions.TaskWrite
             ]
@@ -41,7 +41,7 @@ public static class DataSeeder
             Permissions = [
                 Permissions.DashboardRead,
                 Permissions.WmsRead,
-                Permissions.FinanceRead,
+                Permissions.FinanceRead, Permissions.FinanceCoaRead,
                 Permissions.HrRead,
                 Permissions.TaskRead, Permissions.TaskWrite
             ]
