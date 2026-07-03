@@ -1,6 +1,48 @@
-# TOOLS
+# ============ TOOLS ============
 .agent
 .claude
 .opencode
 .devin
-openspec
+openspec/
+
+# ============ ENVIRONMENT VARIABLES (SECRETS!) ============
+.env
+.env.local
+.env.*.local
+.env.production
+*.env
+
+# ============ NODE.JS / NEXT.JS ============
+node_modules/
+.next/
+out/
+dist/
+build/
+*.tsbuildinfo
+next-env.d.ts
+
+# ============ .NET ============
+**/bin/
+**/obj/
+**/packages/
+*.user
+*.suo
+*.sln.docstates
+
+# ============ IDE / EDITOR ============
+.vs/
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ============ LOGS ============
+*.log
+npm-debug.log*
+
+# ============ MISC ============
+*.pubxml
+*.pubxml.user
