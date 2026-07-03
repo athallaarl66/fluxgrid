@@ -2,87 +2,226 @@
 
 ## 1. System Architecture
 - **Frontend**: Next.js Client Components (Tree rendering is client-side for interactivity).
-- **Backend**: API Routes handling validation (circular reference checks).
+- **Backend**: .NET 8 Minimal API (Modular Monolith) with Clean Architecture.
 - **Database**: PostgreSQL (Neon) using adjacency list model (`parent_id`) for hierarchy.
+- **ORM**: Entity Framework Core 8.0 with Npgsql.
 
 ## 2. Database Schema
 
 ### Table: `chart_of_accounts`
 | Column Name | Type | Constraints | Description |
 |-------------|------|-------------|-------------|
-| `id` | UUID | PRIMARY KEY | Unique identifier |
-| `code` | VARCHAR(20) | NOT NULL | Account code (e.g., "1110") |
-| `name` | VARCHAR(100) | NOT NULL | Account name |
-| `parent_id` | UUID | FK | Self-referencing FK to `chart_of_accounts.id` |
-| `type` | VARCHAR(20) | NOT NULL | Enum: ASSET, LIABILITY, EQUITY, REVENUE, EXPENSE |
-| `is_active` | BOOLEAN | DEFAULT TRUE| |
-| `tenant_id` | UUID | NOT NULL, FK | Multi-tenancy isolation |
-| `created_at` | TIMESTAMP | DEFAULT NOW() | |
-| `updated_at` | TIMESTAMP | DEFAULT NOW() | |
+| `Id` | UUID | PRIMARY KEY | Unique identifier |
+| `Code` | VARCHAR(20) | NOT NULL | Account code (e.g., "1110") |
+| `Name` | VARCHAR(100) | NOT NULL | Account name |
+| `ParentId` | UUID | FK | Self-referencing FK to `chart_of_accounts.Id` |
+| `Type` | VARCHAR(20) | NOT NULL | ASSET, LIABILITY, EQUITY, REVENUE, EXPENSE |
+| `IsActive` | BOOLEAN | DEFAULT TRUE | |
+| `TenantId` | UUID | NOT NULL | Multi-tenancy isolation |
+| `CreatedAt` | TIMESTAMP | DEFAULT NOW() | |
+| `UpdatedAt` | TIMESTAMP | DEFAULT NOW() | |
 
 **Constraints**:
-- `UNIQUE (tenant_id, code)`: Account codes must be unique per tenant.
+- `UNIQUE (TenantId, Code)`: Account codes must be unique per tenant.
 
-## 3. Drizzle ORM Schema Snippet
-```typescript
-import { pgTable, uuid, varchar, boolean, timestamp, uniqueIndex, AnyPgColumn } from "drizzle-orm/pg-core";
+### Table: `audit_logs`
+| Column Name | Type | Constraints | Description |
+|-------------|------|-------------|-------------|
+| `Id` | UUID | PRIMARY KEY | |
+| `Timestamp` | TIMESTAMP | DEFAULT NOW() | |
+| `UserId` | UUID | NOT NULL | Actor |
+| `TenantId` | UUID | NOT NULL | |
+| `Action` | VARCHAR(50) | NOT NULL | CREATE, UPDATE, DEACTIVATE |
+| `ResourceType` | VARCHAR(100) | NOT NULL | "chart_of_accounts" |
+| `ResourceId` | UUID | NOT NULL | Account ID |
+| `IpAddress` | VARCHAR(45) | | |
+| `UserAgent` | VARCHAR(500) | | |
+| `ChangesJson` | TEXT | | Before/after snapshots |
 
-export const chartOfAccounts = pgTable("chart_of_accounts", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  code: varchar("code", { length: 20 }).notNull(),
-  name: varchar("name", { length: 100 }).notNull(),
-  parentId: uuid("parent_id").references((): AnyPgColumn => chartOfAccounts.id),
-  type: varchar("type", { length: 20 }).notNull(), // ASSET, LIABILITY, EQUITY, REVENUE, EXPENSE
-  isActive: boolean("is_active").default(true).notNull(),
-  tenantId: uuid("tenant_id").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-}, (table) => {
-  return {
-    tenantCodeIdx: uniqueIndex("tenant_code_idx").on(table.tenantId, table.code),
-  };
+## 3. Entity Framework Core Entities
+
+### Entity: `ChartOfAccount`
+```csharp
+namespace FluxGrid.Api.Modules.Finance.Domain.Entities;
+
+public class ChartOfAccount
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string Code { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public Guid? ParentId { get; set; }
+    public ChartOfAccount? Parent { get; set; }
+    public string Type { get; set; } = string.Empty;
+    public bool IsActive { get; set; } = true;
+    public Guid TenantId { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    public List<ChartOfAccount> Children { get; set; } = [];
+}
+```
+
+### Entity: `AuditLog`
+```csharp
+namespace FluxGrid.Api.Shared.Domain.Entities;
+
+public class AuditLog
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+    public Guid UserId { get; set; }
+    public Guid TenantId { get; set; }
+    public string Action { get; set; } = string.Empty;
+    public string ResourceType { get; set; } = string.Empty;
+    public Guid ResourceId { get; set; }
+    public string? IpAddress { get; set; }
+    public string? UserAgent { get; set; }
+    public string? ChangesJson { get; set; }
+}
+```
+
+### EF Core Configuration (in `AppDbContext.OnModelCreating`)
+```csharp
+modelBuilder.Entity<ChartOfAccount>(entity =>
+{
+    entity.ToTable("chart_of_accounts");
+    entity.HasKey(e => e.Id);
+    entity.HasIndex(e => new { e.TenantId, e.Code }).IsUnique();
+    entity.Property(e => e.Code).HasMaxLength(20).IsRequired();
+    entity.Property(e => e.Name).HasMaxLength(100).IsRequired();
+    entity.Property(e => e.Type).HasMaxLength(20).IsRequired();
+    entity.Property(e => e.IsActive).HasDefaultValue(true);
+    entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
+    entity.Property(e => e.UpdatedAt).HasDefaultValueSql("NOW()");
+    entity.HasOne(e => e.Parent)
+          .WithMany(e => e.Children)
+          .HasForeignKey(e => e.ParentId)
+          .OnDelete(DeleteBehavior.Restrict);
+});
+
+modelBuilder.Entity<AuditLog>(entity =>
+{
+    entity.ToTable("audit_logs");
+    entity.HasKey(e => e.Id);
+    entity.Property(e => e.Action).HasMaxLength(50).IsRequired();
+    entity.Property(e => e.ResourceType).HasMaxLength(100).IsRequired();
+    entity.Property(e => e.IpAddress).HasMaxLength(45);
+    entity.Property(e => e.UserAgent).HasMaxLength(500);
+    entity.Property(e => e.Timestamp).HasDefaultValueSql("NOW()");
+    entity.HasIndex(e => new { e.ResourceType, e.ResourceId });
+    entity.HasIndex(e => e.Timestamp);
 });
 ```
 
 ## 4. API Endpoints
 
 ### GET `/api/v1/finance/chart-of-accounts`
-- **Description**: Fetch the COA.
-- **Query Params**: `parent_id` (optional, to fetch a specific branch), `flat` (boolean, returns flat list vs nested JSON).
-- **Action**: Returns accounts ordered by `code`.
+- **Description**: Fetch the COA as nested tree or flat list.
+- **Query Params**: `flat` (boolean, default false — returns flat list vs nested JSON tree).
+- **Action**: Returns all accounts for the tenant ordered by `code`, built into a recursive tree via lookup.
+- **Required Permission**: `finance.coa.read`
 
 ### POST `/api/v1/finance/chart-of-accounts`
 - **Description**: Create a new account.
-- **Request Body**: `code`, `name`, `parent_id`, `type`.
-- **Validation**: Enforce uniqueness of `code` within `tenant_id`. If `parent_id` is provided, verify it exists and inherit its `type`.
+- **Request Body**: `code`, `name`, `parent_id` (optional), `type`, `is_active` (optional, default true).
+- **Validation**:
+  - Account type must be one of: ASSET, LIABILITY, EQUITY, REVENUE, EXPENSE.
+  - `code` must be unique within `tenant_id` (explicit check before DB constraint).
+  - If `parent_id` provided: parent must exist and be active, depth must be < 5 levels, type auto-inherited from parent.
+- **Audit**: Creates audit log entry with `action=CREATE` and new value snapshot.
+- **Required Permission**: `finance.coa.manage`
 
 ### PUT `/api/v1/finance/chart-of-accounts/{id}`
 - **Description**: Update account details.
-- **Validation**: 
-  - Cannot change `type` if there are existing journal entries.
-  - Cycle Detection: Use a recursive query (CTE) in Postgres or traverse up the tree to ensure the new `parent_id` is not a descendant of `{id}`.
+- **Request Body**: Partial update — any of `code`, `name`, `parent_id`, `type`, `is_active`.
+- **Validation**:
+  - Code uniqueness check on change (exclude self).
+  - Cycle detection: traverses ancestors of candidate parent to ensure it's not a descendant of the target account.
+  - Can set `is_active=false` to deactivate (cascades to all children).
+- **Audit**: Captures before/after snapshots, logs `action=UPDATE`.
+- **Required Permission**: `finance.coa.manage`
 
 ### DELETE `/api/v1/finance/chart-of-accounts/{id}`
-- **Description**: Soft-delete (or block deletion if used).
-- **Validation**: Check `journal_entry_lines` to see if `account_id` is in use. If used -> return 400 "Account in use".
+- **Description**: Deactivate an account (soft-delete). Cannot deactivate if already inactive.
+- **Validation**: Checks `journal_entry_lines` for existing references (placeholder until FIN-2). If has entries → 400 "Account in use".
+- **Action**: Sets `is_active=false` on the account and all descendants (cascade).
+- **Audit**: Captures before/after snapshots, logs `action=DEACTIVATE`.
+- **Required Permission**: `finance.coa.manage`
 
-## 5. Domain Events
-- **Raised**: `AccountCreated`, `AccountUpdated`
-- **Consumed**: None directly.
+## 5. Service Layer
 
-## 6. Permissions (RBAC)
-- `finance.coa.read`: View the COA.
-- `finance.coa.manage`: Create/Update/Deactivate accounts.
+Located at `Modules/Finance/Application/ChartOfAccountService.cs`.
 
-## 7. Performance Considerations
-- Use caching (Upstash Redis) for the full COA list per tenant, as it rarely changes but is queried frequently by dropdowns in other modules. Invalidate cache on PUT/POST/DELETE.
+Key validations:
+- **Code uniqueness**: Explicit `AnyAsync` check on `(TenantId, Code)` before create and before update.
+- **Circular reference**: `IsDescendantAsync` — traverses parent chain upwards from candidate parent, returns true if it reaches the target account (O(depth) loop, max 5 iterations).
+- **Hierarchy depth**: `GetDepthAsync` — traverses parent chain upwards, counts levels. Rejects if depth >= 4 (meaning level 5).
+- **Type inheritance**: On create with `parent_id`, account type is auto-set from parent. On top-level create, type must be explicitly provided.
+- **Cascade deactivation**: `DeactivateCascadeAsync` — recursively finds all children and sets `is_active=false`.
+- **Deactivation guard**: `HasAssociatedEntriesAsync` — checks `journal_entry_lines` for references. Placeholder until FIN-2 is built.
 
-## 8. Security Considerations
-- Prevent SQL injection in the cycle detection CTE if using raw queries.
-- Validate `tenant_id` meticulously.
+## 6. Domain Events
 
-## 9. Error Handling Strategy
-- Return `409 Conflict` if the `tenantCodeIdx` uniqueness constraint is violated.
+### Raised
+```csharp
+// TODO: Implement when MediatR is added
+public record AccountCreated(Guid AccountId, string Code, string Name, string Type, Guid TenantId);
+public record AccountUpdated(Guid AccountId, string Code, string Name, string Type, bool IsActive, Guid TenantId);
+```
 
-## 10. Seed Data
-- Provide a standard IFRS/GAAP baseline COA template when a new tenant registers (e.g., standard 1000-5000 structure).
+- **Consumed**: None directly in this iteration. Future modules (Reporting, WMS, HR) may subscribe.
+
+## 7. Permissions (RBAC)
+
+Defined in `Shared/RBAC/Permissions.cs`:
+```csharp
+public const string FinanceCoaRead = "finance.coa.read";
+public const string FinanceCoaManage = "finance.coa.manage";
+```
+
+| Permission | Description |
+|------------|-------------|
+| `finance.coa.read` | View the COA tree and account details |
+| `finance.coa.manage` | Create, update, and deactivate accounts |
+
+Pre-seeded roles:
+- **Admin**: Both permissions (via `Permissions.All`)
+- **Manager**: Both permissions
+- **Staff**: `finance.coa.read` only
+
+## 8. Audit Trail
+
+Every mutation (CREATE, UPDATE, DEACTIVATE) on `chart_of_accounts` is logged to the `audit_logs` table via `AuditService` (`Shared/Infrastructure/Audit/AuditService.cs`).
+
+Each entry captures:
+- **Actor**: `UserId` from JWT claim `NameIdentifier`
+- **Tenant**: `TenantId` from JWT claim `tenant_id`
+- **Action**: `CREATE`, `UPDATE`, or `DEACTIVATE`
+- **Resource**: `resource_type="chart_of_accounts"`, `resource_id=<account UUID>`
+- **Snapshot**: `ChangesJson` containing `{ old_value: {...}, new_value: {...} }` serialized as JSON
+- **Metadata**: `IpAddress`, `UserAgent` from HTTP request
+
+## 9. Performance Considerations
+- Use caching (Upstash Redis) for the full COA list per tenant: key `finance:chart-of-accounts:{tenantId}`.
+- Read from cache, invalidate on POST/PUT/DELETE.
+- COA rarely changes (< 500 accounts per tenant) — full tree fetch is acceptable for most queries.
+
+## 10. Error Handling
+
+| HTTP Status | Condition | Error Code |
+|-------------|-----------|------------|
+| 400 | Invalid account type | `INVALID_ACCOUNT_TYPE` |
+| 400 | Duplicate account code | `ACCOUNT_CODE_DUPLICATE` |
+| 400 | Parent account not found | `PARENT_NOT_FOUND` |
+| 400 | Max hierarchy depth (5) exceeded | `MAX_DEPTH_EXCEEDED` |
+| 400 | Deactivated parent | `PARENT_INACTIVE` |
+| 400 | Self-reference as parent | `SELF_PARENT_REFERENCE` |
+| 400 | Circular reference detected | `CIRCULAR_REFERENCE` |
+| 400 | Account has journal entries | `ACCOUNT_IN_USE` |
+| 400 | Account already deactivated | `ALREADY_DEACTIVATED` |
+| 404 | Account not found | `ACCOUNT_NOT_FOUND` |
+
+## 11. Seed Data
+- Provide a standard IFRS/GAAP baseline COA template when a new tenant registers.
+- Standard 5 top-level accounts: Assets (1000), Liabilities (2000), Equity (3000), Revenue (4000), Expenses (5000).
+- Each with standard children (e.g., 1100 Current Assets, 1200 Fixed Assets under 1000 Assets).
+- Located in `DataSeeder.cs` — idempotent (skips if roles already exist).
