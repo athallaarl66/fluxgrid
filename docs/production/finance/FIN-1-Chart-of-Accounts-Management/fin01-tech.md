@@ -5,6 +5,7 @@
 - **Backend**: .NET 8 Minimal API (Modular Monolith) with Clean Architecture.
 - **Database**: PostgreSQL (Neon) using adjacency list model (`parent_id`) for hierarchy.
 - **ORM**: Entity Framework Core 8.0 with Npgsql.
+- **Auth**: JWT disimpan di httpOnly cookie `token` oleh frontend, backend baca dari cookie lewat `OnMessageReceived` event. Role `Admin` bersifat super admin — bypass semua permission check (logic `RequireAssertion` di `Program.cs`).
 
 ## 2. Database Schema
 
@@ -116,9 +117,9 @@ modelBuilder.Entity<AuditLog>(entity =>
 
 ### GET `/api/v1/finance/chart-of-accounts`
 - **Description**: Fetch the COA as nested tree or flat list.
-- **Query Params**: `flat` (boolean, default false — returns flat list vs nested JSON tree).
+- **Query Params**: `flat` (boolean? — nullable, default false kalo tidak dikirim).
 - **Action**: Returns all accounts for the tenant ordered by `code`, built into a recursive tree via lookup.
-- **Required Permission**: `finance.coa.read`
+- **Required Permission**: `finance.coa.read` (super admin role "Admin" bypass)
 
 ### POST `/api/v1/finance/chart-of-accounts`
 - **Description**: Create a new account.
@@ -128,7 +129,7 @@ modelBuilder.Entity<AuditLog>(entity =>
   - `code` must be unique within `tenant_id` (explicit check before DB constraint).
   - If `parent_id` provided: parent must exist and be active, depth must be < 5 levels, type auto-inherited from parent.
 - **Audit**: Creates audit log entry with `action=CREATE` and new value snapshot.
-- **Required Permission**: `finance.coa.manage`
+- **Required Permission**: `finance.coa.manage` (super admin role "Admin" bypass)
 
 ### PUT `/api/v1/finance/chart-of-accounts/{id}`
 - **Description**: Update account details.
@@ -138,14 +139,14 @@ modelBuilder.Entity<AuditLog>(entity =>
   - Cycle detection: traverses ancestors of candidate parent to ensure it's not a descendant of the target account.
   - Can set `is_active=false` to deactivate (cascades to all children).
 - **Audit**: Captures before/after snapshots, logs `action=UPDATE`.
-- **Required Permission**: `finance.coa.manage`
+- **Required Permission**: `finance.coa.manage` (super admin role "Admin" bypass)
 
 ### DELETE `/api/v1/finance/chart-of-accounts/{id}`
 - **Description**: Deactivate an account (soft-delete). Cannot deactivate if already inactive.
 - **Validation**: Checks `journal_entry_lines` for existing references (placeholder until FIN-2). If has entries → 400 "Account in use".
 - **Action**: Sets `is_active=false` on the account and all descendants (cascade).
 - **Audit**: Captures before/after snapshots, logs `action=DEACTIVATE`.
-- **Required Permission**: `finance.coa.manage`
+- **Required Permission**: `finance.coa.manage` (super admin role "Admin" bypass)
 
 ## 5. Service Layer
 
@@ -483,3 +484,37 @@ POST   /api/v1/finance/chart-of-accounts   → AccountResponse  (201)
 PUT    /api/v1/finance/chart-of-accounts/{id} → AccountResponse (200)
 DELETE /api/v1/finance/chart-of-accounts/{id} → AccountResponse (200)
 ```
+
+---
+
+## 15. Ringkasan Fitur
+
+**Chart of Accounts (COA)** adalah fondasi sistem finance ERP — daftar akun yang mengkategorikan setiap transaksi keuangan perusahaan ke dalam 5 tipe: ASSET, LIABILITY, EQUITY, REVENUE, EXPENSE.
+
+### Kenapa ini penting?
+- **Akuntansi standar**: Setiap perusahaan butuh COA buat mencatat transaksi sesuai standar akuntansi (PSAK/IFRS).
+- **Hierarki**: Akun punya parent-child (misal "1110 Cash in Bank" anak dari "1100 Current Assets").
+- **Multi-tenant**: Setiap tenant punya COA sendiri, terisolasi.
+- **Audit trail**: Setiap perubahan COA tercatat immutable — siapa, kapan, apa yang berubah.
+- **Seed data**: Tenant baru langsung dapet template COA standar IFRS (33 akun) jadi tinggal pakai.
+
+### Siapa yang akses?
+| Role | Akses |
+|------|-------|
+| **Super Admin** (`admin`) | Bypass semua permission — bisa create/edit/deactivate akun |
+| **Manager** | Bisa lihat dan manage COA |
+| **Staff** | Cuma bisa lihat (read-only) |
+
+### Frontend
+- Tree view di `/finance/chart-of-accounts` dengan expand/collapse
+- Search real-time (filter di frontend tanpa API call)
+- Responsive: tree view di desktop, flat list dengan breadcrumb di mobile
+- Form create/edit dengan parent combobox, auto-inherit account type
+- Toast notification sukses/gagal
+- Loading skeleton, error state dengan retry, empty state## 16. Future: User & Role Management
+
+Saat ini cuma ada 1 akun seed (`admin`). Ke depannya Super Admin dapat:
+- Membuat akun baru (CRUD user)
+- Membuat role dengan permission picker
+- Assign role ke user
+- Melihat audit log perubahan RBAC

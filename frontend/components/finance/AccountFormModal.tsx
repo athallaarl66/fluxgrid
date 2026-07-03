@@ -196,9 +196,22 @@ export function AccountFormModal({
               disabled={saving}
               className="cursor-pointer"
             >
-              <Badge variant={isActive ? "default" : "secondary"}>
+              <span
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold",
+                  isActive
+                    ? "bg-emerald-500/15 text-emerald-600"
+                    : "bg-red-500/15 text-red-600",
+                )}
+              >
+                <span
+                  className={cn(
+                    "inline-block size-1.5 rounded-full",
+                    isActive ? "bg-emerald-500" : "bg-red-500",
+                  )}
+                />
                 {isActive ? "Active" : "Inactive"}
-              </Badge>
+              </span>
             </button>
           </div>
 

@@ -34,6 +34,19 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidAudience = builder.Configuration["Jwt:Audience"],
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret))
         };
+
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var token = context.Request.Cookies["token"];
+                if (!string.IsNullOrEmpty(token))
+                {
+                    context.Token = token;
+                }
+                return Task.CompletedTask;
+            }
+        };
     });
 
 builder.Services.AddAuthorization(options =>
@@ -41,7 +54,9 @@ builder.Services.AddAuthorization(options =>
     foreach (var permission in FluxGrid.Api.Shared.RBAC.Permissions.All)
     {
         options.AddPolicy(permission, policy =>
-            policy.RequireClaim("permissions", permission));
+            policy.RequireAssertion(context =>
+                context.User.HasClaim("permissions", permission) ||
+                context.User.IsInRole("Admin")));
     }
 });
 

@@ -11,7 +11,11 @@ public static class DataSeeder
 
     public static async Task SeedAsync(AppDbContext db)
     {
-        if (await db.Roles.AnyAsync()) return;
+        if (await db.Roles.AnyAsync())
+        {
+            await ChartOfAccountSeeder.SeedAsync(db, DefaultTenantId);
+            return;
+        }
 
         var adminRole = new Role
         {

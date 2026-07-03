@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
@@ -42,6 +43,13 @@ function isChildActive(pathname: string, children?: NavItem["children"]) {
 
 export function Sidebar() {
   const pathname = usePathname();
+  const [expanded, setExpanded] = useState<string | null>(
+    () => navItems.find((item) => isChildActive(pathname, item.children))?.href ?? null,
+  );
+
+  function toggleExpand(href: string) {
+    setExpanded((prev) => (prev === href ? null : href));
+  }
 
   return (
     <aside className="fixed left-0 top-0 z-30 flex h-screen w-[260px] flex-col border-r border-sidebar-border bg-sidebar">
@@ -70,32 +78,48 @@ export function Sidebar() {
         {navItems.map((item) => {
           const isActive = pathname === item.href;
           const childActive = isChildActive(pathname, item.children);
+          const isExpanded = expanded === item.href || childActive;
           const Icon = item.icon;
+          const hasChildren = !!item.children && item.children.length > 0;
+
           return (
             <div key={item.href}>
-              <a
-                href={item.href}
+              <div
                 className={cn(
-                  "flex items-center gap-3 rounded px-3 py-2 text-sm font-medium transition-colors duration-200",
+                  "flex items-center rounded transition-colors duration-200",
                   isActive || childActive
                     ? "bg-accent text-accent-foreground"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground",
                 )}
               >
-                <Icon className="size-4 shrink-0" />
-                <span className="flex-1">{item.label}</span>
-                {item.children && (
-                  <ChevronDown
+                <a
+                  href={item.href}
+                  className="flex flex-1 items-center gap-3 rounded-l px-3 py-2 text-sm font-medium"
+                >
+                  <Icon className="size-4 shrink-0" />
+                  <span>{item.label}</span>
+                </a>
+                {hasChildren && (
+                  <button
+                    type="button"
+                    onClick={() => toggleExpand(item.href)}
                     className={cn(
-                      "size-3.5 text-muted-foreground transition-transform",
-                      childActive && "rotate-180",
+                      "flex size-7 items-center justify-center rounded-r text-muted-foreground transition-colors duration-200 cursor-pointer hover:text-foreground",
                     )}
-                  />
+                  >
+                    <ChevronDown
+                      className={cn(
+                        "size-3.5 transition-transform duration-200",
+                        isExpanded && "rotate-180",
+                      )}
+                    />
+                  </button>
                 )}
-              </a>
-              {(isActive || childActive) && item.children && (
+              </div>
+
+              {isExpanded && hasChildren && (
                 <div className="ml-2 mt-0.5 space-y-0.5 border-l border-border pl-2">
-                  {item.children.map((child) => {
+                  {item.children!.map((child) => {
                     const isChildActive = pathname === child.href;
                     return (
                       <a

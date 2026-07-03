@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { ApiError } from "@/lib/api-client";
+import { useToast } from "@/components/ui/toast";
 import {
   useCoaTree,
   useCreateAccount,
@@ -27,6 +28,7 @@ import type {
 export default function ChartOfAccountsPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
+  const { toast } = useToast();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
@@ -49,6 +51,12 @@ export default function ChartOfAccountsPage() {
   const deactivateMutation = useDeactivateAccount();
 
   const authChecked = !authLoading;
+
+  useEffect(() => {
+    if (authChecked && !user) {
+      router.push("/login?redirect=/finance/chart-of-accounts");
+    }
+  }, [user, authChecked, router]);
 
   const handleSearch = useCallback((query: string) => {
     setSearchQuery(query);
@@ -73,12 +81,30 @@ export default function ChartOfAccountsPage() {
       updateMutation.mutate(
         { id: editingAccount.id, data: data as UpdateAccountRequest },
         {
-          onSuccess: () => setModalOpen(false),
+          onSuccess: () => {
+            setModalOpen(false);
+            toast("Account updated successfully", "success");
+          },
+          onError: (err) => {
+            toast(
+              err instanceof ApiError ? err.message : "Failed to update account",
+              "error",
+            );
+          },
         },
       );
     } else {
       createMutation.mutate(data as CreateAccountRequest, {
-        onSuccess: () => setModalOpen(false),
+        onSuccess: () => {
+          setModalOpen(false);
+          toast("Account created successfully", "success");
+        },
+        onError: (err) => {
+          toast(
+            err instanceof ApiError ? err.message : "Failed to create account",
+            "error",
+          );
+        },
       });
     }
   }
@@ -86,7 +112,16 @@ export default function ChartOfAccountsPage() {
   function confirmDeactivate() {
     if (deletingId) {
       deactivateMutation.mutate(deletingId, {
-        onSuccess: () => setDeletingId(null),
+        onSuccess: () => {
+          setDeletingId(null);
+          toast("Account deactivated successfully", "success");
+        },
+        onError: (err) => {
+          toast(
+            err instanceof ApiError ? err.message : "Failed to deactivate account",
+            "error",
+          );
+        },
       });
     }
   }
@@ -99,10 +134,7 @@ export default function ChartOfAccountsPage() {
     );
   }
 
-  if (!user) {
-    router.push("/login?redirect=/finance/chart-of-accounts");
-    return null;
-  }
+  if (!user) return null;
 
   if (isError) {
     const isForbidden =

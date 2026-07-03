@@ -11,12 +11,12 @@ public static class ChartOfAccountEndpoints
         var group = app.MapGroup("/api/v1/finance/chart-of-accounts");
 
         group.MapGet("/", async (
-            [FromQuery] bool flat,
+            [FromQuery] bool? flat,
             ChartOfAccountService service,
             HttpContext http) =>
         {
             var (tenantId, _, _, _) = GetAuditContext(http);
-            var tree = await service.GetTreeAsync(tenantId, flat);
+            var tree = await service.GetTreeAsync(tenantId, flat ?? false);
             return Results.Ok(tree);
         })
         .RequireAuthorization(Permissions.FinanceCoaRead);

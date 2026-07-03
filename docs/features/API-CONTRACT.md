@@ -172,15 +172,201 @@ Content-Type: application/json
 ---
 
 #### GET /finance/chart-of-accounts
-**Purpose:** Get chart of accounts hierarchy
+**Purpose:** Get chart of accounts as nested tree or flat list
 
 **Query Parameters:**
 ```
-parent_id: uuid (optional)
-type: string (optional, enum: asset|liability|equity|revenue|expense)
+flat: boolean (optional, default: false — returns flat list vs nested JSON tree)
 ```
 
-**Required Permission:** Finance:Read
+**Success Response (200):**
+```json
+[
+  {
+    "id": "uuid",
+    "code": "1000",
+    "name": "Assets",
+    "parentId": null,
+    "type": "ASSET",
+    "isActive": true,
+    "children": [
+      {
+        "id": "uuid",
+        "code": "1100",
+        "name": "Current Assets",
+        "parentId": "uuid",
+        "type": "ASSET",
+        "isActive": true,
+        "children": []
+      }
+    ]
+  }
+]
+```
+
+**Required Permission:** `finance.coa.read`
+
+**Error Responses:**
+- 401: Missing or invalid token
+- 403: Insufficient permissions
+- 500: Internal server error
+
+---
+
+#### POST /finance/chart-of-accounts
+**Purpose:** Create a new account
+
+**Request Headers:**
+```
+Authorization: Bearer {jwt_token}
+Content-Type: application/json
+```
+
+**Request Body:**
+```json
+{
+  "code": "1110",
+  "name": "Cash in Bank",
+  "parentId": "uuid-or-null",
+  "type": "ASSET",
+  "isActive": true
+}
+```
+
+**Validation Rules:**
+- code: required, max 20 chars, unique per tenant
+- name: required, max 100 chars
+- type: required for top-level accounts (ASSET|LIABILITY|EQUITY|REVENUE|EXPENSE), auto-inherited from parent if parent_id provided
+- parentId: optional, must reference existing active account, max hierarchy depth 5
+- isActive: optional, defaults to true
+
+**Success Response (201):**
+```json
+{
+  "id": "uuid",
+  "code": "1110",
+  "name": "Cash in Bank",
+  "parentId": "uuid",
+  "type": "ASSET",
+  "isActive": true,
+  "children": []
+}
+```
+
+**Required Permission:** `finance.coa.manage`
+
+**Error Responses:**
+- 400: INVALID_ACCOUNT_TYPE — invalid type value
+- 400: ACCOUNT_CODE_DUPLICATE — code already exists for tenant
+- 400: PARENT_NOT_FOUND — parent account doesn't exist
+- 400: PARENT_INACTIVE — parent account is deactivated
+- 400: MAX_DEPTH_EXCEEDED — hierarchy exceeds 5 levels
+- 401: Missing or invalid token
+- 403: Insufficient permissions
+- 500: Internal server error
+
+---
+
+#### PUT /finance/chart-of-accounts/{id}
+**Purpose:** Update account details (partial update)
+
+**Path Parameters:**
+```
+id: uuid (required)
+```
+
+**Request Headers:**
+```
+Authorization: Bearer {jwt_token}
+Content-Type: application/json
+```
+
+**Request Body:**
+```json
+{
+  "code": "1111",
+  "name": "Cash in Bank - BCA",
+  "parentId": null,
+  "type": "ASSET",
+  "isActive": true
+}
+```
+
+**Validation Rules:**
+- All fields optional (partial update)
+- code: unique per tenant (exclude self on check)
+- parentId: circular reference detected by traversing ancestor chain
+- isActive=false: cascades deactivation to all children
+- Audit: captures before/after snapshots
+
+**Success Response (200):**
+```json
+{
+  "id": "uuid",
+  "code": "1111",
+  "name": "Cash in Bank - BCA",
+  "parentId": null,
+  "type": "ASSET",
+  "isActive": true,
+  "children": []
+}
+```
+
+**Required Permission:** `finance.coa.manage`
+
+**Error Responses:**
+- 400: ACCOUNT_CODE_DUPLICATE — code already exists for tenant
+- 400: CIRCULAR_REFERENCE — selected parent is a descendant of this account
+- 400: SELF_PARENT_REFERENCE — account cannot be its own parent
+- 400: ACCOUNT_IN_USE — cannot change type; account has journal entries
+- 404: ACCOUNT_NOT_FOUND — account not found
+- 401: Missing or invalid token
+- 403: Insufficient permissions
+- 500: Internal server error
+
+---
+
+#### DELETE /finance/chart-of-accounts/{id}
+**Purpose:** Deactivate an account (soft-delete)
+
+**Path Parameters:**
+```
+id: uuid (required)
+```
+
+**Request Headers:**
+```
+Authorization: Bearer {jwt_token}
+```
+
+**Validation Rules:**
+- Account must be active
+- Account must have no associated journal entries (placeholder until FIN-2)
+- Deactivation cascades to all descendant accounts
+- Audit: captures before/after snapshots with action=DEACTIVATE
+
+**Success Response (200):**
+```json
+{
+  "id": "uuid",
+  "code": "1110",
+  "name": "Cash in Bank",
+  "parentId": "uuid",
+  "type": "ASSET",
+  "isActive": false,
+  "children": []
+}
+```
+
+**Required Permission:** `finance.coa.manage`
+
+**Error Responses:**
+- 400: ACCOUNT_IN_USE — account has existing journal entries
+- 400: ALREADY_DEACTIVATED — account is already inactive
+- 404: ACCOUNT_NOT_FOUND — account not found
+- 401: Missing or invalid token
+- 403: Insufficient permissions
+- 500: Internal server error
 
 ---
 
@@ -964,7 +1150,7 @@ id: uuid (required)
 |------|-------------|-------------|
 | INVALID_REQUEST | 400 | Request validation failed |
 | UNAUTHORIZED | 401 | Missing or invalid authentication token |
-| FORBIDDEN | 403 | Insufficient permissions |
+| FORBIDDEN | 403 | Insufficient permissions (kecuali role Admin — super admin bypass) |
 | NOT_FOUND | 404 | Resource not found |
 | CONFLICT | 409 | Resource conflict (duplicate, etc.) |
 | RATE_LIMIT_EXCEEDED | 429 | Rate limit exceeded |
@@ -1026,9 +1212,15 @@ id: uuid (required)
 #### 4.2.1 Permission Definitions
 | Permission | Description | Endpoints |
 |-------------|-------------|-----------|
+| finance.coa.read | View chart of accounts | GET /finance/chart-of-accounts |
+| finance.coa.manage | Create, update, deactivate accounts | POST /finance/chart-of-accounts, PUT /finance/chart-of-accounts/{id}, DELETE /finance/chart-of-accounts/{id} |
 | HR:CVRead | View candidate data | GET /candidates, GET /candidates/{id}, GET /jobs/{id}/matches, POST /candidates/{id}/generate |
 | HR:CVWrite | Upload and edit CV | POST /candidates/upload |
 | HR:CandidateManage | Manage hiring workflow | POST /jobs, PUT /candidates/{id}/status |
+
+> **Catatan:** Role `Admin` bersifat **super admin** — semua permission check di-skip.
+
+---
 
 #### 4.2.2 Permission Checking Logic
 ```csharp

@@ -53,6 +53,13 @@ export function CoaTreeItem({
           )}
         </button>
 
+        <span
+          className={cn(
+            "inline-block size-2 shrink-0 rounded-full",
+            account.isActive ? "bg-emerald-500" : "bg-red-500",
+          )}
+        />
+
         <span className="min-w-[5rem] text-sm font-medium text-muted-foreground tabular-nums">
           {account.code}
         </span>
