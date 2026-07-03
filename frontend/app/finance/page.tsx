@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Wallet, BookOpen, ArrowRight } from "lucide-react";
+import { Wallet, BookOpen, ScrollText, ArrowRight } from "lucide-react";
 
 const modules = [
   {
@@ -12,6 +12,12 @@ const modules = [
     href: "/finance/chart-of-accounts",
     icon: BookOpen,
     description: "Manage account codes, hierarchy, and types",
+  },
+  {
+    name: "Journal Entries",
+    href: "/finance/journal-entries",
+    icon: ScrollText,
+    description: "Record and approve double-entry journal entries",
   },
 ];
 

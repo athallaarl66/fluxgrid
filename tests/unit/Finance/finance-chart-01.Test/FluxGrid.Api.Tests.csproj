@@ -23,7 +23,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\backend\FluxGrid.Api\FluxGrid.Api.csproj" />
+    <ProjectReference Include="..\..\..\..\backend\FluxGrid.Api\FluxGrid.Api.csproj" />
   </ItemGroup>
 
 </Project>

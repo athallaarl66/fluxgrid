@@ -12,6 +12,7 @@ import {
   HelpCircle,
   Plus,
   ChevronDown,
+  ScrollText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -31,6 +32,7 @@ const navItems: NavItem[] = [
     icon: Wallet,
     children: [
       { label: "Chart of Accounts", href: "/finance/chart-of-accounts" },
+      { label: "Journal Entries", href: "/finance/journal-entries" },
     ],
   },
   { label: "HR", href: "/hr", icon: Users },
@@ -44,7 +46,9 @@ function isChildActive(pathname: string, children?: NavItem["children"]) {
 export function Sidebar() {
   const pathname = usePathname();
   const [expanded, setExpanded] = useState<string | null>(
-    () => navItems.find((item) => isChildActive(pathname, item.children))?.href ?? null,
+    () =>
+      navItems.find((item) => isChildActive(pathname, item.children))?.href ??
+      null,
   );
 
   function toggleExpand(href: string) {
@@ -55,7 +59,9 @@ export function Sidebar() {
     <aside className="fixed left-0 top-0 z-30 flex h-screen w-[260px] flex-col border-r border-sidebar-border bg-sidebar">
       <div className="flex items-center gap-2 px-5 pt-5 pb-4">
         <div className="flex size-8 items-center justify-center rounded bg-sidebar-primary">
-          <span className="text-sm font-bold text-sidebar-primary-foreground">F</span>
+          <span className="text-sm font-bold text-sidebar-primary-foreground">
+            F
+          </span>
         </div>
         <div>
           <p className="text-sm font-semibold leading-tight text-sidebar-foreground">
@@ -67,18 +73,11 @@ export function Sidebar() {
         </div>
       </div>
 
-      <div className="px-3 pb-3">
-        <button className="flex w-full items-center gap-2 rounded border border-accent bg-accent px-3 py-1.5 text-sm font-semibold text-accent-foreground transition-colors duration-200 hover:brightness-[0.95] active:shadow-[inset_0_1px_2px_rgba(0,0,0,0.15)] cursor-pointer">
-          <Plus className="size-4" />
-          New Task
-        </button>
-      </div>
-
       <nav className="flex-1 px-3 space-y-0.5">
         {navItems.map((item, idx) => {
           const isActive = pathname === item.href;
           const childActive = isChildActive(pathname, item.children);
-          const isExpanded = expanded === item.href || childActive;
+          const isExpanded = expanded === item.href;
           const Icon = item.icon;
           const hasChildren = !!item.children && item.children.length > 0;
 
@@ -117,25 +116,34 @@ export function Sidebar() {
                 )}
               </div>
 
-              {isExpanded && hasChildren && (
-                <div className="ml-2 mt-0.5 space-y-0.5 border-l border-border pl-2">
-                  {item.children!.map((child) => {
-                    const isChildActive = pathname === child.href;
-                    return (
-                      <a
-                        key={child.href}
-                        href={child.href}
-                        className={cn(
-                          "flex items-center gap-3 rounded px-3 py-1.5 text-sm font-medium transition-colors duration-200",
-                          isChildActive
-                            ? "bg-accent text-accent-foreground"
-                            : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                        )}
-                      >
-                        {child.label}
-                      </a>
-                    );
-                  })}
+              {hasChildren && (
+                <div
+                  className={cn(
+                    "grid transition-all duration-200 ease-in-out",
+                    isExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
+                  )}
+                >
+                  <div className="overflow-hidden">
+                    <div className="ml-2 mt-0.5 space-y-0.5 border-l border-border pl-2 pb-0.5">
+                      {item.children!.map((child) => {
+                        const isChildActive = pathname === child.href || pathname.startsWith(child.href + "/");
+                        return (
+                          <a
+                            key={child.href}
+                            href={child.href}
+                            className={cn(
+                              "flex items-center gap-3 rounded px-3 py-1.5 text-sm font-medium transition-colors duration-200",
+                              isChildActive
+                                ? "bg-accent text-accent-foreground"
+                                : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                            )}
+                          >
+                            {child.label}
+                          </a>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
