@@ -1,0 +1,28 @@
+version: "3.8"
+
+services:
+  backend:
+    build:
+      context: ./backend/FluxGrid.Api
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    environment:
+      - ASPNETCORE_URLS=http://+:5000
+      - Jwt__SecretKey=dev-secret-key-please-change-in-production
+      - Jwt__Issuer=FluxGrid
+      - Jwt__Audience=FluxGrid
+      - Jwt__ExpiryMinutes=60
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:5000
+    depends_on:
+      - backend
+    restart: unless-stopped
