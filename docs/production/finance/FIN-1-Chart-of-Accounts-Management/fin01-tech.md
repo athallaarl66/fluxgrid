@@ -161,14 +161,37 @@ Key validations:
 
 ## 6. Domain Events
 
+Domain events implement `IDomainEvent` interface (`Shared/Domain/Events/IDomainEvent.cs`). Events are raised via `DomainEventDispatcher` (`Shared/Infrastructure/Events/DomainEventDispatcher.cs`) — a lightweight in-memory dispatcher that can be replaced with MediatR in the future.
+
 ### Raised
+
 ```csharp
-// TODO: Implement when MediatR is added
-public record AccountCreated(Guid AccountId, string Code, string Name, string Type, Guid TenantId);
-public record AccountUpdated(Guid AccountId, string Code, string Name, string Type, bool IsActive, Guid TenantId);
+// File: Shared/Domain/Events/AccountCreated.cs
+public sealed record AccountCreated(
+    Guid AccountId, string Code, string Name, string Type,
+    Guid? ParentId, Guid TenantId
+) : IDomainEvent
+{
+    public DateTime OccurredOn { get; } = DateTime.UtcNow;
+}
+
+// File: Shared/Domain/Events/AccountUpdated.cs
+public sealed record AccountUpdated(
+    Guid AccountId, string Code, string Name, string Type,
+    bool IsActive, Guid TenantId
+) : IDomainEvent
+{
+    public DateTime OccurredOn { get; } = DateTime.UtcNow;
+}
 ```
 
-- **Consumed**: None directly in this iteration. Future modules (Reporting, WMS, HR) may subscribe.
+| Event | Raised By | When |
+|-------|-----------|------|
+| `AccountCreated` | `POST /chart-of-accounts` | After account is saved to DB |
+| `AccountUpdated` | `PUT /chart-of-accounts/{id}` | After account details are updated |
+| `AccountUpdated` | `DELETE /chart-of-accounts/{id}` | After account is deactivated |
+
+- **Consumed**: None directly in this iteration. Future modules may subscribe (e.g., Reporting read model refresh, WMS integration).
 
 ## 7. Permissions (RBAC)
 
@@ -200,9 +223,18 @@ Each entry captures:
 - **Snapshot**: `ChangesJson` containing `{ old_value: {...}, new_value: {...} }` serialized as JSON
 - **Metadata**: `IpAddress`, `UserAgent` from HTTP request
 
-## 9. Performance Considerations
-- Use caching (Upstash Redis) for the full COA list per tenant: key `finance:chart-of-accounts:{tenantId}`.
-- Read from cache, invalidate on POST/PUT/DELETE.
+## 9. Caching
+
+Caching is implemented via `ICacheService` interface (`Shared/Infrastructure/Caching/ICacheService.cs`) with an initial `MemoryCacheService` backed by `IMemoryCache` (`Shared/Infrastructure/Caching/MemoryCacheService.cs`).
+
+| Aspect | Detail |
+|--------|--------|
+| Cache key | `finance:chart-of-accounts:{tenantId}` |
+| Strategy | Cache-aside — read from cache, fall back to DB |
+| Invalidation | On POST, PUT, DELETE — remove cache entry |
+| TTL | 30 minutes sliding expiration |
+| Future swap | Replace `MemoryCacheService` registration with `StackExchange.Redis` implementation |
+
 - COA rarely changes (< 500 accounts per tenant) — full tree fetch is acceptable for most queries.
 
 ## 10. Error Handling
@@ -221,7 +253,55 @@ Each entry captures:
 | 404 | Account not found | `ACCOUNT_NOT_FOUND` |
 
 ## 11. Seed Data
-- Provide a standard IFRS/GAAP baseline COA template when a new tenant registers.
-- Standard 5 top-level accounts: Assets (1000), Liabilities (2000), Equity (3000), Revenue (4000), Expenses (5000).
-- Each with standard children (e.g., 1100 Current Assets, 1200 Fixed Assets under 1000 Assets).
-- Located in `DataSeeder.cs` — idempotent (skips if roles already exist).
+
+Seeded via `ChartOfAccountSeeder` (`Shared/Infrastructure/Seed/ChartOfAccountSeeder.cs`) — idempotent (skips if accounts already exist for tenant).
+
+- **Tenant**: Uses `DefaultTenantId` (`00000000-0000-0000-0000-000000000001`) for initial tenant.
+- **Trigger**: Called from `DataSeeder.SeedAsync` after roles and admin user are created.
+- **Template**: Standard IFRS/GAAP baseline COA — 33 accounts total (5 top-level + 28 sub-accounts):
+
+```
+Level 1          Level 2               Level 3
+1000 Assets
+├── 1100 Current Assets
+│   ├── 1110 Cash at Bank
+│   ├── 1120 Accounts Receivable
+│   ├── 1130 Inventory
+│   └── 1140 Prepaid Expenses
+└── 1200 Non-Current Assets
+    ├── 1210 Land
+    ├── 1220 Buildings
+    ├── 1230 Machinery & Equipment
+    └── 1240 Accumulated Depreciation
+
+2000 Liabilities
+├── 2100 Current Liabilities
+│   ├── 2110 Accounts Payable
+│   ├── 2120 Accrued Expenses
+│   └── 2130 Short-Term Debt
+└── 2200 Non-Current Liabilities
+    ├── 2210 Long-Term Debt
+    └── 2220 Deferred Tax Liabilities
+
+3000 Equity
+├── 3100 Share Capital
+├── 3200 Retained Earnings
+└── 3300 Current Year Earnings
+
+4000 Revenue
+├── 4100 Sales Revenue
+│   ├── 4110 Product Sales
+│   └── 4120 Service Revenue
+└── 4200 Other Income
+
+5000 Expenses
+├── 5100 Cost of Goods Sold
+├── 5200 Operating Expenses
+│   ├── 5210 Salaries Expense
+│   ├── 5220 Rent Expense
+│   ├── 5230 Utilities Expense
+│   └── 5240 Depreciation Expense
+└── 5300 Other Expenses
+```
+
+- **Future**: On new tenant registration, call `ChartOfAccountSeeder.SeedAsync(db, tenantId)` with the new tenant's ID.
