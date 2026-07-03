@@ -1,6 +1,7 @@
 using FluxGrid.Api.Modules.Finance.API;
 using FluxGrid.Api.Modules.Finance.Domain.Entities;
 using FluxGrid.Api.Modules.Finance.Domain.Enums;
+using FluxGrid.Api.Shared.Infrastructure.Audit;
 using FluxGrid.Api.Shared.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,10 +10,12 @@ namespace FluxGrid.Api.Modules.Finance.Application;
 public class ChartOfAccountService
 {
     private readonly AppDbContext _db;
+    private readonly AuditService _audit;
 
-    public ChartOfAccountService(AppDbContext db)
+    public ChartOfAccountService(AppDbContext db, AuditService audit)
     {
         _db = db;
+        _audit = audit;
     }
 
     public async Task<List<AccountTreeNode>> GetTreeAsync(Guid tenantId, bool flat = false)
@@ -31,10 +34,13 @@ public class ChartOfAccountService
         return BuildTree(lookup, null, 0);
     }
 
-    public async Task<AccountResponse> CreateAsync(Guid tenantId, CreateAccountRequest request)
+    public async Task<AccountResponse> CreateAsync(Guid tenantId, CreateAccountRequest request, Guid userId, string? ipAddress = null, string? userAgent = null)
     {
         if (!AccountTypes.IsValid(request.Type))
             throw new InvalidOperationException($"Invalid account type. Must be one of: {string.Join(", ", AccountTypes.All)}");
+
+        if (await _db.ChartOfAccounts.AnyAsync(a => a.TenantId == tenantId && a.Code == request.Code))
+            throw new InvalidOperationException("Account code already exists for this tenant");
 
         if (request.ParentId.HasValue)
         {
@@ -72,16 +78,25 @@ public class ChartOfAccountService
         _db.ChartOfAccounts.Add(account);
         await _db.SaveChangesAsync();
 
+        await _audit.LogAsync(userId, tenantId, "CREATE", "chart_of_accounts", account.Id, ipAddress, userAgent, null, MapToResponse(account));
+
         return MapToResponse(account);
     }
 
-    public async Task<AccountResponse> UpdateAsync(Guid id, Guid tenantId, UpdateAccountRequest request)
+    public async Task<AccountResponse> UpdateAsync(Guid id, Guid tenantId, UpdateAccountRequest request, Guid userId, string? ipAddress = null, string? userAgent = null)
     {
         var account = await _db.ChartOfAccounts
             .FirstOrDefaultAsync(a => a.Id == id && a.TenantId == tenantId)
             ?? throw new InvalidOperationException("Account not found");
 
-        if (request.Code is not null) account.Code = request.Code;
+        var before = MapToResponse(account);
+
+        if (request.Code is not null && request.Code != account.Code)
+        {
+            if (await _db.ChartOfAccounts.AnyAsync(a => a.TenantId == tenantId && a.Code == request.Code && a.Id != id))
+                throw new InvalidOperationException("Account code already exists for this tenant");
+            account.Code = request.Code;
+        }
         if (request.Name is not null) account.Name = request.Name;
         if (request.Type is not null)
         {
@@ -113,10 +128,13 @@ public class ChartOfAccountService
         account.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
 
-        return MapToResponse(account);
+        var after = MapToResponse(account);
+        await _audit.LogAsync(userId, tenantId, "UPDATE", "chart_of_accounts", account.Id, ipAddress, userAgent, before, after);
+
+        return after;
     }
 
-    public async Task<AccountResponse> DeactivateAsync(Guid id, Guid tenantId)
+    public async Task<AccountResponse> DeactivateAsync(Guid id, Guid tenantId, Guid userId, string? ipAddress = null, string? userAgent = null)
     {
         var account = await _db.ChartOfAccounts
             .FirstOrDefaultAsync(a => a.Id == id && a.TenantId == tenantId)
@@ -125,11 +143,27 @@ public class ChartOfAccountService
         if (!account.IsActive)
             throw new InvalidOperationException("Account is already deactivated");
 
+        if (await HasAssociatedEntriesAsync(id))
+            throw new InvalidOperationException("Cannot deactivate account: account has associated journal entries");
+
+        var before = MapToResponse(account);
         await DeactivateCascadeAsync(account);
         account.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
 
-        return MapToResponse(account);
+        var after = MapToResponse(account);
+        await _audit.LogAsync(userId, tenantId, "DEACTIVATE", "chart_of_accounts", account.Id, ipAddress, userAgent, before, after);
+
+        return after;
+    }
+
+    private async Task<bool> HasAssociatedEntriesAsync(Guid accountId)
+    {
+        // TODO: Check journal_entry_lines table when FIN-2 is implemented
+        // return await _db.Set<JournalEntryLine>()
+        //     .AnyAsync(l => l.AccountId == accountId);
+        await Task.CompletedTask;
+        return false;
     }
 
     private async Task DeactivateCascadeAsync(ChartOfAccount account)

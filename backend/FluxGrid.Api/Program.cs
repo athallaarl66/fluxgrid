@@ -4,6 +4,7 @@ using FluxGrid.Api.Modules.Dashboard.API;
 using FluxGrid.Api.Modules.Dashboard.Application;
 using FluxGrid.Api.Modules.Finance.API;
 using FluxGrid.Api.Modules.Finance.Application;
+using FluxGrid.Api.Shared.Infrastructure.Audit;
 using FluxGrid.Api.Shared.Infrastructure.Data;
 using FluxGrid.Api.Shared.Infrastructure.Seed;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -55,6 +56,7 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddScoped<DashboardService>();
 builder.Services.AddScoped<ChartOfAccountService>();
+builder.Services.AddScoped<AuditService>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 

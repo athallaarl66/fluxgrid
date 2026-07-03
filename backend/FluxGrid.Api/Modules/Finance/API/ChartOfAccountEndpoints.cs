@@ -15,7 +15,7 @@ public static class ChartOfAccountEndpoints
             ChartOfAccountService service,
             HttpContext http) =>
         {
-            var tenantId = GetTenantId(http);
+            var (tenantId, _, _, _) = GetAuditContext(http);
             var tree = await service.GetTreeAsync(tenantId, flat);
             return Results.Ok(tree);
         })
@@ -26,10 +26,10 @@ public static class ChartOfAccountEndpoints
             ChartOfAccountService service,
             HttpContext http) =>
         {
-            var tenantId = GetTenantId(http);
+            var (tenantId, userId, ip, ua) = GetAuditContext(http);
             try
             {
-                var account = await service.CreateAsync(tenantId, request);
+                var account = await service.CreateAsync(tenantId, request, userId, ip, ua);
                 return Results.Created($"/api/v1/finance/chart-of-accounts/{account.Id}", account);
             }
             catch (InvalidOperationException ex)
@@ -45,10 +45,10 @@ public static class ChartOfAccountEndpoints
             ChartOfAccountService service,
             HttpContext http) =>
         {
-            var tenantId = GetTenantId(http);
+            var (tenantId, userId, ip, ua) = GetAuditContext(http);
             try
             {
-                var account = await service.UpdateAsync(id, tenantId, request);
+                var account = await service.UpdateAsync(id, tenantId, request, userId, ip, ua);
                 return Results.Ok(account);
             }
             catch (InvalidOperationException ex)
@@ -63,10 +63,10 @@ public static class ChartOfAccountEndpoints
             ChartOfAccountService service,
             HttpContext http) =>
         {
-            var tenantId = GetTenantId(http);
+            var (tenantId, userId, ip, ua) = GetAuditContext(http);
             try
             {
-                var account = await service.DeactivateAsync(id, tenantId);
+                var account = await service.DeactivateAsync(id, tenantId, userId, ip, ua);
                 return Results.Ok(account);
             }
             catch (InvalidOperationException ex)
@@ -77,11 +77,20 @@ public static class ChartOfAccountEndpoints
         .RequireAuthorization(Permissions.FinanceCoaManage);
     }
 
-    private static Guid GetTenantId(HttpContext http)
+    private static (Guid tenantId, Guid userId, string? ip, string? ua) GetAuditContext(HttpContext http)
     {
-        var tenantIdClaim = http.User.FindFirst("tenant_id")?.Value;
-        if (Guid.TryParse(tenantIdClaim, out var tenantId))
-            return tenantId;
-        return Guid.Empty;
+        var tenantId = Guid.Empty;
+        var userId = Guid.Empty;
+
+        var tenantClaim = http.User.FindFirst("tenant_id")?.Value;
+        if (Guid.TryParse(tenantClaim, out var tid)) tenantId = tid;
+
+        var userClaim = http.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (Guid.TryParse(userClaim, out var uid)) userId = uid;
+
+        var ip = http.Connection.RemoteIpAddress?.ToString();
+        var ua = http.Request.Headers.UserAgent.ToString();
+
+        return (tenantId, userId, ip, ua);
     }
 }
