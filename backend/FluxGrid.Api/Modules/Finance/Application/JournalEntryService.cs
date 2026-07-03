@@ -86,7 +86,7 @@ public class JournalEntryService
 
     public async Task<JournalEntry> UpdateDraftAsync(Guid id, Guid tenantId, UpdateJournalEntryRequest request)
     {
-        var entry = await _context.JournalEntries.Include(e => e.Lines)
+        var entry = await _context.JournalEntries
             .FirstOrDefaultAsync(e => e.Id == id && e.TenantId == tenantId);
 
         if (entry == null) throw new InvalidOperationException("Entry not found");
@@ -111,14 +111,24 @@ public class JournalEntryService
         entry.Status = finalStatus;
         entry.TotalAmount = totalDebit;
 
-        _context.JournalEntryLines.RemoveRange(entry.Lines);
-        entry.Lines = request.Lines.Select(l => new JournalEntryLine
+        // Remove existing lines from DbSet directly
+        var linesToRemove = await _context.JournalEntryLines
+            .Where(l => l.EntryId == entry.Id)
+            .ToListAsync();
+        _context.JournalEntryLines.RemoveRange(linesToRemove);
+
+        // Add new lines
+        foreach (var l in request.Lines)
         {
-            AccountId = l.AccountId,
-            Debit = l.Debit,
-            Credit = l.Credit,
-            Description = l.Description
-        }).ToList();
+            _context.JournalEntryLines.Add(new JournalEntryLine
+            {
+                EntryId = entry.Id,
+                AccountId = l.AccountId,
+                Debit = l.Debit,
+                Credit = l.Credit,
+                Description = l.Description
+            });
+        }
 
         await _context.SaveChangesAsync();
         return entry;
