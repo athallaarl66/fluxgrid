@@ -208,8 +208,26 @@ erDiagram
 - **Authentication**: Required (Finance:Write)
 
 **GET /api/v1/finance/chart-of-accounts**
-- **Description**: Get chart of accounts hierarchy
-- **Authentication**: Required (Finance:Read)
+- **Description**: Get chart of accounts hierarchy (nested tree or flat list)
+- **Query Params**: `flat` (boolean, optional — returns flat list vs nested tree)
+- **Authentication**: Required (finance.coa.read)
+
+**POST /api/v1/finance/chart-of-accounts**
+- **Description**: Create a new account
+- **Request Body**: `code`, `name`, `parent_id` (optional), `type`, `is_active` (optional)
+- **Validation**: Unique code per tenant, max 5 levels depth, circular reference check, type inheritance from parent
+- **Authentication**: Required (finance.coa.manage)
+
+**PUT /api/v1/finance/chart-of-accounts/{id}**
+- **Description**: Update account details or deactivate
+- **Request Body**: Partial — `code`, `name`, `parent_id`, `type`, `is_active`
+- **Validation**: Circular reference on parent change, cascade deactivation to children
+- **Authentication**: Required (finance.coa.manage)
+
+**DELETE /api/v1/finance/chart-of-accounts/{id}**
+- **Description**: Soft-deactivate account (cascades to children)
+- **Validation**: Checks journal entry references before deactivation
+- **Authentication**: Required (finance.coa.manage)
 
 **POST /api/v1/finance/periods/{id}/close**
 - **Description**: Close accounting period
@@ -328,6 +346,18 @@ public class StockOutAlert : IDomainEvent
 
 #### Events Raised by Finance
 ```csharp
+// AccountCreated - Raised when a chart of account is created
+public sealed record AccountCreated(
+    Guid AccountId, string Code, string Name, string Type,
+    Guid? ParentId, Guid TenantId
+) : IDomainEvent;
+
+// AccountUpdated - Raised when an account is updated or deactivated
+public sealed record AccountUpdated(
+    Guid AccountId, string Code, string Name, string Type,
+    bool IsActive, Guid TenantId
+) : IDomainEvent;
+
 // JournalEntryPosted - Raised when journal entry is posted
 public class JournalEntryPosted : IDomainEvent
 {
@@ -520,7 +550,7 @@ fluxgrid-frontend/
 | /wms/inbound | Inbound Processing | WMS:Write |
 | /wms/outbound | Outbound Processing | WMS:Write |
 | /wms/dashboard | WMS Dashboard | WMS:Read |
-| /finance/chart-of-accounts | Chart of Accounts | Finance:Read |
+| /finance/chart-of-accounts | Chart of Accounts (tree CRUD) | finance.coa.read |
 | /finance/journal-entries | Journal Entries | Finance:Read/Write |
 | /finance/reports | Financial Reports | Finance:Read |
 | /finance/dashboard | Finance Dashboard | Finance:Read |
@@ -554,9 +584,15 @@ fluxgrid-frontend/
 ### 6.1 Authentication & Authorization
 - **Authentication Method**: JWT Bearer Token via NextAuth v5 (Frontend) + .NET JWT Middleware (Backend)
 - **Authorization Model**: RBAC (Role-Based Access Control)
+- **Super Admin**: Role `Admin` bypasses all permission checks. Implemented via `RequireAssertion` in `Program.cs`:
+  ```csharp
+  policy.RequireAssertion(context =>
+      context.User.HasClaim("permissions", permission) ||
+      context.User.IsInRole("Admin"));
+  ```
 - **Granular Permissions**:
   - **WMS:** WMS:Read, WMS:Write, WMS:Admin
-  - **Finance:** Finance:Read, Finance:Write, Finance:Admin, Finance:Audit
+  - **Finance:** Finance:Read, Finance:Write, Finance:Admin, Finance:Audit, finance.coa.read, finance.coa.manage
   - **HR:** HR:Read, HR:Write, HR:PayrollProcess, HR:CVRead, HR:CVWrite, HR:CandidateManage
   - **TaskProject:** Task:Read, Task:Write, Task:Admin
   - **Shared:** Audit:Read, Audit:Write

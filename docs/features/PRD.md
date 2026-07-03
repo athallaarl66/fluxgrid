@@ -52,9 +52,17 @@ FluxGrid ERP adalah sistem Modular Monolith untuk industri berat (Mining, Oil & 
 - Modular Monolith architecture dengan Clean Architecture dan DDD
 - Domain Events untuk komunikasi antar modul
 - RBAC (Role-Based Access Control) dengan granular permissions
+  - Role **Admin = Super Admin**: bypass semua permission check (policy OR logic di `Program.cs`)
 - Audit Trail immutable untuk compliance
 - Row-Level Security (RLS) di PostgreSQL
 - AI Service Layer abstraction (Groq API) — hanya untuk Finance & HR
+
+**Future — User & Role Management:**
+Super Admin akan dapat membuat akun, mengelola role, dan assign permission secara dinamis melalui UI. Fitur ini mencakup:
+- CRUD user
+- CRUD role dengan permission picker
+- Assign/unassign role ke user
+- Audit log untuk semua perubahan RBAC
 
 **Excluded:**
 - Video interview integration
@@ -685,6 +693,9 @@ Saat ini, operasional perusahaan di industri Mining, Oil & Gas, Logistics, Manuf
 **Finance Endpoints:**
 - POST /api/v1/finance/journal-entries
 - GET /api/v1/finance/chart-of-accounts
+- POST /api/v1/finance/chart-of-accounts
+- PUT /api/v1/finance/chart-of-accounts/{id}
+- DELETE /api/v1/finance/chart-of-accounts/{id}
 - POST /api/v1/finance/periods/{id}/close
 - GET /api/v1/finance/reports/trial-balance
 - GET /api/v1/finance/reports/pl

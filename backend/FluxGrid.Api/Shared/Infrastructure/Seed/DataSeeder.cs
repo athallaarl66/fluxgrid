@@ -7,9 +7,15 @@ namespace FluxGrid.Api.Shared.Infrastructure.Seed;
 
 public static class DataSeeder
 {
+    public static readonly Guid DefaultTenantId = Guid.Parse("00000000-0000-0000-0000-000000000001");
+
     public static async Task SeedAsync(AppDbContext db)
     {
-        if (await db.Roles.AnyAsync()) return;
+        if (await db.Roles.AnyAsync())
+        {
+            await ChartOfAccountSeeder.SeedAsync(db, DefaultTenantId);
+            return;
+        }
 
         var adminRole = new Role
         {
@@ -27,7 +33,7 @@ public static class DataSeeder
             Permissions = [
                 Permissions.DashboardRead,
                 Permissions.WmsRead, Permissions.WmsWrite,
-                Permissions.FinanceRead, Permissions.FinanceWrite,
+                Permissions.FinanceRead, Permissions.FinanceWrite, Permissions.FinanceCoaRead, Permissions.FinanceCoaManage,
                 Permissions.HrRead, Permissions.HrWrite,
                 Permissions.TaskRead, Permissions.TaskWrite
             ]
@@ -41,7 +47,7 @@ public static class DataSeeder
             Permissions = [
                 Permissions.DashboardRead,
                 Permissions.WmsRead,
-                Permissions.FinanceRead,
+                Permissions.FinanceRead, Permissions.FinanceCoaRead,
                 Permissions.HrRead,
                 Permissions.TaskRead, Permissions.TaskWrite
             ]
@@ -61,5 +67,7 @@ public static class DataSeeder
 
         db.Users.Add(adminUser);
         await db.SaveChangesAsync();
+
+        await ChartOfAccountSeeder.SeedAsync(db, DefaultTenantId);
     }
 }

@@ -7,7 +7,7 @@ public class PermissionsTests
     [Fact]
     public void All_ContainsExpectedCount()
     {
-        Assert.Equal(12, Permissions.All.Length);
+        Assert.Equal(14, Permissions.All.Length);
     }
 
     [Fact]

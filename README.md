@@ -51,7 +51,9 @@ docker-compose up --build
 
 | Username | Password | Role  |
 | -------- | -------- | ----- |
-| `admin`  | `admin123` | Admin (all permissions) |
+| `admin`  | `admin123` | **Super Admin** — bypasses all permission checks, has every permission |
+
+> **Catatan:** Saat ini hanya 1 akun seed (`admin`). Fitur **User & Role Management** (Super Admin dapat membuat/manage akun dan role) akan hadir di iterasi berikutnya.
 
 ---
 
@@ -84,10 +86,19 @@ FLEXMNG/
 │   ├── Modules/
 │   │   ├── Dashboard/           # Dashboard API (GET /api/dashboard)
 │   │   ├── WMS/                 # (scaffold)
-│   │   ├── Finance/             # (scaffold)
+│   │   ├── Finance/             # Chart of Accounts CRUD + audit
 │   │   ├── HR/                  # (scaffold)
 │   │   └── TaskProject/         # (scaffold)
-│   ├── Shared/RBAC/             # Permission constants
+│   ├── Shared/
+│   │   ├── Domain/              # Shared entities (User, Role, AuditLog)
+│   │   ├── Domain/Events/       # IDomainEvent, AccountCreated, AccountUpdated
+│   │   ├── Infrastructure/
+│   │   │   ├── Audit/           # AuditService
+│   │   │   ├── Caching/         # ICacheService, MemoryCacheService
+│   │   │   ├── Data/            # AppDbContext + EF config
+│   │   │   ├── Events/          # DomainEventDispatcher
+│   │   │   └── Seed/            # DataSeeder, ChartOfAccountSeeder
+│   │   └── RBAC/                # Permission constants
 │   └── Program.cs               # DI, auth, CORS, endpoint registration
 │
 ├── docs/
@@ -107,17 +118,44 @@ FLEXMNG/
 | `/login`          | No            | Login form                 |
 | `/dashboard`      | Yes           | Dashboard with KPI grid    |
 | `/wms`            | Yes           | WMS module (scaffold)      |
-| `/finance`        | Yes           | Finance module (scaffold)   |
+| `/finance`        | Yes           | Finance module landing      |
+| `/finance/chart-of-accounts` | Yes    | Chart of Accounts tree view |
 | `/hr`             | Yes           | HR module (scaffold)       |
 | `/projects`       | Yes           | Projects module (scaffold) |
 
 ### API Endpoints
 
-| Method | Path               | Auth                | Description                     |
-| ------ | ------------------ | ------------------- | ------------------------------- |
-| POST   | `/api/auth/login`  | Anonymous           | Login → returns JWT             |
-| GET    | `/api/dashboard`   | `Dashboard:Read`    | Module metadata + KPIs          |
-| GET    | `/api/health`      | Anonymous           | Health check                    |
+| Method | Path                                    | Auth                     | Description                     |
+| ------ | --------------------------------------- | ------------------------ | ------------------------------- |
+| POST   | `/api/auth/login`                       | Anonymous                | Login → returns JWT             |
+| GET    | `/api/health`                           | Anonymous                | Health check                    |
+| GET    | `/api/dashboard`                        | `Dashboard:Read`         | Module metadata + KPIs          |
+| GET    | `/api/v1/finance/chart-of-accounts`     | `finance.coa.read`       | Get COA tree (flat? query)      |
+| POST   | `/api/v1/finance/chart-of-accounts`     | `finance.coa.manage`     | Create account                  |
+| PUT    | `/api/v1/finance/chart-of-accounts/{id}`| `finance.coa.manage`     | Update account                  |
+| DELETE | `/api/v1/finance/chart-of-accounts/{id}`| `finance.coa.manage`     | Deactivate account (soft-delete)|
+
+---
+
+## RBAC — Role-Based Access Control
+
+### Super Admin
+- Role **Admin** bersifat **super admin** — semua permission bypass.
+- Cek di `Program.cs`: policy authorization menerima `permission claim` **ATAU** `role = "Admin"`.
+- Admin dapat mengakses endpoint apapun tanpa perlu permission spesifik.
+
+### Permission Model
+| Namespace          | Permissions                                      |
+| ------------------ | ------------------------------------------------ |
+| `Dashboard`        | `Dashboard:Read`                                 |
+| `WMS`              | `WMS:Read`, `WMS:Write`, `WMS:Admin`            |
+| `Finance`          | `Finance:Read`, `Finance:Write`, `Finance:Admin` |
+| `Finance COA`      | `finance.coa.read`, `finance.coa.manage`        |
+| `HR`               | `HR:Read`, `HR:Write`, `HR:PayrollProcess`       |
+| `Task`             | `Task:Read`, `Task:Write`                        |
+
+### Future: User & Role Management
+Super Admin akan dapat membuat akun, mengelola role, dan assign permission secara dinamis melalui UI. (Iterasi berikutnya.)
 
 ---
 

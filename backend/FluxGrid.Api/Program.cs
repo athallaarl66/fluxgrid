@@ -2,7 +2,12 @@ using System.Text;
 using FluxGrid.Api.Auth;
 using FluxGrid.Api.Modules.Dashboard.API;
 using FluxGrid.Api.Modules.Dashboard.Application;
+using FluxGrid.Api.Modules.Finance.API;
+using FluxGrid.Api.Modules.Finance.Application;
+using FluxGrid.Api.Shared.Infrastructure.Audit;
+using FluxGrid.Api.Shared.Infrastructure.Caching;
 using FluxGrid.Api.Shared.Infrastructure.Data;
+using FluxGrid.Api.Shared.Infrastructure.Events;
 using FluxGrid.Api.Shared.Infrastructure.Seed;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -29,6 +34,19 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidAudience = builder.Configuration["Jwt:Audience"],
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret))
         };
+
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var token = context.Request.Cookies["token"];
+                if (!string.IsNullOrEmpty(token))
+                {
+                    context.Token = token;
+                }
+                return Task.CompletedTask;
+            }
+        };
     });
 
 builder.Services.AddAuthorization(options =>
@@ -36,7 +54,9 @@ builder.Services.AddAuthorization(options =>
     foreach (var permission in FluxGrid.Api.Shared.RBAC.Permissions.All)
     {
         options.AddPolicy(permission, policy =>
-            policy.RequireClaim("permissions", permission));
+            policy.RequireAssertion(context =>
+                context.User.HasClaim("permissions", permission) ||
+                context.User.IsInRole("Admin")));
     }
 });
 
@@ -51,7 +71,12 @@ builder.Services.AddCors(options =>
     });
 });
 
+builder.Services.AddMemoryCache();
+builder.Services.AddScoped<ICacheService, MemoryCacheService>();
+builder.Services.AddScoped<DomainEventDispatcher>();
 builder.Services.AddScoped<DashboardService>();
+builder.Services.AddScoped<ChartOfAccountService>();
+builder.Services.AddScoped<AuditService>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -81,5 +106,6 @@ app.MapGet("/api/health", () => Results.Ok(new { status = "healthy" }));
 
 app.MapAuthEndpoints();
 app.MapDashboardEndpoints();
+app.MapChartOfAccountEndpoints();
 
 app.Run();

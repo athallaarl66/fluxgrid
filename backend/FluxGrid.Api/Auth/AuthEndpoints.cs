@@ -2,6 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using FluxGrid.Api.Shared.Infrastructure.Data;
+using FluxGrid.Api.Shared.Infrastructure.Seed;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
@@ -34,7 +35,8 @@ public static class AuthEndpoints
             {
                 new(ClaimTypes.NameIdentifier, user.Id.ToString()),
                 new(ClaimTypes.Email, user.Email),
-                new(ClaimTypes.Role, string.Join(",", user.Roles.Select(r => r.Name)))
+                new(ClaimTypes.Role, string.Join(",", user.Roles.Select(r => r.Name))),
+                new("tenant_id", DataSeeder.DefaultTenantId.ToString())
             };
 
             foreach (var permission in allPermissions)
