@@ -27,6 +27,10 @@ public class AppDbContext : DbContext
             entity.Property(e => e.Email).HasMaxLength(255);
             entity.Property(e => e.IsActive).HasDefaultValue(true);
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
+            entity.Property(e => e.FailedLoginAttempts).HasDefaultValue(0);
+            entity.Property(e => e.LockoutEnd);
+            entity.Property(e => e.MustChangePassword).HasDefaultValue(false);
+            entity.Property(e => e.TenantId).HasDefaultValue(Guid.Empty);
 
             entity.HasMany(e => e.Roles)
                   .WithMany(e => e.Users)

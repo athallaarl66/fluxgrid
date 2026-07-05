@@ -1,4 +1,5 @@
 using System.Text;
+using AspNetCoreRateLimit;
 using FluxGrid.Api.Auth;
 using FluxGrid.Api.Modules.Dashboard.API;
 using FluxGrid.Api.Modules.Dashboard.Application;
@@ -72,6 +73,22 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddMemoryCache();
+builder.Services.AddInMemoryRateLimiting();
+builder.Services.AddSingleton<IRateLimitConfiguration, RateLimitConfiguration>();
+builder.Services.Configure<IpRateLimitOptions>(options =>
+{
+    options.EnableEndpointRateLimiting = true;
+    options.HttpStatusCode = 429;
+    options.GeneralRules =
+    [
+        new RateLimitRule
+        {
+            Endpoint = "POST:/api/auth/login",
+            Limit = 5,
+            Period = "1m"
+        }
+    ];
+});
 builder.Services.AddScoped<ICacheService, MemoryCacheService>();
 builder.Services.AddScoped<DomainEventDispatcher>();
 builder.Services.AddScoped<DashboardService>();
@@ -102,6 +119,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors("Frontend");
+app.UseIpRateLimiting();
 app.UseAuthentication();
 app.UseAuthorization();
 

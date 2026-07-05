@@ -1,6 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using FluxGrid.Api.Shared.Domain.Entities;
 using FluxGrid.Api.Shared.Infrastructure.Data;
 using FluxGrid.Api.Shared.Infrastructure.Seed;
 using Microsoft.EntityFrameworkCore;
@@ -18,8 +19,33 @@ public static class AuthEndpoints
                 .Include(u => u.Roles)
                 .FirstOrDefaultAsync(u => u.Username == request.Username && u.IsActive);
 
-            if (user is null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
+            if (user is null)
                 return Results.Unauthorized();
+
+            if (user.LockoutEnd.HasValue && user.LockoutEnd > DateTime.UtcNow)
+            {
+                var remaining = (int)(user.LockoutEnd.Value - DateTime.UtcNow).TotalMinutes;
+                return Results.Json(new { message = $"Account locked. Try again in {remaining} minutes." }, statusCode: 401);
+            }
+
+            if (!BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
+            {
+                user.FailedLoginAttempts++;
+                var maxAttempts = int.Parse(config["Security:Lockout:MaxFailedAttempts"] ?? "5");
+                var lockoutMinutes = int.Parse(config["Security:Lockout:LockoutMinutes"] ?? "15");
+
+                if (user.FailedLoginAttempts >= maxAttempts)
+                {
+                    user.LockoutEnd = DateTime.UtcNow.AddMinutes(lockoutMinutes);
+                }
+
+                await db.SaveChangesAsync();
+                return Results.Unauthorized();
+            }
+
+            user.FailedLoginAttempts = 0;
+            user.LockoutEnd = null;
+            await db.SaveChangesAsync();
 
             var secretKey = config["Jwt:SecretKey"] ?? throw new InvalidOperationException("JWT secret not configured");
             var issuer = config["Jwt:Issuer"] ?? "FluxGrid";

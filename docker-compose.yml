@@ -9,10 +9,25 @@ services:
       - "5020:5020"
     environment:
       - ASPNETCORE_URLS=http://+:5020
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=fluxgrid;Username=postgres;Password=postgres
       - Jwt__SecretKey=dev-secret-key-please-change-in-production
       - Jwt__Issuer=FluxGrid
       - Jwt__Audience=FluxGrid
       - Jwt__ExpiryMinutes=60
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: fluxgrid
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
     restart: unless-stopped
 
   frontend:
@@ -26,3 +41,6 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
+
+volumes:
+  pgdata:
