@@ -4,7 +4,6 @@ import React, { useState } from "react";
 import { usePeriods, useValidateClose, useClosePeriod, useReopenPeriod, useGeneratePeriods } from "../../../hooks/usePeriods";
 import { Period } from "../../../lib/period-types";
 import PeriodsTable from "../../../components/finance/PeriodsTable";
-import ActionMenu from "../../../components/finance/ActionMenu";
 import ClosePeriodDialog from "../../../components/finance/ClosePeriodDialog";
 import ReopenPeriodDialog from "../../../components/finance/ReopenPeriodDialog";
 

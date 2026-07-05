@@ -4,6 +4,7 @@ using FluxGrid.Api.Modules.Finance.Domain.Events;
 using FluxGrid.Api.Shared.Infrastructure.Audit;
 using FluxGrid.Api.Shared.Infrastructure.Data;
 using FluxGrid.Api.Shared.Infrastructure.Events;
+using FluxGrid.Api.Shared.Infrastructure.Seed;
 using Microsoft.EntityFrameworkCore;
 
 namespace FluxGrid.Api.Modules.Finance.Application;
@@ -29,6 +30,53 @@ public class PeriodService
             .ToListAsync();
 
         return periods.Select(MapToResponse).ToList();
+    }
+
+    public async Task<int> GenerateMissingPeriodsAsync(Guid tenantId, Guid userId, string? ipAddress = null, string? userAgent = null)
+    {
+        var existingPeriods = await _db.AccountingPeriods
+            .Where(p => p.TenantId == tenantId)
+            .ToListAsync();
+
+        var existingNames = existingPeriods.Select(p => p.Name).ToHashSet();
+        var currentYear = DateTime.UtcNow.Year;
+        var newPeriods = new List<AccountingPeriod>();
+
+        for (int year = currentYear - 1; year <= currentYear + 1; year++)
+        {
+            for (int month = 1; month <= 12; month++)
+            {
+                var startDate = new DateTime(year, month, 1, 0, 0, 0, DateTimeKind.Utc);
+                var monthName = startDate.ToString("MMMM yyyy");
+
+                if (!existingNames.Contains(monthName))
+                {
+                    var endDate = startDate.AddMonths(1).AddDays(-1);
+                    newPeriods.Add(new AccountingPeriod
+                    {
+                        Id = Guid.NewGuid(),
+                        Name = monthName,
+                        StartDate = startDate,
+                        EndDate = endDate,
+                        Status = "OPEN",
+                        TenantId = tenantId,
+                        CreatedAt = DateTime.UtcNow
+                    });
+                }
+            }
+        }
+
+        if (newPeriods.Count > 0)
+        {
+            _db.AccountingPeriods.AddRange(newPeriods);
+            await _db.SaveChangesAsync();
+        }
+
+        await _audit.LogAsync(userId, tenantId, "GENERATE", "accounting_periods", Guid.Empty, ipAddress, userAgent,
+            new { existingCount = existingPeriods.Count },
+            new { generatedCount = newPeriods.Count });
+
+        return newPeriods.Count;
     }
 
     public async Task<ValidateCloseResponse> ValidateCloseAsync(Guid id, Guid tenantId)

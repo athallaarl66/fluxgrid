@@ -38,6 +38,23 @@ public static class PeriodEndpoints
         })
         .RequireAuthorization(Permissions.FinancePeriodRead);
 
+        group.MapPost("/generate", async (
+            PeriodService service,
+            HttpContext http) =>
+        {
+            var (tenantId, userId, ip, ua) = GetAuditContext(http);
+            try
+            {
+                var count = await service.GenerateMissingPeriodsAsync(tenantId, userId, ip, ua);
+                return Results.Ok(new { generated = count });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.Problem(ex.Message, statusCode: 400);
+            }
+        })
+        .RequireAuthorization(Permissions.FinancePeriodAdmin);
+
         group.MapPost("/{id:guid}/close", async (
             Guid id,
             ClosePeriodRequest request,

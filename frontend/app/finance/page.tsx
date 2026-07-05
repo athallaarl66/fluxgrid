@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Wallet, BookOpen, ScrollText, ArrowRight } from "lucide-react";
+import { Wallet, BookOpen, ScrollText, CalendarCheck, ArrowRight } from "lucide-react";
 
 const modules = [
   {
@@ -18,6 +18,12 @@ const modules = [
     href: "/finance/journal-entries",
     icon: ScrollText,
     description: "Record and approve double-entry journal entries",
+  },
+  {
+    name: "Period Closing",
+    href: "/finance/periods",
+    icon: CalendarCheck,
+    description: "Close and reopen accounting periods, validate entries",
   },
 ];
 
