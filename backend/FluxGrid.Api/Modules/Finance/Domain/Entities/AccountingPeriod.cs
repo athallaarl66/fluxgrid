@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace FluxGrid.Api.Modules.Finance.Domain.Entities;
 
 public class AccountingPeriod
@@ -11,4 +13,7 @@ public class AccountingPeriod
     public DateTime? ClosedAt { get; set; }
     public Guid TenantId { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    
+    [Timestamp]
+    public byte[]? RowVersion { get; set; }
 }

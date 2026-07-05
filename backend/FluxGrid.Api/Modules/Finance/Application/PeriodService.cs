@@ -83,7 +83,14 @@ public class PeriodService
         period.ClosedBy = userId;
         period.ClosedAt = DateTime.UtcNow;
 
-        await _db.SaveChangesAsync();
+        try
+        {
+            await _db.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            throw new InvalidOperationException("Period was modified by another user. Please refresh and try again.");
+        }
 
         var after = MapToResponse(period);
         await _audit.LogAsync(userId, tenantId, "CLOSE", "accounting_periods", period.Id, ipAddress, userAgent, before, after);
@@ -111,7 +118,14 @@ public class PeriodService
         period.ClosedBy = null;
         period.ClosedAt = null;
 
-        await _db.SaveChangesAsync();
+        try
+        {
+            await _db.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            throw new InvalidOperationException("Period was modified by another user. Please refresh and try again.");
+        }
 
         var after = MapToResponse(period);
         await _audit.LogAsync(userId, tenantId, "REOPEN", "accounting_periods", period.Id, ipAddress, userAgent, before, new { period = after, reason = request.Reason });
