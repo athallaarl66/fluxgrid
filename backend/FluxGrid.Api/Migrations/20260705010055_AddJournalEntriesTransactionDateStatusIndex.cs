@@ -11,16 +11,16 @@ namespace FluxGrid.Api.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateIndex(
-                name: "IX_journal_entries_transaction_date_status",
+                name: "IX_journal_entries_TransactionDate_Status",
                 table: "journal_entries",
-                columns: new[] { "transaction_date", "status" });
+                columns: new[] { "TransactionDate", "Status" });
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropIndex(
-                name: "IX_journal_entries_transaction_date_status",
+                name: "IX_journal_entries_TransactionDate_Status",
                 table: "journal_entries");
         }
     }

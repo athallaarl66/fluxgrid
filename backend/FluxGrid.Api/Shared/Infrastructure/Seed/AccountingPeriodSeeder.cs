@@ -23,7 +23,7 @@ public static class AccountingPeriodSeeder
 
         for (int month = 1; month <= 12; month++)
         {
-            var startDate = new DateTime(currentYear, month, 1);
+            var startDate = new DateTime(currentYear, month, 1, 0, 0, 0, DateTimeKind.Utc);
             var endDate = startDate.AddMonths(1).AddDays(-1);
             var monthName = startDate.ToString("MMMM yyyy");
 

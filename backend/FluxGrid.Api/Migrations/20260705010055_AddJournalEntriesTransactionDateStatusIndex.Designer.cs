@@ -13,7 +13,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FluxGrid.Api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260705005642_AddJournalEntriesTransactionDateStatusIndex")]
+    [Migration("20260705010055_AddJournalEntriesTransactionDateStatusIndex")]
     partial class AddJournalEntriesTransactionDateStatusIndex
     {
         /// <inheritdoc />
