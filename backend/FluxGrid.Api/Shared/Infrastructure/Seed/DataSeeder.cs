@@ -14,6 +14,7 @@ public static class DataSeeder
         if (await db.Roles.AnyAsync())
         {
             await ChartOfAccountSeeder.SeedAsync(db, DefaultTenantId);
+            await AccountingPeriodSeeder.SeedAsync(db, DefaultTenantId);
             return;
         }
 
@@ -69,5 +70,6 @@ public static class DataSeeder
         await db.SaveChangesAsync();
 
         await ChartOfAccountSeeder.SeedAsync(db, DefaultTenantId);
+        await AccountingPeriodSeeder.SeedAsync(db, DefaultTenantId);
     }
 }

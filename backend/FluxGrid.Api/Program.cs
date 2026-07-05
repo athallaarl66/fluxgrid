@@ -77,6 +77,8 @@ builder.Services.AddScoped<DomainEventDispatcher>();
 builder.Services.AddScoped<DashboardService>();
 builder.Services.AddScoped<ChartOfAccountService>();
 builder.Services.AddScoped<JournalEntryService>();
+builder.Services.AddScoped<PeriodService>();
+builder.Services.AddScoped<PeriodValidator>();
 builder.Services.AddScoped<AuditService>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -109,5 +111,6 @@ app.MapAuthEndpoints();
 app.MapDashboardEndpoints();
 app.MapChartOfAccountEndpoints();
 app.MapJournalEntryEndpoints();
+app.MapPeriodEndpoints();
 
 app.Run();
