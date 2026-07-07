@@ -1,3 +1,4 @@
+import { jwtVerify } from "jose";
 import { NextRequest, NextResponse } from "next/server";
 
 function decodeJwtPayload(token: string) {
@@ -14,11 +15,25 @@ function decodeJwtPayload(token: string) {
   }
 }
 
+const textEncoder = new TextEncoder();
+
 export async function GET(request: NextRequest) {
   const token = request.cookies.get("token")?.value;
 
   if (!token) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  }
+
+  const secret = process.env.INTERNAL_JWT_SECRET;
+  if (!secret) {
+    return NextResponse.json({ error: "Server configuration error" }, { status: 500 });
+  }
+
+  try {
+    const secretKey = textEncoder.encode(secret);
+    await jwtVerify(token, secretKey);
+  } catch {
+    return NextResponse.json({ error: "Invalid or expired token" }, { status: 401 });
   }
 
   const payload = decodeJwtPayload(token);

@@ -33,6 +33,7 @@ const navItems: NavItem[] = [
     children: [
       { label: "Chart of Accounts", href: "/finance/chart-of-accounts" },
       { label: "Journal Entries", href: "/finance/journal-entries" },
+      { label: "Period Closing", href: "/finance/periods" },
     ],
   },
   { label: "HR", href: "/hr", icon: Users },

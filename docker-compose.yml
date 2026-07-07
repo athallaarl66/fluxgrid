@@ -9,10 +9,26 @@ services:
       - "5020:5020"
     environment:
       - ASPNETCORE_URLS=http://+:5020
-      - Jwt__SecretKey=dev-secret-key-please-change-in-production
-      - Jwt__Issuer=FluxGrid
-      - Jwt__Audience=FluxGrid
-      - Jwt__ExpiryMinutes=60
+      - ConnectionStrings__DefaultConnection=${ConnectionStrings__DefaultConnection}
+      - Jwt__SecretKey=${Jwt__SecretKey}
+      - Jwt__Issuer=${Jwt__Issuer:-FluxGrid}
+      - Jwt__Audience=${Jwt__Audience:-FluxGrid}
+      - Jwt__ExpiryMinutes=${Jwt__ExpiryMinutes:-60}
+      - SEED_ADMIN_PASSWORD=${SEED_ADMIN_PASSWORD}
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: fluxgrid
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
     restart: unless-stopped
 
   frontend:
@@ -22,7 +38,11 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:5020
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:5020}
+      - INTERNAL_JWT_SECRET=${Jwt__SecretKey}
     depends_on:
       - backend
     restart: unless-stopped
+
+volumes:
+  pgdata:

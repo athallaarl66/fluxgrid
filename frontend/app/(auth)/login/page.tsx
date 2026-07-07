@@ -113,13 +113,18 @@ export default function LoginPage() {
             >
               {loading ? "Signing in..." : "Sign In"}
             </Button>
+
+            <div className="text-center">
+              <button
+                type="button"
+                onClick={() => router.push("/login/change-password")}
+                className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-4 transition-colors duration-200 cursor-pointer"
+              >
+                Change password
+              </button>
+            </div>
           </form>
 
-          <div className="mt-6 rounded border border-border bg-primary-container px-3 py-2 text-[11px] text-muted-foreground">
-            <p className="font-semibold">Demo Credentials</p>
-            <p>Username: <code className="font-mono font-medium text-foreground">admin</code></p>
-            <p>Password: <code className="font-mono font-medium text-foreground">admin123</code></p>
-          </div>
         </div>
       </div>
     </div>

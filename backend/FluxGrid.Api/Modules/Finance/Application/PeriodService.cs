@@ -1,0 +1,190 @@
+using FluxGrid.Api.Modules.Finance.API;
+using FluxGrid.Api.Modules.Finance.Domain.Entities;
+using FluxGrid.Api.Modules.Finance.Domain.Events;
+using FluxGrid.Api.Shared.Infrastructure.Audit;
+using FluxGrid.Api.Shared.Infrastructure.Data;
+using FluxGrid.Api.Shared.Infrastructure.Events;
+using FluxGrid.Api.Shared.Infrastructure.Seed;
+using Microsoft.EntityFrameworkCore;
+
+namespace FluxGrid.Api.Modules.Finance.Application;
+
+public class PeriodService
+{
+    private readonly AppDbContext _db;
+    private readonly AuditService _audit;
+    private readonly DomainEventDispatcher _events;
+
+    public PeriodService(AppDbContext db, AuditService audit, DomainEventDispatcher events)
+    {
+        _db = db;
+        _audit = audit;
+        _events = events;
+    }
+
+    public async Task<List<PeriodResponse>> GetListAsync(Guid tenantId)
+    {
+        var periods = await _db.AccountingPeriods
+            .Where(p => p.TenantId == tenantId)
+            .OrderByDescending(p => p.StartDate)
+            .ToListAsync();
+
+        return periods.Select(MapToResponse).ToList();
+    }
+
+    public async Task<int> GenerateMissingPeriodsAsync(Guid tenantId, Guid userId, string? ipAddress = null, string? userAgent = null)
+    {
+        var existingPeriods = await _db.AccountingPeriods
+            .Where(p => p.TenantId == tenantId)
+            .ToListAsync();
+
+        var existingNames = existingPeriods.Select(p => p.Name).ToHashSet();
+        var currentYear = DateTime.UtcNow.Year;
+        var newPeriods = new List<AccountingPeriod>();
+
+        for (int year = currentYear - 1; year <= currentYear + 1; year++)
+        {
+            for (int month = 1; month <= 12; month++)
+            {
+                var startDate = new DateTime(year, month, 1, 0, 0, 0, DateTimeKind.Utc);
+                var monthName = startDate.ToString("MMMM yyyy");
+
+                if (!existingNames.Contains(monthName))
+                {
+                    var endDate = startDate.AddMonths(1).AddDays(-1);
+                    newPeriods.Add(new AccountingPeriod
+                    {
+                        Id = Guid.NewGuid(),
+                        Name = monthName,
+                        StartDate = startDate,
+                        EndDate = endDate,
+                        Status = "OPEN",
+                        TenantId = tenantId,
+                        CreatedAt = DateTime.UtcNow
+                    });
+                }
+            }
+        }
+
+        if (newPeriods.Count > 0)
+        {
+            _db.AccountingPeriods.AddRange(newPeriods);
+            await _db.SaveChangesAsync();
+        }
+
+        await _audit.LogAsync(userId, tenantId, "GENERATE", "accounting_periods", Guid.Empty, ipAddress, userAgent,
+            new { existingCount = existingPeriods.Count },
+            new { generatedCount = newPeriods.Count });
+
+        return newPeriods.Count;
+    }
+
+    public async Task<ValidateCloseResponse> ValidateCloseAsync(Guid id, Guid tenantId)
+    {
+        var period = await _db.AccountingPeriods
+            .FirstOrDefaultAsync(p => p.Id == id && p.TenantId == tenantId)
+            ?? throw new InvalidOperationException("Period not found");
+
+        if (period.Status == "CLOSED")
+            throw new InvalidOperationException("Period is already closed");
+
+        var blockingEntries = await _db.JournalEntries
+            .Where(je => je.TenantId == tenantId
+                && je.TransactionDate >= period.StartDate
+                && je.TransactionDate <= period.EndDate
+                && (je.Status == "DRAFT" || je.Status == "PENDING_APPROVAL"))
+            .Select(je => je.Id)
+            .ToListAsync();
+
+        if (blockingEntries.Any())
+        {
+            return new ValidateCloseResponse(
+                false,
+                blockingEntries,
+                $"Cannot close period: {blockingEntries.Count} journal entries are pending"
+            );
+        }
+
+        return new ValidateCloseResponse(true, new List<Guid>(), "Period can be closed");
+    }
+
+    public async Task<PeriodResponse> CloseAsync(Guid id, Guid tenantId, ClosePeriodRequest request, Guid userId, string? ipAddress = null, string? userAgent = null)
+    {
+        if (request.Confirmation != "CLOSE")
+            throw new InvalidOperationException("Confirmation text must be 'CLOSE'");
+
+        var period = await _db.AccountingPeriods
+            .FirstOrDefaultAsync(p => p.Id == id && p.TenantId == tenantId)
+            ?? throw new InvalidOperationException("Period not found");
+
+        if (period.Status == "CLOSED")
+            throw new InvalidOperationException("Period is already closed");
+
+        // Re-run validation to prevent race conditions
+        var validation = await ValidateCloseAsync(id, tenantId);
+        if (!validation.CanClose)
+            throw new InvalidOperationException(validation.Message ?? "Cannot close period due to validation failures");
+
+        var before = MapToResponse(period);
+
+        period.Status = "CLOSED";
+        period.ClosedBy = userId;
+        period.ClosedAt = DateTime.UtcNow;
+
+        try
+        {
+            await _db.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            throw new InvalidOperationException("Period was modified by another user. Please refresh and try again.");
+        }
+
+        var after = MapToResponse(period);
+        await _audit.LogAsync(userId, tenantId, "CLOSE", "accounting_periods", period.Id, ipAddress, userAgent, before, after);
+
+        _events.Raise(new PeriodClosed(period.Id, period.Name, period.StartDate, period.EndDate, userId, tenantId));
+
+        return after;
+    }
+
+    public async Task<PeriodResponse> ReopenAsync(Guid id, Guid tenantId, ReopenPeriodRequest request, Guid userId, string? ipAddress = null, string? userAgent = null)
+    {
+        if (string.IsNullOrWhiteSpace(request.Reason) || request.Reason.Length < 10)
+            throw new InvalidOperationException("Reason is required and must be at least 10 characters");
+
+        var period = await _db.AccountingPeriods
+            .FirstOrDefaultAsync(p => p.Id == id && p.TenantId == tenantId)
+            ?? throw new InvalidOperationException("Period not found");
+
+        if (period.Status == "OPEN")
+            throw new InvalidOperationException("Period is already open");
+
+        var before = MapToResponse(period);
+
+        period.Status = "OPEN";
+        period.ClosedBy = null;
+        period.ClosedAt = null;
+
+        try
+        {
+            await _db.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            throw new InvalidOperationException("Period was modified by another user. Please refresh and try again.");
+        }
+
+        var after = MapToResponse(period);
+        await _audit.LogAsync(userId, tenantId, "REOPEN", "accounting_periods", period.Id, ipAddress, userAgent, before, new { period = after, reason = request.Reason });
+
+        _events.Raise(new PeriodReopened(period.Id, period.Name, period.StartDate, period.EndDate, request.Reason, userId, tenantId));
+
+        return after;
+    }
+
+    private static PeriodResponse MapToResponse(AccountingPeriod p)
+    {
+        return new PeriodResponse(p.Id, p.Name, p.StartDate, p.EndDate, p.Status, p.ClosedBy, p.ClosedAt, p.TenantId, p.CreatedAt);
+    }
+}

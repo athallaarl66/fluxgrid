@@ -14,6 +14,7 @@ public class AppDbContext : DbContext
     public DbSet<JournalEntry> JournalEntries => Set<JournalEntry>();
     public DbSet<JournalEntryLine> JournalEntryLines => Set<JournalEntryLine>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<AccountingPeriod> AccountingPeriods => Set<AccountingPeriod>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -26,6 +27,10 @@ public class AppDbContext : DbContext
             entity.Property(e => e.Email).HasMaxLength(255);
             entity.Property(e => e.IsActive).HasDefaultValue(true);
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
+            entity.Property(e => e.FailedLoginAttempts).HasDefaultValue(0);
+            entity.Property(e => e.LockoutEnd);
+            entity.Property(e => e.MustChangePassword).HasDefaultValue(false);
+            entity.Property(e => e.TenantId).HasDefaultValue(Guid.Empty);
 
             entity.HasMany(e => e.Roles)
                   .WithMany(e => e.Users)
@@ -103,6 +108,18 @@ public class AppDbContext : DbContext
                   .WithMany()
                   .HasForeignKey(e => e.AccountId)
                   .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<AccountingPeriod>(entity =>
+        {
+            entity.ToTable("accounting_periods");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.TenantId, e.StartDate, e.EndDate }).IsUnique();
+            entity.Property(e => e.Name).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.StartDate).IsRequired();
+            entity.Property(e => e.EndDate).IsRequired();
+            entity.Property(e => e.Status).HasMaxLength(20).IsRequired().HasDefaultValue("OPEN");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
         });
     }
 }

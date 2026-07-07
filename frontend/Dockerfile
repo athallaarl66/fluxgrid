@@ -16,4 +16,5 @@ USER nextjs
 EXPOSE 3000
 ENV NODE_ENV=production
 ENV NEXT_PUBLIC_API_URL=http://backend:5020
+ENV INTERNAL_JWT_SECRET=${INTERNAL_JWT_SECRET}
 CMD ["node", "server.js"]
