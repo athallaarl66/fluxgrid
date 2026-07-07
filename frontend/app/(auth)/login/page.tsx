@@ -113,6 +113,16 @@ export default function LoginPage() {
             >
               {loading ? "Signing in..." : "Sign In"}
             </Button>
+
+            <div className="text-center">
+              <button
+                type="button"
+                onClick={() => router.push("/login/change-password")}
+                className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-4 transition-colors duration-200 cursor-pointer"
+              >
+                Change password
+              </button>
+            </div>
           </form>
 
         </div>

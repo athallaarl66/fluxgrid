@@ -70,12 +70,9 @@ public static class DataSeeder
 
         if (string.IsNullOrEmpty(seedPassword))
         {
-            seedPassword = GenerateRandomPassword();
-            Console.WriteLine($"=== SEED ADMIN PASSWORD: {seedPassword} ===");
-            Console.WriteLine("Set SEED_ADMIN_PASSWORD env var for a custom password.");
+            Console.WriteLine("WARNING: SEED_ADMIN_PASSWORD not set. Admin user will not be seeded.");
+            return;
         }
-
-        Console.WriteLine("Change this password on first login.");
 
         var adminUser = new User
         {
@@ -84,7 +81,7 @@ public static class DataSeeder
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(seedPassword),
             Email = "admin@fluxgrid.com",
             IsActive = true,
-            MustChangePassword = true,
+            MustChangePassword = false,
             Roles = [adminRole]
         };
 
@@ -95,24 +92,5 @@ public static class DataSeeder
         await AccountingPeriodSeeder.SeedAsync(db, DefaultTenantId);
     }
 
-    private static string GenerateRandomPassword()
-    {
-        var random = new Random();
-        const string upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-        const string lower = "abcdefghijklmnopqrstuvwxyz";
-        const string digits = "0123456789";
-        const string special = "!@#$%^&*()-_=+";
 
-        var chars = new char[12];
-        chars[0] = upper[random.Next(upper.Length)];
-        chars[1] = lower[random.Next(lower.Length)];
-        chars[2] = digits[random.Next(digits.Length)];
-        chars[3] = special[random.Next(special.Length)];
-
-        var all = upper + lower + digits + special;
-        for (int i = 4; i < chars.Length; i++)
-            chars[i] = all[random.Next(all.Length)];
-
-        return new string(chars.OrderBy(_ => random.Next()).ToArray());
-    }
 }
