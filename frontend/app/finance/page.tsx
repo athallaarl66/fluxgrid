@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Wallet, BookOpen, ScrollText, CalendarCheck, ArrowRight } from "lucide-react";
+import { Wallet, BookOpen, ScrollText, CalendarCheck, BarChart3, ArrowRight } from "lucide-react";
 
 const modules = [
   {
@@ -24,6 +24,12 @@ const modules = [
     href: "/finance/periods",
     icon: CalendarCheck,
     description: "Close and reopen accounting periods, validate entries",
+  },
+  {
+    name: "Reports",
+    href: "/finance/reports",
+    icon: BarChart3,
+    description: "Trial Balance, Profit & Loss, and Balance Sheet",
   },
 ];
 
@@ -68,7 +74,7 @@ export default function FinancePage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {modules.map((mod) => {
           const Icon = mod.icon;
           return (

@@ -34,6 +34,7 @@ const navItems: NavItem[] = [
       { label: "Chart of Accounts", href: "/finance/chart-of-accounts" },
       { label: "Journal Entries", href: "/finance/journal-entries" },
       { label: "Period Closing", href: "/finance/periods" },
+      { label: "Reports", href: "/finance/reports" },
     ],
   },
   { label: "HR", href: "/hr", icon: Users },

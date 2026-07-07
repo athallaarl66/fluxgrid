@@ -18,7 +18,7 @@ public class ReportService
 
     public async Task<ReportResponse> GetTrialBalanceAsync(Guid tenantId, DateTime startDate, DateTime endDate, bool includeDrafts)
     {
-        var rows = await GetAggregatedRowsAsync(tenantId, startDate, endDate, includeDrafts, null);
+        var rows = await GetAggregatedRowsAsync(tenantId, ToUtc(startDate), ToUtc(endDate), includeDrafts, null);
         var tree = BuildTree(rows);
         var totalDebit = Sum(tree, r => r.Debit);
         var totalCredit = Sum(tree, r => r.Credit);
@@ -27,7 +27,7 @@ public class ReportService
 
     public async Task<ReportResponse> GetProfitLossAsync(Guid tenantId, DateTime startDate, DateTime endDate, bool includeDrafts)
     {
-        var rows = await GetAggregatedRowsAsync(tenantId, startDate, endDate, includeDrafts, [AccountTypes.Revenue, AccountTypes.Expense]);
+        var rows = await GetAggregatedRowsAsync(tenantId, ToUtc(startDate), ToUtc(endDate), includeDrafts, [AccountTypes.Revenue, AccountTypes.Expense]);
         var tree = BuildTree(rows);
         var totalDebit = Sum(tree, r => r.Debit);
         var totalCredit = Sum(tree, r => r.Credit);
@@ -39,7 +39,7 @@ public class ReportService
 
     public async Task<ReportResponse> GetBalanceSheetAsync(Guid tenantId, DateTime asOfDate, bool includeDrafts, decimal? netIncome)
     {
-        var rows = await GetAggregatedRowsAsync(tenantId, DateTime.MinValue, asOfDate, includeDrafts, [AccountTypes.Asset, AccountTypes.Liability, AccountTypes.Equity]);
+        var rows = await GetAggregatedRowsAsync(tenantId, ToUtc(DateTime.MinValue), ToUtc(asOfDate), includeDrafts, [AccountTypes.Asset, AccountTypes.Liability, AccountTypes.Equity]);
 
         if (netIncome.HasValue)
         {
@@ -61,6 +61,8 @@ public class ReportService
     public async Task<(List<LedgerDetailRow> Rows, int Total)> GetAccountLedgerAsync(
         Guid accountId, Guid tenantId, DateTime startDate, DateTime endDate, bool includeDrafts, int page, int pageSize)
     {
+        startDate = ToUtc(startDate);
+        endDate = ToUtc(endDate);
         var query = from je in _db.JournalEntries
                     join jel in _db.JournalEntryLines on je.Id equals jel.EntryId
                     where jel.AccountId == accountId
@@ -159,6 +161,8 @@ public class ReportService
         }
         return total;
     }
+
+    private static DateTime ToUtc(DateTime dt) => DateTime.SpecifyKind(dt, DateTimeKind.Utc);
 
     private record FlatReportRow(Guid Id, string Code, string Name, string Type, Guid? ParentId, decimal Debit, decimal Credit);
 }
