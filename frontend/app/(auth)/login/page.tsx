@@ -115,11 +115,6 @@ export default function LoginPage() {
             </Button>
           </form>
 
-          <div className="mt-6 rounded border border-border bg-primary-container px-3 py-2 text-[11px] text-muted-foreground">
-            <p className="font-semibold">Demo Credentials</p>
-            <p>Username: <code className="font-mono font-medium text-foreground">admin</code></p>
-            <p>Password: <code className="font-mono font-medium text-foreground">admin123</code></p>
-          </div>
         </div>
       </div>
     </div>
