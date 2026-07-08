@@ -38,7 +38,7 @@ public class Budget
     public Guid AccountId { get; set; }
     public ChartOfAccount? Account { get; set; }
     public Guid PeriodId { get; set; }
-    public Period? Period { get; set; }
+    public AccountingPeriod? Period { get; set; }
     public decimal PlannedAmount { get; set; }
     public string? Notes { get; set; }
     public Guid TenantId { get; set; }
@@ -125,8 +125,8 @@ modelBuilder.Entity<Budget>(entity =>
 - `GetListAsync(period_id, account_id, page, page_size)` → filtered paginated query.
 - `GetBudgetVsActualAsync(period_id)` → LEFT JOIN query with aggregation.
 
-### `DashboardService` (`Modules/Finance/Application/DashboardService.cs`)
-- `GetDashboardAsync()` → runs 4 EF queries (KPI aggregation, recent entries, monthly trend, current period lookup), assembles response.
+### `FinanceDashboardService` (`Modules/Finance/Application/FinanceDashboardService.cs`)
+- `GetDashboardAsync(tenantId)` → queries period balances, MTD aggregates, recent entries, and monthly trend; assembles `DashboardResponse`.
 
 ## 6. Permissions (RBAC)
 
@@ -237,7 +237,7 @@ GET    /api/v1/finance/dashboard        → DashboardResponse
 
 ### Budget Management
 - `BudgetTable.tsx` — paginated table with search/filter, action buttons per row.
-- `BudgetFormModal.tsx` — create/edit dialog with account combobox, period selector, amount input.
+- `BudgetFormModal.tsx` — create/edit dialog with account/period selectors, amount input, notes textarea.
 - `BudgetVarianceReport.tsx` — report table showing planned vs actual with color-coded variance badges.
 
 ### Dashboard

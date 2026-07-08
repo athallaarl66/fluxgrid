@@ -29,7 +29,7 @@ FluxGrid ERP adalah sistem Modular Monolith untuk industri berat (Mining, Oil & 
 - Chart of Accounts management
 - Period closing dengan lock mechanism
 - Laporan: Trial Balance, P&L, Balance Sheet
-- AI Integration: Anomaly Detection (Fraud)
+- Budget Management & Dashboard
 
 **3. HR & Payroll**
 - Master data karyawan dengan struktur jabatan
@@ -55,7 +55,7 @@ FluxGrid ERP adalah sistem Modular Monolith untuk industri berat (Mining, Oil & 
   - Role **Admin = Super Admin**: bypass semua permission check (policy OR logic di `Program.cs`)
 - Audit Trail immutable untuk compliance
 - Row-Level Security (RLS) di PostgreSQL
-- AI Service Layer abstraction (Groq API) — hanya untuk Finance & HR
+- AI Service Layer abstraction (Groq API) — hanya untuk HR
 
 **Future — User & Role Management:**
 Super Admin akan dapat membuat akun, mengelola role, dan assign permission secara dinamis melalui UI. Fitur ini mencakup:
@@ -75,7 +75,7 @@ Super Admin akan dapat membuat akun, mengelola role, dan assign permission secar
 ### 1.3 Business Objectives
 - Menyediakan sistem ERP terintegrasi untuk industri Mining, Oil & Gas, Logistics, Manufacturing
 - Mengurangi manual work melalui automation dan AI-powered features
-- Meningkatkan akurasi data keuangan dengan double-entry ledger dan AI anomaly detection
+- Meningkatkan akurasi data keuangan dengan double-entry ledger
 - Optimasi inventory management dengan stock alerts dan real-time tracking
 - Mempercepat proses recruitment dengan AI-powered CV parsing dan matching
 - Meningkatkan produktivitas team dengan task management dan time tracking
@@ -251,18 +251,18 @@ Saat ini, operasional perusahaan di industri Mining, Oil & Gas, Logistics, Manuf
 
 **Priority:** Must Have
 
-**User Story FIN-5: Anomaly Detection**
+**User Story FIN-5: Budget Management & Dashboard**
 **As a** CFO
-**I want** AI to detect anomalous transactions
-**So that** potential fraud can be identified early
+**I want** to manage budgets per account/period and view a financial dashboard with KPIs
+**So that** I can track performance against plan at a glance
 
 **Acceptance Criteria:**
-- [ ] Statistical anomaly detection
-- [ ] LLM-generated alert summaries
-- [ ] Flag suspicious transactions
-- [ ] Auditor notification
+- [ ] Budget CRUD per account and period
+- [ ] Budget vs Actual variance report with flagging
+- [ ] Financial dashboard with KPI cards and charts
+- [ ] Recent entries and monthly trend data
 
-**Priority:** Should Have
+**Priority:** Must Have
 
 ---
 
@@ -421,7 +421,7 @@ Saat ini, operasional perusahaan di industri Mining, Oil & Gas, Logistics, Manuf
 - **FR-FIN-3:** System harus support journal entry approval workflow
 - **FR-FIN-4:** System harus lock accounting periods setelah closing
 - **FR-FIN-5:** System harus generate Trial Balance, P&L, dan Balance Sheet
-- **FR-FIN-6:** System harus detect anomalous transactions secara statistik
+- **FR-FIN-6:** System harus support budget management per account dan period
 - **FR-FIN-7:** System harus generate LLM summaries untuk fraud alerts
 - **FR-FIN-8:** System harus post payroll entries dari HR module
 
@@ -450,7 +450,7 @@ Saat ini, operasional perusahaan di industri Mining, Oil & Gas, Logistics, Manuf
 - **FR-SHARED-2:** System harus maintain audit trail immutable
 - **FR-SHARED-3:** System harus support Row-Level Security (RLS) di PostgreSQL
 - **FR-SHARED-4:** System harus communicate antar modul via Domain Events
-- **FR-SHARED-5:** System harus abstract AI service layer (Groq API)
+- **FR-SHARED-5:** System harus abstract AI service layer (Groq API) untuk HR modules
 
 ---
 
@@ -487,7 +487,7 @@ Saat ini, operasional perusahaan di industri Mining, Oil & Gas, Logistics, Manuf
 
 ### 5.4 Reliability & Availability
 - 99.5% uptime target
-- Graceful degradation jika external API unavailable (Groq)
+- Graceful degradation untuk HR external API (Groq)
 - Retry logic dengan exponential backoff untuk external APIs
 - Database backups daily
 - Error monitoring dan alerting
@@ -521,7 +521,7 @@ Saat ini, operasional perusahaan di industri Mining, Oil & Gas, Logistics, Manuf
 - **Journal Entry Page:** Journal entry form with double-entry validation, approval workflow
 - **Period Closing Page:** Closing checklist, validation checks, closing confirmation
 - **Reports Page:** Trial Balance, P&L, Balance Sheet dengan date range filtering
-- **Dashboard Page:** Financial overview, anomaly alerts, key metrics
+- **Dashboard Page:** Financial overview, KPI cards, charts, key metrics
 
 **HR Pages:**
 - **Employee List Page:** Table view dengan filter, search, organizational structure
@@ -646,7 +646,7 @@ Saat ini, operasional perusahaan di industri Mining, Oil & Gas, Logistics, Manuf
 ## 8. Integration Requirements
 
 ### 8.1 External Systems
-- **Groq API:** LLM inference untuk CV parsing, embeddings, text generation, anomaly detection summaries
+- **Groq API:** LLM inference untuk HR module (CV parsing, embeddings, text generation)
   - Endpoint: https://api.groq.com/openai/v1/chat/completions
   - Auth: API key
   - Rate limit: Free tier limits
@@ -662,7 +662,7 @@ Saat ini, operasional perusahaan di industri Mining, Oil & Gas, Logistics, Manuf
 **Events Raised by Finance:**
 - `JournalEntryPosted` → Update financial metrics di dashboard
 - `PeriodClosed` → Lock related modules untuk period
-- `AnomalyDetected` → Notify auditor dan management
+- `BudgetThresholdExceeded` → Notify Finance Manager
 
 **Events Raised by HR:**
 - `EmployeeHired` → Create employee record, assign onboarding tasks di TaskProject
@@ -736,7 +736,7 @@ Saat ini, operasional perusahaan di industri Mining, Oil & Gas, Logistics, Manuf
 | **Finance Rules** ||||
 | BR-FIN-001 | Double-entry validation | Journal entry creation | Enforce debit = credit |
 | BR-FIN-002 | Period lock | Period status = closed | Prevent any modifications to period |
-| BR-FIN-003 | Anomaly threshold | Transaction deviates > 3 SD from mean | Flag as anomaly |
+| BR-FIN-003 | Budget variance threshold | Variance > 20% | Flag in variance report |
 | BR-FIN-004 | Approval required | Journal entry amount > threshold | Require manager approval |
 | **HR Rules** ||||
 | BR-HR-001 | Late tolerance | Clock in > tolerance minutes | Mark as late, deduct from attendance |
@@ -758,9 +758,7 @@ Saat ini, operasional perusahaan di industri Mining, Oil & Gas, Logistics, Manuf
 ## 10. Assumptions & Constraints
 
 ### 10.1 Assumptions
-- Groq free tier akan tetap available untuk development
 - PostgreSQL pgvector extension supported di Neon
-- Internet connection available untuk Groq API calls
 - Users akan adopt ERP system untuk daily operations
 - Existing business processes can be mapped to ERP workflows
 - Compliance requirements sesuai dengan industry standards
@@ -768,7 +766,7 @@ Saat ini, operasional perusahaan di industri Mining, Oil & Gas, Logistics, Manuf
 ### 10.2 Constraints
 - Budget: Rp 0 (gratis tier semua services)
 - Hardware: Laptop user (12GB RAM) - tidak bisa run local LLM
-- Rate limits: Groq free tier has request limits
+- Rate limits: Groq free tier has request limits (HR only)
 - Data privacy: Must comply dengan data protection regulations
 - Timeline: Development dalam 12 weeks untuk AI engineer learning path
 - Architecture: Must follow Modular Monolith pattern dengan Clean Architecture dan DDD
@@ -778,7 +776,7 @@ Saat ini, operasional perusahaan di industri Mining, Oil & Gas, Logistics, Manuf
 ### 10.3 Dependencies
 - Neon PostgreSQL dengan pgvector extension
 - Upstash Redis untuk queue dan caching
-- Groq API untuk LLM inference
+- Groq API untuk LLM inference (HR module)
 - Shared Kernel (domain events, audit trail, RBAC)
 - Existing Auth system (NextAuth v5 + JWT)
 
@@ -789,7 +787,7 @@ Saat ini, operasional perusahaan di industri Mining, Oil & Gas, Logistics, Manuf
 | Risk ID | Risk Description | Probability | Impact | Mitigation Strategy |
 |---------|-----------------|-------------|--------|---------------------|
 | **Technical Risks** |||||
-| R-001 | Groq API rate limits exceeded | Medium | High | Implement queue system, cache results, graceful degradation |
+| R-001 | Groq API rate limits exceeded (HR) | Medium | High | Implement queue system, cache results, graceful degradation |
 | R-002 | LLM hallucination in AI features | Medium | High | Confidence scoring, human review, validation rules |
 | R-003 | pgvector performance degradation | Low | Medium | Index maintenance, query optimization |
 | R-004 | Data privacy breach | Low | Critical | Encryption, RBAC, audit logs, data retention policies |
@@ -813,7 +811,7 @@ Saat ini, operasional perusahaan di industri Mining, Oil & Gas, Logistics, Manuf
 | **Finance Metrics** ||||
 | Period closing time | < 2 days | Time from period end to close |
 | Journal entry error rate | < 1% | Error rate in posted entries |
-| Anomaly detection accuracy | > 85% | False positive/negative rate |
+| Budget variance accuracy | 100% | Variance calculation vs manual audit |
 | **HR Metrics** ||||
 | Payroll processing time | < 1 day | Time from period end to payslip generation |
 | Payroll accuracy | 100% | Error rate in payroll calculations |
