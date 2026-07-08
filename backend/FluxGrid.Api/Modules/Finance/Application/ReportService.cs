@@ -141,11 +141,7 @@ public class ReportService
     {
         var total = 0m;
         foreach (var row in rows)
-        {
             total += selector(row);
-            if (row.Children.Count > 0)
-                total += Sum(row.Children, selector);
-        }
         return total;
     }
 
@@ -153,12 +149,8 @@ public class ReportService
     {
         var total = 0m;
         foreach (var row in rows)
-        {
             if (row.Type == type)
                 total += row.Balance;
-            if (row.Children.Count > 0)
-                total += SumByType(row.Children, type);
-        }
         return total;
     }
 
