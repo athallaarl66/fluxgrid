@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { useFinanceDashboard } from "@/hooks/useFinanceDashboard";
@@ -31,7 +31,9 @@ function formatCurrency(value: number) {
 export default function FinanceDashboardPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-  const { data, isLoading, error } = useFinanceDashboard();
+  const currentYear = new Date().getFullYear();
+  const [chartYear, setChartYear] = useState(currentYear);
+  const { data, isLoading, error } = useFinanceDashboard(chartYear);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -116,7 +118,17 @@ export default function FinanceDashboardPage() {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <div className="rounded-xl border border-border bg-card p-4">
-              <h2 className="text-sm font-semibold text-foreground mb-3">Monthly Revenue vs Expenses</h2>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-sm font-semibold text-foreground">Monthly Revenue vs Expenses</h2>
+                <select
+                  value={chartYear}
+                  onChange={(e) => setChartYear(Number(e.target.value))}
+                  className="h-7 rounded border border-border bg-card px-2 text-[12px] text-foreground focus:border-ring focus:ring-1 focus:ring-ring cursor-pointer"
+                >
+                  <option value={currentYear}>{currentYear}</option>
+                  <option value={currentYear - 1}>{currentYear - 1}</option>
+                </select>
+              </div>
               <DashboardChart data={data.monthlyTrend} />
             </div>
 

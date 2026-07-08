@@ -19,14 +19,10 @@ import {
   type ReportRow,
   type ReportType,
 } from "@/lib/report-types";
+import { fetchPeriods } from "@/lib/period-api";
 
 function today() {
   return new Date().toISOString().slice(0, 10);
-}
-
-function firstOfMonth() {
-  const d = new Date();
-  return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10);
 }
 
 function flattenRows(rows: ReportRow[]): { code: string; name: string; balance: string }[] {
@@ -65,9 +61,9 @@ export default function FinancialReportsPage() {
   const { user, loading: authLoading } = useAuth();
 
   const [activeTab, setActiveTab] = useState<ReportType>("trial-balance");
-  const [startDate, setStartDate] = useState(firstOfMonth);
-  const [endDate, setEndDate] = useState(today);
-  const [asOfDate, setAsOfDate] = useState(today);
+  const [startDate, setStartDate] = useState("2025-01-01");
+  const [endDate, setEndDate] = useState("2026-12-31");
+  const [asOfDate, setAsOfDate] = useState("2026-12-31");
   const [includeDrafts, setIncludeDrafts] = useState(false);
   const [showZeroBalances, setShowZeroBalances] = useState(false);
 

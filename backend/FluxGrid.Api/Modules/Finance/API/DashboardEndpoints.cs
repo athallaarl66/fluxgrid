@@ -8,13 +8,14 @@ public static class FinanceDashboardEndpoints
     public static void MapFinanceDashboardEndpoints(this WebApplication app)
     {
         app.MapGet("/api/v1/finance/dashboard", async (
+            int? year,
             FinanceDashboardService service,
             HttpContext http) =>
         {
             var (tenantId, _, _, _) = GetAuditContext(http);
             try
             {
-                var dashboard = await service.GetDashboardAsync(tenantId);
+                var dashboard = await service.GetDashboardAsync(tenantId, year);
                 return Results.Ok(dashboard);
             }
             catch (InvalidOperationException ex)

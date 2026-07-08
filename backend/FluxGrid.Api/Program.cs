@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json.Serialization;
 using AspNetCoreRateLimit;
 using FluxGrid.Api.Auth;
 using FluxGrid.Api.Modules.Dashboard.API;
@@ -116,6 +117,11 @@ builder.Services.AddScoped<FinanceDashboardService>();
 builder.Services.AddScoped<AuditService>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
+    options.SerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+});
 
 var app = builder.Build();
 

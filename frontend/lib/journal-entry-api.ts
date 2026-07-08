@@ -10,11 +10,19 @@ export interface CreateJournalEntryPayload {
 
 export interface UpdateJournalEntryPayload extends CreateJournalEntryPayload {}
 
+export interface PaginatedJournalEntries {
+  items: JournalEntry[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
 export async function getJournalEntries(
   status?: JournalEntryStatus,
   page = 1,
-  pageSize = 20
-): Promise<JournalEntry[]> {
+  pageSize = 10
+): Promise<PaginatedJournalEntries> {
   const params = new URLSearchParams();
   if (status) params.set("status", status);
   params.set("page", String(page));

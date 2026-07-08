@@ -14,7 +14,7 @@ public class FinanceDashboardService
         _db = db;
     }
 
-    public async Task<DashboardResponse> GetDashboardAsync(Guid tenantId)
+    public async Task<DashboardResponse> GetDashboardAsync(Guid tenantId, int? year = null)
     {
         var currentPeriod = await _db.AccountingPeriods
             .Where(p => p.TenantId == tenantId && p.Status == "OPEN")
@@ -26,7 +26,9 @@ public class FinanceDashboardService
 
         var now = DateTime.UtcNow;
         var monthStart = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
-        var yearStart = new DateTime(now.Year, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        var yearStart = new DateTime(year ?? now.Year, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        var trendYear = year ?? now.Year;
+        var trendMonthCount = year.HasValue ? 12 : now.Month;
 
         var accountBalances = await (
             from jel in _db.JournalEntryLines
@@ -109,7 +111,7 @@ public class FinanceDashboardService
             select new { g.Key.Month, g.Key.Type, TotalDebit = g.Sum(x => x.Debit), TotalCredit = g.Sum(x => x.Credit) }
         ).ToListAsync();
 
-        var trend = Enumerable.Range(1, now.Month).Select(m =>
+        var trend = Enumerable.Range(1, trendMonthCount).Select(m =>
         {
             var revenue = monthlyTrend
                 .Where(t => t.Month == m && t.Type == AccountTypes.Revenue)

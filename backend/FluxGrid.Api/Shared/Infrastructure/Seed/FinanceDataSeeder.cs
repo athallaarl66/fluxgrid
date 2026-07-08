@@ -8,21 +8,10 @@ public static class FinanceDataSeeder
 {
     public static async Task SeedAsync(AppDbContext db, Guid tenantId)
     {
-        await ChartOfAccountSeeder.SeedAsync(db, tenantId);
-        await AccountingPeriodSeeder.SeedAsync(db, tenantId);
+        var currentYear = DateTime.UtcNow.Year;
+        var currentMonth = DateTime.UtcNow.Month;
 
-        var accounts = await db.ChartOfAccounts
-            .Where(a => a.TenantId == tenantId)
-            .ToDictionaryAsync(a => a.Code);
-
-        var periods = await db.AccountingPeriods
-            .Where(p => p.TenantId == tenantId)
-            .OrderBy(p => p.StartDate)
-            .ToListAsync();
-
-        var year = periods[0].StartDate.Year;
-
-        if (await db.JournalEntries.AnyAsync(e => e.TenantId == tenantId && e.TransactionDate.Year == year))
+        if (await db.JournalEntries.AnyAsync(e => e.TenantId == tenantId && e.TransactionDate.Year == currentYear))
             return;
 
         await db.Database.ExecuteSqlRawAsync(
@@ -31,32 +20,68 @@ public static class FinanceDataSeeder
             "DELETE FROM journal_entries WHERE \"TenantId\" = {0}", tenantId);
         await db.Database.ExecuteSqlRawAsync(
             "DELETE FROM budgets WHERE \"TenantId\" = {0}", tenantId);
+        await db.Database.ExecuteSqlRawAsync(
+            "DELETE FROM accounting_periods WHERE \"TenantId\" = {0}", tenantId);
+
+        await ChartOfAccountSeeder.SeedAsync(db, tenantId);
+
+        var accounts = await db.ChartOfAccounts
+            .Where(a => a.TenantId == tenantId)
+            .ToDictionaryAsync(a => a.Code);
 
         var adminId = (await db.Users.FirstOrDefaultAsync(u => u.Username == "admin"))?.Id ?? Guid.Empty;
 
-        var monthlyData = new[]
+        var monthlyData = new (int year, int month, decimal revenue, decimal expense)[]
         {
-            (month: 1, revenue: 550_000_000m, expense: 535_000_000m),
-            (month: 2, revenue: 580_000_000m, expense: 552_000_000m),
-            (month: 3, revenue: 620_000_000m, expense: 574_000_000m),
-            (month: 4, revenue: 650_000_000m, expense: 590_000_000m),
-            (month: 5, revenue: 690_000_000m, expense: 612_000_000m),
-            (month: 6, revenue: 720_000_000m, expense: 633_000_000m),
-            (month: 7, revenue: 380_000_000m, expense: 290_000_000m),
-            (month: 8, revenue: 560_000_000m, expense: 500_000_000m),
-            (month: 9, revenue: 600_000_000m, expense: 520_000_000m),
-            (month: 10, revenue: 630_000_000m, expense: 540_000_000m),
-            (month: 11, revenue: 660_000_000m, expense: 560_000_000m),
-            (month: 12, revenue: 700_000_000m, expense: 580_000_000m),
+            (2025, 1, 450_000_000m, 420_000_000m),
+            (2025, 2, 480_000_000m, 435_000_000m),
+            (2025, 3, 510_000_000m, 455_000_000m),
+            (2025, 4, 530_000_000m, 470_000_000m),
+            (2025, 5, 560_000_000m, 490_000_000m),
+            (2025, 6, 590_000_000m, 510_000_000m),
+            (2025, 7, 620_000_000m, 530_000_000m),
+            (2025, 8, 640_000_000m, 545_000_000m),
+            (2025, 9, 670_000_000m, 565_000_000m),
+            (2025, 10, 700_000_000m, 580_000_000m),
+            (2025, 11, 730_000_000m, 600_000_000m),
+            (2025, 12, 760_000_000m, 620_000_000m),
+            (2026, 1, 500_000_000m, 480_000_000m),
+            (2026, 2, 530_000_000m, 495_000_000m),
+            (2026, 3, 560_000_000m, 515_000_000m),
+            (2026, 4, 590_000_000m, 530_000_000m),
+            (2026, 5, 620_000_000m, 550_000_000m),
+            (2026, 6, 650_000_000m, 570_000_000m),
+            (2026, 7, 380_000_000m, 290_000_000m),
         };
+
+        var periods = new List<AccountingPeriod>();
+        var seenPeriods = new HashSet<(int year, int month)>();
 
         var entries = new List<JournalEntry>();
         var lines = new List<JournalEntryLine>();
         var entryNo = 1;
 
-        foreach (var (month, revenue, expense) in monthlyData)
+        foreach (var (year, month, revenue, expense) in monthlyData)
         {
-            var period = periods[month - 1];
+            if (seenPeriods.Add((year, month)))
+            {
+                var startDate = new DateTime(year, month, 1, 0, 0, 0, DateTimeKind.Utc);
+                var endDate = startDate.AddMonths(1).AddDays(-1);
+                var isPast = year < currentYear || (year == currentYear && month < currentMonth);
+
+                periods.Add(new AccountingPeriod
+                {
+                    Id = Guid.NewGuid(),
+                    Name = startDate.ToString("MMMM yyyy"),
+                    StartDate = startDate,
+                    EndDate = endDate,
+                    Status = isPast ? "CLOSED" : "OPEN",
+                    TenantId = tenantId,
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
+
+            var period = periods[seenPeriods.Count - 1];
             var txDate = new DateTime(year, month, 15, 0, 0, 0, DateTimeKind.Utc);
 
             var revenueEntry = new JournalEntry
@@ -148,6 +173,7 @@ public static class FinanceDataSeeder
             entryNo++;
         }
 
+        db.AccountingPeriods.AddRange(periods);
         db.JournalEntries.AddRange(entries);
         db.JournalEntryLines.AddRange(lines);
 
