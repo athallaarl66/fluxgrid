@@ -1,4 +1,5 @@
 using FluxGrid.Api.Modules.Finance.Domain.Entities;
+using FluxGrid.Api.Modules.WMS.Domain.Entities;
 using FluxGrid.Api.Shared.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
@@ -16,6 +17,10 @@ public class AppDbContext : DbContext
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<AccountingPeriod> AccountingPeriods => Set<AccountingPeriod>();
     public DbSet<Budget> Budgets => Set<Budget>();
+    public DbSet<InventoryItem> InventoryItems => Set<InventoryItem>();
+    public DbSet<Location> Locations => Set<Location>();
+    public DbSet<StockLedgerEntry> StockLedgerEntries => Set<StockLedgerEntry>();
+    public DbSet<InventoryBalance> InventoryBalances => Set<InventoryBalance>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -139,6 +144,51 @@ public class AppDbContext : DbContext
                   .WithMany()
                   .HasForeignKey(e => e.PeriodId)
                   .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<InventoryItem>(entity =>
+        {
+            entity.ToTable("inventory_items");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.TenantId, e.Sku }).IsUnique();
+            entity.Property(e => e.Sku).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.Name).HasMaxLength(200).IsRequired();
+            entity.Property(e => e.Uom).HasMaxLength(20).IsRequired();
+            entity.HasIndex(e => e.TenantId);
+        });
+
+        modelBuilder.Entity<Location>(entity =>
+        {
+            entity.ToTable("locations");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.TenantId, e.Code }).IsUnique();
+            entity.Property(e => e.Code).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.Type).HasConversion<string>().HasMaxLength(20).IsRequired();
+            entity.HasIndex(e => e.TenantId);
+        });
+
+        modelBuilder.Entity<StockLedgerEntry>(entity =>
+        {
+            entity.ToTable("stock_ledger");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Quantity).HasColumnType("decimal(18,4)").IsRequired();
+            entity.Property(e => e.UnitCost).HasColumnType("decimal(18,4)").IsRequired();
+            entity.Property(e => e.ReferenceType).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
+            entity.HasIndex(e => new { e.ItemId, e.LocationId }).HasDatabaseName("item_loc_idx");
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => e.TransactionId);
+        });
+
+        modelBuilder.Entity<InventoryBalance>(entity =>
+        {
+            entity.ToTable("inventory_balances");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.ItemId, e.LocationId, e.TenantId }).IsUnique();
+            entity.Property(e => e.BalanceQty).HasColumnType("decimal(18,4)").IsRequired();
+            entity.Property(e => e.BalanceValue).HasColumnType("decimal(18,4)").IsRequired();
+            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("NOW()");
+            entity.HasIndex(e => e.TenantId);
         });
     }
 }

@@ -25,7 +25,17 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { label: "WMS", href: "/wms", icon: Warehouse },
+  {
+    label: "WMS",
+    href: "/wms",
+    icon: Warehouse,
+    children: [
+      { label: "Dashboard", href: "/wms" },
+      { label: "Stock Ledger", href: "/wms/stock-ledger" },
+      { label: "Inbound", href: "/wms/inbound" },
+      { label: "Outbound", href: "/wms/outbound" },
+    ],
+  },
   {
     label: "Finance",
     href: "/finance",

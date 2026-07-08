@@ -1,7 +1,13 @@
 # Design Specifications: Stock Ledger Management (WMS-1)
 
 ## 1. Screen Overview
-**Page:** Stock Ledger Dashboard
+
+### 1a. WMS Dashboard
+**Page:** WMS Dashboard (`/wms`)
+**Purpose:** Landing page for the WMS module showing key KPIs (total SKUs, locations, inbound/outbound MTD), quick action links to Stock Ledger, Inbound, and Outbound features, and recent activity feed.
+
+### 1b. Stock Ledger Dashboard
+**Page:** Stock Ledger Dashboard (`/wms/stock-ledger`)
 **Purpose:** Provides a tabular view of all inventory movements, real-time balances, and valuation toggles.
 
 ## 2. Wireframe Description
