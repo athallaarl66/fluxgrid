@@ -15,6 +15,7 @@ public class AppDbContext : DbContext
     public DbSet<JournalEntryLine> JournalEntryLines => Set<JournalEntryLine>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<AccountingPeriod> AccountingPeriods => Set<AccountingPeriod>();
+    public DbSet<Budget> Budgets => Set<Budget>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -120,6 +121,24 @@ public class AppDbContext : DbContext
             entity.Property(e => e.EndDate).IsRequired();
             entity.Property(e => e.Status).HasMaxLength(20).IsRequired().HasDefaultValue("OPEN");
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
+        });
+
+        modelBuilder.Entity<Budget>(entity =>
+        {
+            entity.ToTable("budgets");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.TenantId, e.AccountId, e.PeriodId }).IsUnique();
+            entity.Property(e => e.PlannedAmount).HasColumnType("decimal(18,2)").IsRequired();
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
+            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("NOW()");
+            entity.HasOne(e => e.Account)
+                  .WithMany()
+                  .HasForeignKey(e => e.AccountId)
+                  .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Period)
+                  .WithMany()
+                  .HasForeignKey(e => e.PeriodId)
+                  .OnDelete(DeleteBehavior.Restrict);
         });
     }
 }

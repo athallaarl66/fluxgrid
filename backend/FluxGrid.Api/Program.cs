@@ -111,6 +111,8 @@ builder.Services.AddScoped<JournalEntryService>();
 builder.Services.AddScoped<PeriodService>();
 builder.Services.AddScoped<PeriodValidator>();
 builder.Services.AddScoped<ReportService>();
+builder.Services.AddScoped<BudgetService>();
+builder.Services.AddScoped<FinanceDashboardService>();
 builder.Services.AddScoped<AuditService>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -147,5 +149,7 @@ app.MapChartOfAccountEndpoints();
 app.MapJournalEntryEndpoints();
 app.MapPeriodEndpoints();
 app.MapReportEndpoints();
+app.MapBudgetEndpoints();
+app.MapFinanceDashboardEndpoints();
 
 app.Run();
