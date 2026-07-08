@@ -20,10 +20,11 @@
 - **Finance Staff (Indirect)**: Relies on the stock ledger's valuation (FIFO/Average) to be synced to the General Ledger accurately.
 
 ## 5. User Journey
-1. **View Ledger**: Warehouse Manager navigates to the Stock Ledger page.
-2. **Filter & Search**: Manager filters by specific SKU or Date Range.
-3. **View Movement Details**: Manager clicks on a specific entry to view the paired journal entry (where did it come from, where did it go).
-4. **Change Valuation Method**: Manager toggles the view between FIFO and Average Cost to see valuation impacts.
+1. **WMS Dashboard**: Warehouse Manager lands on the WMS Dashboard showing key metrics (total SKUs, locations, inbound/outbound counts) and quick action links.
+2. **View Ledger**: Manager navigates to the Stock Ledger page.
+3. **Filter & Search**: Manager filters by specific SKU or Date Range.
+4. **View Movement Details**: Manager clicks on a specific entry to view the paired journal entry (where did it come from, where did it go).
+5. **Change Valuation Method**: Manager toggles the view between FIFO and Average Cost to see valuation impacts.
 
 ## 6. Acceptance Criteria
 - [ ] Every stock movement MUST create paired journal entries (e.g., In from Supplier = Debit Warehouse Inventory, Credit In-Transit/Supplier).
