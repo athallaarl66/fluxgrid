@@ -133,16 +133,16 @@ namespace FluxGrid.Api.Migrations
 
             migrationBuilder.Sql(@"
                 CREATE POLICY tenant_isolation_stock_ledger ON stock_ledger
-                    USING (tenant_id = current_setting('app.tenant_id')::uuid);");
+                    USING (""TenantId"" = current_setting('app.tenant_id')::uuid);");
             migrationBuilder.Sql(@"
                 CREATE POLICY tenant_isolation_inventory_balances ON inventory_balances
-                    USING (tenant_id = current_setting('app.tenant_id')::uuid);");
+                    USING (""TenantId"" = current_setting('app.tenant_id')::uuid);");
             migrationBuilder.Sql(@"
                 CREATE POLICY tenant_isolation_inventory_items ON inventory_items
-                    USING (tenant_id = current_setting('app.tenant_id')::uuid);");
+                    USING (""TenantId"" = current_setting('app.tenant_id')::uuid);");
             migrationBuilder.Sql(@"
                 CREATE POLICY tenant_isolation_locations ON locations
-                    USING (tenant_id = current_setting('app.tenant_id')::uuid);");
+                    USING (""TenantId"" = current_setting('app.tenant_id')::uuid);");
         }
 
         /// <inheritdoc />
