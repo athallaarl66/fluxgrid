@@ -11,24 +11,6 @@ namespace FluxGrid.Api.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            // Enable RLS on tenant-isolated tables
-            migrationBuilder.Sql("ALTER TABLE stock_ledger ENABLE ROW LEVEL SECURITY;");
-            migrationBuilder.Sql("ALTER TABLE inventory_balances ENABLE ROW LEVEL SECURITY;");
-            migrationBuilder.Sql("ALTER TABLE inventory_items ENABLE ROW LEVEL SECURITY;");
-            migrationBuilder.Sql("ALTER TABLE locations ENABLE ROW LEVEL SECURITY;");
-
-            migrationBuilder.Sql(@"
-                CREATE POLICY tenant_isolation_stock_ledger ON stock_ledger
-                    USING (tenant_id = current_setting('app.tenant_id')::uuid);");
-            migrationBuilder.Sql(@"
-                CREATE POLICY tenant_isolation_inventory_balances ON inventory_balances
-                    USING (tenant_id = current_setting('app.tenant_id')::uuid);");
-            migrationBuilder.Sql(@"
-                CREATE POLICY tenant_isolation_inventory_items ON inventory_items
-                    USING (tenant_id = current_setting('app.tenant_id')::uuid);");
-            migrationBuilder.Sql(@"
-                CREATE POLICY tenant_isolation_locations ON locations
-                    USING (tenant_id = current_setting('app.tenant_id')::uuid);");
             migrationBuilder.CreateTable(
                 name: "inventory_balances",
                 columns: table => new
@@ -142,6 +124,25 @@ namespace FluxGrid.Api.Migrations
                 name: "IX_stock_ledger_TransactionId",
                 table: "stock_ledger",
                 column: "TransactionId");
+
+            // Enable RLS on tenant-isolated tables
+            migrationBuilder.Sql("ALTER TABLE stock_ledger ENABLE ROW LEVEL SECURITY;");
+            migrationBuilder.Sql("ALTER TABLE inventory_balances ENABLE ROW LEVEL SECURITY;");
+            migrationBuilder.Sql("ALTER TABLE inventory_items ENABLE ROW LEVEL SECURITY;");
+            migrationBuilder.Sql("ALTER TABLE locations ENABLE ROW LEVEL SECURITY;");
+
+            migrationBuilder.Sql(@"
+                CREATE POLICY tenant_isolation_stock_ledger ON stock_ledger
+                    USING (tenant_id = current_setting('app.tenant_id')::uuid);");
+            migrationBuilder.Sql(@"
+                CREATE POLICY tenant_isolation_inventory_balances ON inventory_balances
+                    USING (tenant_id = current_setting('app.tenant_id')::uuid);");
+            migrationBuilder.Sql(@"
+                CREATE POLICY tenant_isolation_inventory_items ON inventory_items
+                    USING (tenant_id = current_setting('app.tenant_id')::uuid);");
+            migrationBuilder.Sql(@"
+                CREATE POLICY tenant_isolation_locations ON locations
+                    USING (tenant_id = current_setting('app.tenant_id')::uuid);");
         }
 
         /// <inheritdoc />
