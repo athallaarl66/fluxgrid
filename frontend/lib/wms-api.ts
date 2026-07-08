@@ -4,6 +4,7 @@ import type { LedgerEntryResponse, BalanceResponse } from "./wms-types";
 export interface StockLedgerParams {
   sku?: string;
   locationId?: string;
+  locationCode?: string;
   startDate?: string;
   endDate?: string;
   page?: number;
@@ -14,6 +15,7 @@ export function getStockLedger(params: StockLedgerParams = {}) {
   const searchParams = new URLSearchParams();
   if (params.sku) searchParams.set("sku", params.sku);
   if (params.locationId) searchParams.set("locationId", params.locationId);
+  if (params.locationCode) searchParams.set("locationCode", params.locationCode);
   if (params.startDate) searchParams.set("startDate", params.startDate);
   if (params.endDate) searchParams.set("endDate", params.endDate);
   if (params.page) searchParams.set("page", String(params.page));

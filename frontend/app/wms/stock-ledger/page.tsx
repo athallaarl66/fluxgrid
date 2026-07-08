@@ -24,7 +24,7 @@ export default function StockLedgerPage() {
 
   const { data, isLoading, error } = useStockLedger({
     sku: sku || undefined,
-    locationId: locationId || undefined,
+    locationCode: locationId || undefined,
     startDate: startDate || undefined,
     endDate: endDate || undefined,
     page,

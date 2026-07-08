@@ -13,6 +13,7 @@ public static class StockLedgerEndpoints
         group.MapGet("/", async (
             [FromQuery] string? sku,
             [FromQuery] Guid? locationId,
+            [FromQuery] string? locationCode,
             [FromQuery] DateTime? startDate,
             [FromQuery] DateTime? endDate,
             [FromQuery] int page,
@@ -21,7 +22,7 @@ public static class StockLedgerEndpoints
             HttpContext http) =>
         {
             var (tenantId, _, _, _) = GetAuditContext(http);
-            var result = await service.GetLedgerAsync(tenantId, sku, locationId, startDate, endDate, page, pageSize);
+            var result = await service.GetLedgerAsync(tenantId, sku, locationId, locationCode, startDate, endDate, page, pageSize);
             return Results.Ok(result);
         })
         .RequireAuthorization(Permissions.WmsRead);

@@ -23,7 +23,7 @@ public class StockLedgerService
         _cache = cache;
     }
 
-    public async Task<LedgerResult> GetLedgerAsync(Guid tenantId, string? sku, Guid? locationId, DateTime? startDate, DateTime? endDate, int page, int pageSize)
+    public async Task<LedgerResult> GetLedgerAsync(Guid tenantId, string? sku, Guid? locationId, string? locationCode, DateTime? startDate, DateTime? endDate, int page, int pageSize)
     {
         var query = _db.StockLedgerEntries
             .Where(e => e.TenantId == tenantId);
@@ -39,6 +39,16 @@ public class StockLedgerService
 
         if (locationId.HasValue)
             query = query.Where(e => e.LocationId == locationId.Value);
+
+        if (!string.IsNullOrEmpty(locationCode))
+        {
+            var locIds = await _db.Locations
+                .Where(l => l.TenantId == tenantId && l.Code == locationCode)
+                .Select(l => l.Id)
+                .ToListAsync();
+            if (locIds.Count > 0)
+                query = query.Where(e => locIds.Contains(e.LocationId));
+        }
 
         if (startDate.HasValue)
             query = query.Where(e => e.CreatedAt >= startDate.Value);
