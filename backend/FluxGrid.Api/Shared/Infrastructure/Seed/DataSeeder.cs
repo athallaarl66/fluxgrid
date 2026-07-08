@@ -16,17 +16,26 @@ public static class DataSeeder
         if (await db.Roles.AnyAsync())
         {
             var existingAdmin = await db.Users.FirstOrDefaultAsync(u => u.Username == "admin");
-            if (existingAdmin is not null && !string.IsNullOrEmpty(seedPassword))
+            if (existingAdmin is not null)
             {
-                existingAdmin.PasswordHash = BCrypt.Net.BCrypt.HashPassword(seedPassword);
-                existingAdmin.FailedLoginAttempts = 0;
-                existingAdmin.LockoutEnd = null;
+                if (!string.IsNullOrEmpty(seedPassword))
+                {
+                    existingAdmin.PasswordHash = BCrypt.Net.BCrypt.HashPassword(seedPassword);
+                    existingAdmin.FailedLoginAttempts = 0;
+                    existingAdmin.LockoutEnd = null;
+                    Console.WriteLine("Admin password synced from SEED_ADMIN_PASSWORD.");
+                }
+
+                if (existingAdmin.TenantId == Guid.Empty)
+                {
+                    existingAdmin.TenantId = DefaultTenantId;
+                    Console.WriteLine("Admin TenantId synced to default.");
+                }
+
                 await db.SaveChangesAsync();
-                Console.WriteLine("Admin password synced from SEED_ADMIN_PASSWORD.");
             }
 
-            await ChartOfAccountSeeder.SeedAsync(db, DefaultTenantId);
-            await AccountingPeriodSeeder.SeedAsync(db, DefaultTenantId);
+            await FinanceDataSeeder.SeedAsync(db, DefaultTenantId);
             return;
         }
 
@@ -46,7 +55,7 @@ public static class DataSeeder
             Permissions = [
                 Permissions.DashboardRead,
                 Permissions.WmsRead, Permissions.WmsWrite,
-                Permissions.FinanceRead, Permissions.FinanceWrite, Permissions.FinanceCoaRead, Permissions.FinanceCoaManage,
+                Permissions.FinanceRead, Permissions.FinanceWrite, Permissions.FinanceCoaRead, Permissions.FinanceCoaManage, Permissions.FinanceReportRead,
                 Permissions.HrRead, Permissions.HrWrite,
                 Permissions.TaskRead, Permissions.TaskWrite
             ]
@@ -60,7 +69,7 @@ public static class DataSeeder
             Permissions = [
                 Permissions.DashboardRead,
                 Permissions.WmsRead,
-                Permissions.FinanceRead, Permissions.FinanceCoaRead,
+                Permissions.FinanceRead, Permissions.FinanceCoaRead, Permissions.FinanceReportRead,
                 Permissions.HrRead,
                 Permissions.TaskRead, Permissions.TaskWrite
             ]
@@ -68,28 +77,29 @@ public static class DataSeeder
 
         db.Roles.AddRange(adminRole, managerRole, staffRole);
 
-        if (string.IsNullOrEmpty(seedPassword))
+        if (!string.IsNullOrEmpty(seedPassword))
+        {
+            var adminUser = new User
+            {
+                Id = Guid.NewGuid(),
+                Username = "admin",
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(seedPassword),
+                Email = "admin@fluxgrid.com",
+                IsActive = true,
+                MustChangePassword = false,
+                TenantId = DefaultTenantId,
+                Roles = [adminRole]
+            };
+
+            db.Users.Add(adminUser);
+        }
+        else
         {
             Console.WriteLine("WARNING: SEED_ADMIN_PASSWORD not set. Admin user will not be seeded.");
-            return;
         }
 
-        var adminUser = new User
-        {
-            Id = Guid.NewGuid(),
-            Username = "admin",
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(seedPassword),
-            Email = "admin@fluxgrid.com",
-            IsActive = true,
-            MustChangePassword = false,
-            Roles = [adminRole]
-        };
-
-        db.Users.Add(adminUser);
         await db.SaveChangesAsync();
-
-        await ChartOfAccountSeeder.SeedAsync(db, DefaultTenantId);
-        await AccountingPeriodSeeder.SeedAsync(db, DefaultTenantId);
+        await FinanceDataSeeder.SeedAsync(db, DefaultTenantId);
     }
 
 

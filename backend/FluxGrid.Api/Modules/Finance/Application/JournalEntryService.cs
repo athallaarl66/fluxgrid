@@ -18,22 +18,23 @@ public class JournalEntryService
         _context = context;
     }
 
-    public async Task<List<JournalEntry>> GetListAsync(Guid tenantId, string? status, int page, int pageSize)
+    public async Task<object> GetListAsync(Guid tenantId, string? status, int page, int pageSize)
     {
         var query = _context.JournalEntries
             .Include(je => je.Lines)
             .Where(je => je.TenantId == tenantId);
 
         if (!string.IsNullOrEmpty(status))
-        {
             query = query.Where(je => je.Status == status);
-        }
 
-        return await query
+        var total = await query.CountAsync();
+        var items = await query
             .OrderByDescending(je => je.TransactionDate)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync();
+
+        return new { items, total, page, pageSize, totalPages = (int)Math.Ceiling(total / (double)pageSize) };
     }
 
     public async Task<JournalEntry?> GetByIdAsync(Guid id, Guid tenantId)

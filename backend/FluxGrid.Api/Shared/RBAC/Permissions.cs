@@ -18,6 +18,9 @@ public static class Permissions
     public const string FinanceJournalApprove = "finance.journal.approve";
     public const string FinancePeriodRead = "finance.period.read";
     public const string FinancePeriodAdmin = "finance.period.admin";
+    public const string FinanceBudgetRead = "finance.budget.read";
+    public const string FinanceBudgetManage = "finance.budget.manage";
+    public const string FinanceReportRead = "finance.report.read";
 
     public const string HrRead = "HR:Read";
     public const string HrWrite = "HR:Write";
@@ -31,7 +34,7 @@ public static class Permissions
         WmsRead, WmsWrite, WmsAdmin,
         FinanceRead, FinanceWrite, FinanceAdmin, FinanceCoaRead, FinanceCoaManage,
         FinanceJournalView, FinanceJournalCreate, FinanceJournalApprove,
-        FinancePeriodRead, FinancePeriodAdmin,
+        FinancePeriodRead, FinancePeriodAdmin, FinanceBudgetRead, FinanceBudgetManage, FinanceReportRead,
         HrRead, HrWrite, HrPayrollProcess,
         TaskRead, TaskWrite
     ];

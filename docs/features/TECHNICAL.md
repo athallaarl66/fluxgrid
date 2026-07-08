@@ -29,7 +29,7 @@ Technical design document untuk FluxGrid ERP - sistem Modular Monolith untuk ind
 - Chart of Accounts management
 - Period closing
 - Financial reports (Trial Balance, P&L, Balance Sheet)
-- AI Integration: Anomaly Detection
+- Budget Management & Dashboard
 
 **3. HR & Payroll**
 - Employee data management
@@ -50,7 +50,7 @@ Technical design document untuk FluxGrid ERP - sistem Modular Monolith untuk ind
 - RBAC dengan granular permissions
 - Audit Trail immutable
 - Row-Level Security (RLS)
-- AI Service Layer abstraction (Groq API)
+- AI Service Layer abstraction (Groq API) — HR only
 
 ### 1.3 References
 - PRD: docs/features/PRD.md
@@ -83,7 +83,6 @@ graph TB
     end
     
     subgraph External
-        GROQ[Groq API]
         REDIS[Upstash Redis]
         PG[Koyeb Managed PostgreSQL]
     end
@@ -373,12 +372,11 @@ public class PeriodClosed : IDomainEvent
     public DateTime ClosedDate { get; }
 }
 
-// AnomalyDetected - Raised when anomalous transaction is found
-public class AnomalyDetected : IDomainEvent
+// BudgetThresholdExceeded - Raised when budget variance exceeds threshold
+public class BudgetThresholdExceeded : IDomainEvent
 {
-    public Guid TransactionId { get; }
-    public string Description { get; }
-    public decimal DeviationScore { get; }
+    public Guid BudgetId { get; }
+    public decimal VariancePercentage { get; }
 }
 ```
 
@@ -683,7 +681,7 @@ fluxgrid-frontend/
 - **Log Aggregation**: Vercel logs for frontend, Cloudflare logs for backend
 
 ### 9.2 Monitoring
-- **Metrics**: API response time, error rate, module-specific metrics (WMS: stock levels, Finance: journal entry rate, HR: payroll processing time, TaskProject: task completion rate), Groq API latency
+- **Metrics**: API response time, error rate, module-specific metrics (WMS: stock levels, Finance: journal entry rate, HR: payroll processing time, TaskProject: task completion rate)
 - **Alerting**: Vercel alerts for frontend errors, Cloudflare alerts for backend errors
 - **Health Checks**: `/api/health` endpoint for system health
 
@@ -732,7 +730,7 @@ fluxgrid-frontend/
 
 ### 11.2 Integration Testing
 - **Framework**: xUnit with TestServer (.NET)
-- **Test Scenarios**: API endpoints (all modules), database operations, Groq API integration, domain events propagation
+- **Test Scenarios**: API endpoints (all modules), database operations, domain events propagation
 
 ### 11.3 End-to-End Testing
 - **Framework**: Playwright
@@ -775,16 +773,14 @@ fluxgrid-frontend/
 ## 13. Assumptions & Dependencies
 
 ### 13.1 Assumptions
-- Groq free tier remains available
 - Neon PostgreSQL supports pgvector extension
-- Internet connection available for Groq API calls
 - Users will adopt ERP system for daily operations
 - Existing business processes can be mapped to ERP workflows
 
 ### 13.2 External Dependencies
 | Dependency | Version | Purpose |
 |------------|---------|---------|
-| Groq API | Latest | LLM inference (CV parsing, anomaly detection, task prioritization) |
+| Groq API | Latest | LLM inference (HR: CV parsing) |
 | Neon PostgreSQL | Latest | Database with pgvector |
 | Upstash Redis | Latest | Caching and queue |
 
@@ -799,7 +795,7 @@ fluxgrid-frontend/
 | Risk ID | Risk Description | Probability | Impact | Mitigation Strategy |
 |---------|-----------------|-------------|--------|---------------------|
 | **Technical Risks** |||||
-| TR-001 | Groq API rate limits exceeded | Medium | High | Queue system, caching, graceful degradation |
+| TR-001 | Groq API rate limits exceeded (HR) | Medium | High | Queue system, caching, graceful degradation |
 | TR-002 | LLM hallucination in AI features | Medium | High | Confidence scoring, human review, validation |
 | TR-003 | pgvector performance degradation | Low | Medium | Index maintenance, query optimization |
 | TR-004 | Data privacy breach | Low | Critical | Encryption, RBAC, audit logs |
@@ -815,13 +811,13 @@ fluxgrid-frontend/
 
 ### 15.1 Planned Enhancements
 - **WMS:** Barcode scanning integration, mobile app for warehouse staff
-- **Finance:** Multi-currency support, budget management, advanced analytics
+- **Finance:** Multi-currency support, advanced analytics
 - **HR:** Performance reviews, training management, benefits administration
 - **TaskProject:** Gantt charts, resource leveling, project templates
 - **Overall:** Mobile app for basic operations, advanced analytics dashboard, multi-language support
 
 ### 15.2 Technical Debt
-- Consider migrating from Groq to self-hosted LLM if cost becomes prohibitive
+- Consider migrating from Groq to self-hosted LLM if cost becomes prohibitive (HR only)
 - Evaluate vector database alternatives if pgvector performance degrades
 - Consider microservice extraction for high-load modules
 - Implement more sophisticated AI algorithms based on feedback

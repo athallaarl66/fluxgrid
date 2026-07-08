@@ -94,6 +94,32 @@ public static class AuthEndpoints
         })
         .AllowAnonymous();
 
+        app.MapGet("/api/auth/me", async (HttpContext http, AppDbContext db) =>
+        {
+            var userIdStr = http.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (userIdStr is null || !Guid.TryParse(userIdStr, out var userId))
+                return Results.Unauthorized();
+
+            var user = await db.Users
+                .Include(u => u.Roles)
+                .FirstOrDefaultAsync(u => u.Id == userId);
+
+            if (user is null)
+                return Results.Unauthorized();
+
+            return Results.Ok(new
+            {
+                user = new
+                {
+                    id = user.Id.ToString(),
+                    email = user.Email,
+                    name = user.Username,
+                    roles = user.Roles.Select(r => r.Name).ToList()
+                }
+            });
+        })
+        .RequireAuthorization();
+
         app.MapPost("/api/auth/change-password", async (ChangePasswordRequest request, IConfiguration config, AppDbContext db) =>
         {
             var user = await db.Users
