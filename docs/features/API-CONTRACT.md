@@ -1,12 +1,12 @@
 # API Contract & Security Specification
 
 ## Document Information
-- **Document Version**: 2.0
+- **Document Version**: 3.0
 - **Created Date**: 2026-06-29
-- **Last Updated**: 2026-07-03
+- **Last Updated**: 2026-07-08
 - **Author**: AI Engineer
 - **Project**: FluxGrid ERP
-- **Scope**: Complete ERP System (All Modules)
+- **Scope**: Complete ERP System (WMS, Finance, HR)
 
 ---
 
@@ -45,7 +45,6 @@ Module prefixes:
 - WMS: /wms/
 - Finance: /finance/
 - HR: /hr/
-- TaskProject: /task/
 
 Full path example: https://fluxgrid-api.koyeb.app/api/v1/wms/stock-ledger
 ```
@@ -573,117 +572,6 @@ Content-Type: application/json
 ```
 
 **Required Permission:** HR:CandidateManage
-
----
-
-### 2.4 TaskProject Endpoints
-
-#### GET /task/projects
-**Purpose:** List projects
-
-**Query Parameters:**
-```
-status: string (optional, enum: active|completed|on-hold)
-team_id: uuid (optional)
-page: integer (optional, default: 1)
-page_size: integer (optional, default: 20)
-```
-
-**Required Permission:** Task:Read
-
----
-
-#### POST /task/projects/{id}/tasks
-**Purpose:** Create task in project
-
-**Path Parameters:**
-```
-id: uuid (required) - Project ID
-```
-
-**Request Headers:**
-```
-Authorization: Bearer {jwt_token}
-Content-Type: application/json
-```
-
-**Request Body:**
-```json
-{
-  "title": "Implement feature X",
-  "description": "Task description...",
-  "assignee_id": "uuid",
-  "priority": "high",
-  "due_date": "2026-07-15"
-}
-```
-
-**Required Permission:** Task:Write
-
----
-
-#### PUT /task/tasks/{id}/status
-**Purpose:** Update task status
-
-**Path Parameters:**
-```
-id: uuid (required) - Task ID
-```
-
-**Request Headers:**
-```
-Authorization: Bearer {jwt_token}
-Content-Type: application/json
-```
-
-**Request Body:**
-```json
-{
-  "status": "in-progress"
-}
-```
-
-**Required Permission:** Task:Write
-
----
-
-#### POST /task/tasks/{id}/time-logs
-**Purpose:** Log time for task
-
-**Path Parameters:**
-```
-id: uuid (required) - Task ID
-```
-
-**Request Headers:**
-```
-Authorization: Bearer {jwt_token}
-Content-Type: application/json
-```
-
-**Request Body:**
-```json
-{
-  "employee_id": "uuid",
-  "hours": 4.5,
-  "date": "2026-06-29",
-  "description": "Work completed"
-}
-```
-
-**Required Permission:** Task:Write
-
----
-
-#### GET /task/projects/{id}/kanban
-**Purpose:** Get kanban board for project
-
-**Path Parameters:**
-```
-id: uuid (required) - Project ID
-```
-
-**Required Permission:** Task:Read
 
 ---
 
@@ -1549,3 +1437,4 @@ async function handleApiCall<T>(
 | Version | Date | Author | Description of Changes |
 |---------|------|--------|----------------------|
 | 1.0 | 2026-06-29 | AI Engineer | Initial version - API Contract & Security Specification |
+| 2.0 | 2026-07-08 | AI Engineer | Remove TaskProject endpoints — extracted to standalone Go + Next.js app. See TASK-APP.md |

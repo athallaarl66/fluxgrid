@@ -87,8 +87,7 @@ FLEXMNG/
 │   │   ├── Dashboard/           # Dashboard API (GET /api/dashboard)
 │   │   ├── WMS/                 # (scaffold)
 │   │   ├── Finance/             # Chart of Accounts CRUD + audit
-│   │   ├── HR/                  # (scaffold)
-│   │   └── TaskProject/         # (scaffold)
+│   │   └── HR/                  # (scaffold)
 │   ├── Shared/
 │   │   ├── Domain/              # Shared entities (User, Role, AuditLog)
 │   │   ├── Domain/Events/       # IDomainEvent, AccountCreated, AccountUpdated
@@ -121,7 +120,6 @@ FLEXMNG/
 | `/finance`        | Yes           | Finance module landing      |
 | `/finance/chart-of-accounts` | Yes    | Chart of Accounts tree view |
 | `/hr`             | Yes           | HR module (scaffold)       |
-| `/projects`       | Yes           | Projects module (scaffold) |
 
 ### API Endpoints
 
@@ -152,7 +150,6 @@ FLEXMNG/
 | `Finance`          | `Finance:Read`, `Finance:Write`, `Finance:Admin` |
 | `Finance COA`      | `finance.coa.read`, `finance.coa.manage`        |
 | `HR`               | `HR:Read`, `HR:Write`, `HR:PayrollProcess`       |
-| `Task`             | `Task:Read`, `Task:Write`                        |
 
 ### Future: User & Role Management
 Super Admin akan dapat membuat akun, mengelola role, dan assign permission secara dinamis melalui UI. (Iterasi berikutnya.)
@@ -177,7 +174,8 @@ Lihat [`docs/DESIGN.md`](./docs/DESIGN.md) untuk dokumentasi lengkap:
 | **WMS**            | Warehouse Management — inbound/outbound, stock ledger |
 | **Finance**        | General Ledger — double-entry, P&L, balance sheet     |
 | **HR**             | Employee data, attendance, payroll, recruitment AI    |
-| **Task & Project** | Kanban board, time tracking, dependency graph         |
+
+> **Catatan:** Modul **Task & Project** (kanban, time tracking, task dependencies) telah di-extract menjadi standalone app terpisah. Lihat [`TASK-APP.md`](./TASK-APP.md) untuk dokumentasi lengkap.
 
 Dokumentasi detail: [`docs/features/`](./docs/features/)
 

@@ -1,19 +1,21 @@
 # Technical Design Document (TDD)
 
 ## Document Information
-- **Document Version**: 2.0
+- **Document Version**: 3.0
 - **Created Date**: 2026-06-29
-- **Last Updated**: 2026-07-03
+- **Last Updated**: 2026-07-08
 - **Author**: AI Engineer
 - **Project**: FluxGrid ERP
-- **Scope**: Complete ERP System (All Modules)
+- **Scope**: Complete ERP System (WMS, Finance, HR)
 
 ---
 
 ## 1. Introduction
 
 ### 1.1 Purpose
-Technical design document untuk FluxGrid ERP - sistem Modular Monolith untuk industri berat (Mining, Oil & Gas, Logistics, Manufacturing). Dokumen ini mencakup desain teknis untuk semua 4 modul utama: WMS (Warehouse Management), Finance (General Ledger), HR & Payroll, dan Task & Project Management. Semua modul mengikuti Clean Architecture dengan DDD dan berkomunikasi melalui Domain Events.
+Technical design document untuk FluxGrid ERP - sistem Modular Monolith untuk industri berat (Mining, Oil & Gas, Logistics, Manufacturing). Dokumen ini mencakup desain teknis untuk 3 modul: WMS (Warehouse Management), Finance (General Ledger), HR & Payroll. Semua modul mengikuti Clean Architecture dengan DDD dan berkomunikasi melalui Domain Events.
+
+> **Catatan:** Modul **Task & Project Management** (kanban, time tracking, task dependencies) telah di-extract menjadi standalone app terpisah dengan Go backend. Lihat [`TASK-APP.md`](../TASK-APP.md) untuk dokumentasi lengkap.
 
 ### 1.2 Scope
 **Included Modules:**
@@ -38,12 +40,6 @@ Technical design document untuk FluxGrid ERP - sistem Modular Monolith untuk ind
 - HR Recruitment (CV parsing, job matching)
 - AI Integration: CV Parsing, Candidate-Job Matching, Productivity Analytics, Face Recognition
 
-**4. Task & Project Management**
-- Kanban board
-- Time tracking
-- Task dependencies
-
-
 **Shared Features:**
 - Modular Monolith architecture dengan Clean Architecture dan DDD
 - Domain Events untuk komunikasi antar modul
@@ -63,7 +59,7 @@ Technical design document untuk FluxGrid ERP - sistem Modular Monolith untuk ind
 ## 2. System Architecture
 
 ### 2.1 High-Level Architecture
-FluxGrid ERP adalah sistem Modular Monolith dengan 4 modul utama: WMS, Finance, HR, dan TaskProject. Setiap modul mengikuti Clean Architecture dengan layer: Domain, Application, Infrastructure, dan API. Komunikasi antar modul dilakukan melalui Domain Events via MediatR untuk menjaga loose coupling.
+FluxGrid ERP adalah sistem Modular Monolith dengan 3 modul: WMS, Finance, HR. Setiap modul mengikuti Clean Architecture dengan layer: Domain, Application, Infrastructure, dan API. Komunikasi antar modul dilakukan melalui Domain Events via MediatR untuk menjaga loose coupling.
 
 ### 2.2 Architecture Diagram
 ```mermaid
@@ -78,7 +74,6 @@ graph TB
         WMS[WMS Module]
         FIN[Finance Module]
         HR[HR Module]
-        TP[TaskProject Module]
         SHARED[Shared Kernel]
     end
     
@@ -92,23 +87,17 @@ graph TB
     APP --> WMS
     APP --> FIN
     APP --> HR
-    APP --> TP
     WMS -->|Domain Events| SHARED
     FIN -->|Domain Events| SHARED
     HR -->|Domain Events| SHARED
-    TP -->|Domain Events| SHARED
     WMS -->|StockMovement Event| FIN
     HR -->|PayrollProcessed Event| FIN
-    HR -->|EmployeeHired Event| TP
-    TP -->|TaskCompleted Event| HR
     WMS -->|Queue/Cache| REDIS
     FIN -->|Queue/Cache| REDIS
     HR -->|Queue/Cache| REDIS
-    TP -->|Queue/Cache| REDIS
     WMS -->|pgvector| PG
     FIN -->|pgvector| PG
     HR -->|pgvector| PG
-    TP -->|pgvector| PG
     HR -->|LLM Inference| GROQ
     FIN -->|LLM Inference| GROQ
 
@@ -116,7 +105,6 @@ graph TB
     style WMS fill:#e1f5ff
     style FIN fill:#e1ffe1
     style HR fill:#fff4e1
-    style TP fill:#f4e1ff
     style SHARED fill:#ffe1e1
     style GROQ fill:#ffe1e1
     style PG fill:#e1ffe1
@@ -156,12 +144,6 @@ erDiagram
     candidates ||--o{ candidate_skills : "has"
     candidates ||--o{ candidate_job_matches : "matched with"
     job_postings ||--o{ candidate_job_matches : "matches with"
-    
-    %% TaskProject Entities
-    projects ||--o{ tasks : "contains"
-    tasks ||--o{ task_dependencies : "has"
-    tasks ||--o{ time_logs : "logged against"
-    tasks ||--o{ task_assignments : "assigned to"
     
     %% Shared Entities
     users ||--o{ audit_logs : "generates"
@@ -278,30 +260,6 @@ erDiagram
 
 ---
 
-#### TaskProject Endpoints
-
-**GET /api/v1/task/projects**
-- **Description**: List projects
-- **Authentication**: Required (Task:Read)
-
-**POST /api/v1/task/projects/{id}/tasks**
-- **Description**: Create task in project
-- **Authentication**: Required (Task:Write)
-
-**PUT /api/v1/task/tasks/{id}/status**
-- **Description**: Update task status
-- **Authentication**: Required (Task:Write)
-
-**POST /api/v1/task/tasks/{id}/time-logs**
-- **Description**: Log time for task
-- **Authentication**: Required (Task:Write)
-
-**GET /api/v1/task/projects/{id}/kanban**
-- **Description**: Get kanban board for project
-- **Authentication**: Required (Task:Read)
-
----
-
 #### Shared Endpoints
 
 **GET /api/v1/auth/me**
@@ -399,25 +357,6 @@ public class PayrollProcessed : IDomainEvent
 }
 ```
 
-#### Events Raised by TaskProject
-```csharp
-// TaskCompleted - Raised when task is completed
-public class TaskCompleted : IDomainEvent
-{
-    public Guid TaskId { get; }
-    public Guid EmployeeId { get; }
-    public DateTime CompletedDate { get; }
-}
-
-// TimeLogUpdated - Raised when time log is updated
-public class TimeLogUpdated : IDomainEvent
-{
-    public Guid TimeLogId { get; }
-    public Guid EmployeeId { get; }
-    public decimal Hours { get; }
-}
-```
-
 #### Event Handler Example
 ```csharp
 // Finance listens to PayrollProcessed from HR
@@ -435,20 +374,6 @@ public class PayrollProcessedHandler : INotificationHandler<PayrollProcessed>
     }
 }
 
-// HR listens to TaskCompleted from TaskProject
-public class TaskCompletedHandler : INotificationHandler<TaskCompleted>
-{
-    private readonly IProductivityService _productivityService;
-    
-    public async Task Handle(TaskCompleted notification, CancellationToken ct)
-    {
-        // Update employee productivity analytics
-        await _productivityService.UpdateProductivityAsync(
-            notification.EmployeeId,
-            notification.TaskId
-        );
-    }
-}
 ```
 
 ### 4.4 Error Handling
@@ -503,10 +428,6 @@ fluxgrid-frontend/
 │   │   │   ├── jobs/page.tsx
 │   │   │   └── upload/page.tsx
 │   │   └── dashboard/page.tsx
-│   ├── task/
-│   │   ├── projects/page.tsx
-│   │   ├── kanban/page.tsx
-│   │   └── time-tracking/page.tsx
 │   └── auth/
 │       └── login/page.tsx
 ├── components/
@@ -524,21 +445,17 @@ fluxgrid-frontend/
 │   │   ├── EmployeeCard.tsx
 │   │   ├── AttendanceCalendar.tsx
 │   │   └── CVUploader.tsx
-│   └── task/
-│       ├── KanbanBoard.tsx
-│       └── TaskCard.tsx
 └── hooks/
     ├── useWMS.ts
     ├── useFinance.ts
-    ├── useHR.ts
-    └── useTask.ts
+    └── useHR.ts
 ```
 
 ### 5.2 State Management
 - **State Management Library**: TanStack Query (React Query)
 - **Global State**: Server state managed by React Query
 - **Local State**: React useState/useReducer for component state
-- **Module-specific hooks**: useWMS, useFinance, useHR, useTask
+- **Module-specific hooks**: useWMS, useFinance, useHR
 
 ### 5.3 Routing
 | Route | Component | Access Control |
@@ -558,9 +475,6 @@ fluxgrid-frontend/
 | /hr/recruitment/candidates | Candidates | HR:CVRead |
 | /hr/recruitment/jobs | Jobs | HR:CandidateManage |
 | /hr/dashboard | HR Dashboard | HR:Read |
-| /task/projects | Projects | Task:Read |
-| /task/kanban | Kanban Board | Task:Read/Write |
-| /task/time-tracking | Time Tracking | Task:Write |
 | /auth/login | Login | Public |
 
 ### 5.4 UI/UX Considerations
@@ -591,9 +505,8 @@ fluxgrid-frontend/
 - **Granular Permissions**:
   - **WMS:** WMS:Read, WMS:Write, WMS:Admin
   - **Finance:** Finance:Read, Finance:Write, Finance:Admin, Finance:Audit, finance.coa.read, finance.coa.manage
-  - **HR:** HR:Read, HR:Write, HR:PayrollProcess, HR:CVRead, HR:CVWrite, HR:CandidateManage
-  - **TaskProject:** Task:Read, Task:Write, Task:Admin
-  - **Shared:** Audit:Read, Audit:Write
+   - **HR:** HR:Read, HR:Write, HR:PayrollProcess, HR:CVRead, HR:CVWrite, HR:CandidateManage
+   - **Shared:** Audit:Read, Audit:Write
 
 ### 6.2 Data Encryption
 - **At Rest**: PostgreSQL encryption (Neon managed)
@@ -635,9 +548,7 @@ fluxgrid-frontend/
   - `hr:employee:{id}` - Employee profile data
   - `hr:payroll:{period_id}` - Payroll calculations
   - `hr:candidate:{id}` - Candidate profile data
-  - `hr:job:{id}:matches` - Job match results
-  - `task:project:{id}` - Project data
-  - `task:kanban:{project_id}` - Kanban board state
+   - `hr:job:{id}:matches` - Job match results
 - **Cache Invalidation**: TTL-based (24 hours), manual invalidation on updates
 
 ### 7.2 Database Optimization
@@ -652,7 +563,7 @@ fluxgrid-frontend/
 - Koyeb Edge CDN for static assets
 - Image optimization for document previews
 - Lazy loading for large data tables
-- Code splitting by module (WMS, Finance, HR, TaskProject)
+- Code splitting by module (WMS, Finance, HR)
 
 ---
 
@@ -681,7 +592,7 @@ fluxgrid-frontend/
 - **Log Aggregation**: Vercel logs for frontend, Cloudflare logs for backend
 
 ### 9.2 Monitoring
-- **Metrics**: API response time, error rate, module-specific metrics (WMS: stock levels, Finance: journal entry rate, HR: payroll processing time, TaskProject: task completion rate)
+- **Metrics**: API response time, error rate, module-specific metrics (WMS: stock levels, Finance: journal entry rate, HR: payroll processing time)
 - **Alerting**: Vercel alerts for frontend errors, Cloudflare alerts for backend errors
 - **Health Checks**: `/api/health` endpoint for system health
 
@@ -737,8 +648,7 @@ fluxgrid-frontend/
 - **Test Scenarios**: 
   - WMS: Purchase receipt flow, pick/pack/ship flow
   - Finance: Journal entry creation, period closing, report generation
-  - HR: Employee onboarding, attendance tracking, payroll processing, CV upload flow
-  - TaskProject: Task creation, kanban board operations, time logging
+   - HR: Employee onboarding, attendance tracking, payroll processing, CV upload flow
 
 ### 11.4 Performance Testing
 - **Tools**: k6
@@ -813,7 +723,6 @@ fluxgrid-frontend/
 - **WMS:** Barcode scanning integration, mobile app for warehouse staff
 - **Finance:** Multi-currency support, advanced analytics
 - **HR:** Performance reviews, training management, benefits administration
-- **TaskProject:** Gantt charts, resource leveling, project templates
 - **Overall:** Mobile app for basic operations, advanced analytics dashboard, multi-language support
 
 ### 15.2 Technical Debt
@@ -839,3 +748,4 @@ fluxgrid-frontend/
 | Version | Date | Author | Description of Changes |
 |---------|------|--------|----------------------|
 | 1.0 | 2026-06-29 | AI Engineer | Initial version - Complete FluxGrid ERP TDD covering all 4 modules (WMS, Finance, HR, TaskProject) |
+| 2.0 | 2026-07-08 | AI Engineer | Remove TaskProject module — extracted to standalone Go + Next.js app. See TASK-APP.md |

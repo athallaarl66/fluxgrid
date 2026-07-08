@@ -1,19 +1,21 @@
 # Product Requirements Document (PRD)
 
 ## Document Information
-- **Document Version**: 2.0
+- **Document Version**: 3.0
 - **Created Date**: 2026-06-29
-- **Last Updated**: 2026-07-03
+- **Last Updated**: 2026-07-08
 - **Author**: AI Engineer
 - **Project**: FluxGrid ERP
-- **Scope**: Complete ERP System (All Modules)
+- **Scope**: Complete ERP System (WMS, Finance, HR)
 
 ---
 
 ## 1. Executive Summary
 
 ### 1.1 Purpose
-FluxGrid ERP adalah sistem Modular Monolith untuk industri berat (Mining, Oil & Gas, Logistics, Manufacturing) yang menyediakan end-to-end enterprise resource management. Sistem ini terdiri dari 4 modul utama: WMS (Warehouse Management), Finance (General Ledger), HR & Payroll, dan Task & Project Management. Semua modul berkomunikasi melalui Domain Events untuk menjaga loose coupling dan memungkinkan ekstraksi ke microservice di masa depan.
+FluxGrid ERP adalah sistem Modular Monolith untuk industri berat (Mining, Oil & Gas, Logistics, Manufacturing) yang menyediakan end-to-end enterprise resource management. Sistem ini terdiri dari 3 modul: WMS (Warehouse Management), Finance (General Ledger), HR & Payroll. Semua modul berkomunikasi melalui Domain Events untuk menjaga loose coupling dan memungkinkan ekstraksi ke microservice di masa depan.
+
+> **Catatan:** Modul **Task & Project Management** (kanban, time tracking, task dependencies) telah di-extract menjadi standalone app terpisah dengan Go backend. Lihat [`TASK-APP.md`](../TASK-APP.md) untuk dokumentasi lengkap.
 
 ### 1.2 Scope
 **Included Modules:**
@@ -39,12 +41,6 @@ FluxGrid ERP adalah sistem Modular Monolith untuk industri berat (Mining, Oil & 
 - Slip gaji per periode
 - HR Recruitment: Upload CV, parsing otomatis, candidate scoring
 - AI Integration: CV Parsing, Candidate-Job Matching, Interview Generation, Productivity Analytics, Face Recognition
-
-**4. Task & Project Management**
-- Kanban board dengan status kustom per project
-- Time log per task
-- Dependency graph (task B tidak bisa mulai sebelum task A selesai)
-- Integrasi ke HR untuk data produktivitas
 
 **Shared Features:**
 - **Monorepo:** Frontend (Next.js 15) + Backend (.NET 8) dalam satu repository
@@ -78,7 +74,6 @@ Super Admin akan dapat membuat akun, mengelola role, dan assign permission secar
 - Meningkatkan akurasi data keuangan dengan double-entry ledger
 - Optimasi inventory management dengan stock alerts dan real-time tracking
 - Mempercepat proses recruitment dengan AI-powered CV parsing dan matching
-- Meningkatkan produktivitas team dengan task management dan time tracking
 - Mendemonstrasikan arsitektur Modular Monolith dengan Domain Events untuk portofolio engineering-grade
 - Menyediakan learning platform untuk transisi ke AI engineering
 
@@ -106,7 +101,6 @@ Saat ini, operasional perusahaan di industri Mining, Oil & Gas, Logistics, Manuf
 - **WMS:** 40% reduction dalam stock-out incidents, 30% improvement dalam inventory turnover
 - **Finance:** 50% reduction dalam closing time, 90% reduction dalam manual journal entry errors
 - **HR:** 70% reduction dalam screening time, 100% accuracy dalam payroll calculation
-- **TaskProject:** 40% improvement dalam project completion rate, 25% improvement dalam resource utilization
 - **Overall:** 35% operational efficiency improvement, 20% cost reduction
 
 **Strategic Value:**
@@ -128,7 +122,6 @@ Saat ini, operasional perusahaan di industri Mining, Oil & Gas, Logistics, Manuf
 | CFO | Finance User | High | High |
 | Warehouse Manager | WMS User | High | High |
 | HR Manager | HR User | High | High |
-| Project Manager | TaskProject User | High | High |
 | Finance Staff | Finance Daily User | High | Medium |
 | Warehouse Staff | WMS Daily User | High | Medium |
 | HR Staff | HR Daily User | High | Medium |
@@ -140,7 +133,6 @@ Saat ini, operasional perusahaan di industri Mining, Oil & Gas, Logistics, Manuf
 **CFO:** Financial reporting, budget management, compliance
 **Warehouse Manager:** Inventory management, stock optimization, warehouse operations
 **HR Manager:** Employee management, payroll, recruitment
-**Project Manager:** Project tracking, resource allocation, productivity monitoring
 **Finance Staff:** Daily accounting operations, journal entries, reporting
 **Warehouse Staff:** Daily warehouse operations, inbound/outbound processing
 **HR Staff:** Daily HR operations, attendance, payroll processing
@@ -355,52 +347,9 @@ Saat ini, operasional perusahaan di industri Mining, Oil & Gas, Logistics, Manuf
 - [ ] Correlate attendance data with task completion
 - [ ] Productivity score calculation
 - [ ] Performance trend analysis
-- [ ] Integration with TaskProject module
+- [ ] Integration with Task App module (standalone, see TASK-APP.md)
 
 **Priority:** Should Have
-
----
-
-#### Task & Project Management
-
-**User Story TP-1: Kanban Board Management**
-**As a** Project Manager
-**I want** to manage tasks using kanban board
-**So that** I can visualize project progress
-
-**Acceptance Criteria:**
-- [ ] Custom status columns per project
-- [ ] Drag-and-drop task movement
-- [ ] Task assignment to team members
-- [ ] Task priority setting
-
-**Priority:** Must Have
-
-**User Story TP-2: Time Tracking**
-**As a** Team Member
-**I want** to log time spent on tasks
-**So that** project effort can be tracked
-
-**Acceptance Criteria:**
-- [ ] Manual time entry
-- [ ] Timer functionality
-- [ ] Time approval workflow
-- [ ] Integration with HR productivity analytics
-
-**Priority:** Must Have
-
-**User Story TP-3: Task Dependency Management**
-**As a** Project Manager
-**I want** to define task dependencies
-**So that** tasks are executed in the correct order
-
-**Acceptance Criteria:**
-- [ ] Define predecessor/successor relationships
-- [ ] Visual dependency graph
-- [ ] Block dependent tasks if predecessor not complete
-- [ ] Critical path calculation
-
-**Priority:** Must Have
 
 
 
@@ -436,15 +385,6 @@ Saat ini, operasional perusahaan di industri Mining, Oil & Gas, Logistics, Manuf
 - **FR-HR-8:** System harus match candidates dengan job descriptions
 - **FR-HR-9:** System harus correlate attendance dengan task completion untuk productivity
 
-#### TaskProject Module
-- **FR-TP-1:** System harus support kanban board dengan custom status columns
-- **FR-TP-2:** System harus allow drag-and-drop task movement
-- **FR-TP-3:** System harus track time spent per task
-- **FR-TP-4:** System harus define task dependencies (predecessor/successor)
-- **FR-TP-5:** System harus block dependent tasks jika predecessor tidak complete
-- **FR-TP-6:** System harus calculate critical path
-
-
 #### Shared Kernel
 - **FR-SHARED-1:** System harus enforce RBAC dengan granular permissions
 - **FR-SHARED-2:** System harus maintain audit trail immutable
@@ -460,7 +400,6 @@ Saat ini, operasional perusahaan di industri Mining, Oil & Gas, Logistics, Manuf
 - **WMS:** Stock ledger update < 1 second, Inbound/Outbound processing < 3 seconds
 - **Finance:** Journal entry posting < 2 seconds, Financial report generation < 5 seconds
 - **HR:** Attendance recording < 1 second, Payroll processing < 30 seconds (async), CV upload < 2 seconds, CV parsing < 10 seconds (async)
-- **TaskProject:** Task update < 1 second, Kanban board load < 2 seconds, Time log entry < 1 second
 - **Overall:** Support 100+ concurrent users, P95 latency < 300ms untuk read operations
 
 ### 5.2 Security Requirements
@@ -478,7 +417,6 @@ Saat ini, operasional perusahaan di industri Mining, Oil & Gas, Logistics, Manuf
 - Support 10,000+ inventory items (WMS)
 - Support 100,000+ journal entries (Finance)
 - Support 1,000+ employees (HR)
-- Support 10,000+ tasks (TaskProject)
 - Support 100+ concurrent users
 - Horizontal scaling via serverless architecture
 - Database connection pooling untuk high concurrency
@@ -531,13 +469,6 @@ Saat ini, operasional perusahaan di industri Mining, Oil & Gas, Logistics, Manuf
 - **Recruitment Pages:** Candidate list, candidate detail, CV upload, job management, job matching
 - **Dashboard Page:** HR overview, productivity analytics, recruitment pipeline
 
-**TaskProject Pages:**
-- **Project List Page:** Project overview, status summary, team assignment
-- **Kanban Board Page:** Drag-and-drop task board, custom columns, task cards
-- **Task Detail Page:** Task description, time logs, dependencies, comments
-- **Time Tracking Page:** Timer, manual time entry, time approval
-- **Dashboard Page:** Project progress, team workload, productivity metrics
-
 ### 6.2 User Experience Guidelines
 - Consistent UI patterns across all modules (shadcn/ui components)
 - Minimal clicks untuk common actions
@@ -588,13 +519,6 @@ Saat ini, operasional perusahaan di industri Mining, Oil & Gas, Logistics, Manuf
 - **job_postings:** Job descriptions
 - **candidate_job_matches:** Matching scores
 
-**TaskProject Entities:**
-- **projects:** Project definitions
-- **tasks:** Task items dengan status
-- **task_dependencies:** Predecessor/successor relationships
-- **time_logs:** Time tracking records
-- **task_assignments:** Task ke team member assignments
-
 **Shared Entities:**
 - **users:** System users
 - **roles:** Role definitions
@@ -620,25 +544,16 @@ Saat ini, operasional perusahaan di industri Mining, Oil & Gas, Logistics, Manuf
 2. Payroll period end → Calculate take-home pay → Generate payslips → Post to Finance
 3. CV uploaded → Text extraction → AI parsing → Store candidate data
 4. Job posting created → Generate embeddings → Match candidates → Score and rank
-5. TaskProject time logs → Correlate with attendance → Calculate productivity
-
-**TaskProject Flow:**
-1. Task created → Assign to team member → Add dependencies
-2. Team member logs time → Time approval → Update task progress
-3. Dependency check → Block/unblock tasks → Calculate critical path
-
+5. Task App time logs → Correlate with attendance → Calculate productivity
 
 **Cross-Module Flow (via Domain Events):**
 - PayrollProcessed (HR) → Post journal entries (Finance)
 - StockMovement (WMS) → Update inventory valuation (Finance)
-- EmployeeOnboarded (HR) → Assign onboarding tasks (TaskProject)
-- ProductivityDataUpdated (TaskProject) → Update HR analytics (HR)
 
 ### 7.3 Data Retention
 - **WMS:** Stock ledger retained indefinitely (7 years for compliance), Purchase receipts 7 years, Sales orders 7 years
 - **Finance:** Journal entries retained indefinitely (7 years for compliance), Audit logs indefinitely
 - **HR:** Employee data retained indefinitely, Attendance records 2 years, Payroll records 7 years, Active candidates indefinitely, Rejected candidates auto-archive 1 year, delete 2 years
-- **TaskProject:** Projects retained indefinitely, Tasks 2 years after completion, Time logs 2 years
 - **Shared:** Audit logs retained indefinitely, PII data encrypted, access restricted
 
 ---
@@ -665,21 +580,14 @@ Saat ini, operasional perusahaan di industri Mining, Oil & Gas, Logistics, Manuf
 - `BudgetThresholdExceeded` → Notify Finance Manager
 
 **Events Raised by HR:**
-- `EmployeeHired` → Create employee record, assign onboarding tasks di TaskProject
+- `EmployeeHired` → Create employee record, assign onboarding tasks (via webhook ke Task App)
 - `EmployeeTerminated` → Remove access, archive data
 - `PayrollProcessed` → Post journal entries ke Finance
 - `CandidateHired` → Convert candidate ke employee
 
-**Events Raised by TaskProject:**
-- `TaskCompleted` → Update productivity analytics di HR
-- `ProjectCompleted` → Update project metrics
-- `TimeLogUpdated` → Update productivity analytics di HR
-
 **Events Listened by Each Module:**
 - **WMS:** `PurchaseOrderCreated` (dari external), `SalesOrderCreated` (dari external)
 - **Finance:** `PayrollProcessed` (dari HR), `StockMovement` (dari WMS)
-- **HR:** `TaskCompleted` (dari TaskProject), `TimeLogUpdated` (dari TaskProject)
-- **TaskProject:** `EmployeeHired` (dari HR), `EmployeeTerminated` (dari HR)
 
 ### 8.3 API Requirements
 
@@ -710,13 +618,6 @@ Saat ini, operasional perusahaan di industri Mining, Oil & Gas, Logistics, Manuf
 - GET /api/v1/hr/recruitment/candidates
 - POST /api/v1/hr/recruitment/jobs
 
-**TaskProject Endpoints:**
-- GET /api/v1/task/projects
-- POST /api/v1/task/projects/{id}/tasks
-- PUT /api/v1/task/tasks/{id}/status
-- POST /api/v1/task/tasks/{id}/time-logs
-- GET /api/v1/task/projects/{id}/kanban
-
 **Shared Endpoints:**
 - GET /api/v1/auth/me
 - POST /api/v1/auth/logout
@@ -744,10 +645,6 @@ Saat ini, operasional perusahaan di industri Mining, Oil & Gas, Logistics, Manuf
 | BR-HR-003 | Payroll posting | Payroll processed | Auto-post journal entries to Finance |
 | BR-HR-004 | Duplicate candidate | Email/phone match existing | Flag as potential duplicate |
 | BR-HR-005 | Minimum match score | Candidate score < 30% | Hide from top results |
-| **TaskProject Rules** ||||
-| BR-TP-001 | Dependency blocking | Predecessor not complete | Block dependent task |
-| BR-TP-002 | Time approval | Time log submitted | Require manager approval |
-| BR-TP-003 | Critical path | Task on critical path delayed | Notify project manager |
 | **Shared Rules** ||||
 | BR-SHARED-001 | Audit logging | Any data change | Log to audit trail |
 | BR-SHARED-002 | RBAC enforcement | API endpoint access | Validate permissions before access |
@@ -817,10 +714,6 @@ Saat ini, operasional perusahaan di industri Mining, Oil & Gas, Logistics, Manuf
 | Payroll accuracy | 100% | Error rate in payroll calculations |
 | CV parsing accuracy | > 85% | Sample validation against manual entry |
 | Time to screen 100 CVs | < 30 minutes | Track time from upload to shortlist |
-| **TaskProject Metrics** ||||
-| Project completion rate | > 90% | On-time project delivery rate |
-| Resource utilization improvement | > 25% | Resource allocation efficiency |
-| Task completion time accuracy | > 80% | Estimated vs actual time comparison |
 | **Overall Metrics** ||||
 | User adoption rate | > 80% | Active user metrics |
 | System uptime | > 99.5% | Availability monitoring |
@@ -844,3 +737,4 @@ Saat ini, operasional perusahaan di industri Mining, Oil & Gas, Logistics, Manuf
 | Version | Date | Author | Description of Changes |
 |---------|------|--------|----------------------|
 | 1.0 | 2026-06-29 | AI Engineer | Initial version - Complete FluxGrid ERP PRD covering all 4 modules (WMS, Finance, HR, TaskProject) |
+| 2.0 | 2026-07-08 | AI Engineer | Remove TaskProject module — extracted to standalone Go + Next.js app. See TASK-APP.md |
