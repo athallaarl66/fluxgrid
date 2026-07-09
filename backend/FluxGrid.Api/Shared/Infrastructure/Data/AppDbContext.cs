@@ -1,4 +1,5 @@
 using FluxGrid.Api.Modules.Finance.Domain.Entities;
+using FluxGrid.Api.Modules.HR.Domain.Entities;
 using FluxGrid.Api.Modules.WMS.Domain.Entities;
 using FluxGrid.Api.Shared.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -30,6 +31,11 @@ public class AppDbContext : DbContext
     public DbSet<PickList> PickLists => Set<PickList>();
     public DbSet<PickListItem> PickListItems => Set<PickListItem>();
     public DbSet<Shipment> Shipments => Set<Shipment>();
+
+    public DbSet<Employee> Employees => Set<Employee>();
+    public DbSet<Department> Departments => Set<Department>();
+    public DbSet<Position> Positions => Set<Position>();
+    public DbSet<SalaryGrade> SalaryGrades => Set<SalaryGrade>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -350,6 +356,81 @@ public class AppDbContext : DbContext
                   .WithMany()
                   .HasForeignKey(e => e.OrderId)
                   .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<Employee>(entity =>
+        {
+            entity.ToTable("employees");
+
+            entity.HasKey(e => e.Id);
+
+            entity.HasIndex(e => e.EmployeeNo).IsUnique();
+            entity.HasIndex(e => e.Email);
+            entity.HasIndex(e => e.TenantId);
+
+            entity.Property(e => e.EmployeeNo).HasMaxLength(20).IsRequired();
+            entity.Property(e => e.FirstName).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.LastName).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.Email).HasMaxLength(255).IsRequired();
+            entity.Property(e => e.Phone).HasMaxLength(30);
+            entity.Property(e => e.Address).HasMaxLength(500);
+            entity.Property(e => e.Nik).HasMaxLength(30);
+            entity.Property(e => e.EmergencyContact).HasMaxLength(200);
+            entity.Property(e => e.JobTitle).HasMaxLength(100);
+            entity.Property(e => e.BaseSalary).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.BankName).HasMaxLength(100);
+            entity.Property(e => e.BankAccount).HasMaxLength(50);
+            entity.Property(e => e.TaxId).HasMaxLength(30);
+            entity.Property(e => e.Status).HasMaxLength(20).IsRequired().HasDefaultValue("ACTIVE");
+            entity.Property(e => e.HireDate).IsRequired();
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
+            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("NOW()");
+
+            entity.HasOne(e => e.Manager)
+                  .WithMany()
+                  .HasForeignKey(e => e.ManagerId)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<Department>(entity =>
+        {
+            entity.ToTable("departments");
+
+            entity.HasKey(e => e.Id);
+
+            entity.HasIndex(e => new { e.TenantId, e.Name }).IsUnique();
+
+            entity.Property(e => e.Name).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+
+            entity.HasOne(e => e.Parent)
+                  .WithMany(e => e.Children)
+                  .HasForeignKey(e => e.ParentId)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<Position>(entity =>
+        {
+            entity.ToTable("positions");
+
+            entity.HasKey(e => e.Id);
+
+            entity.HasIndex(e => new { e.TenantId, e.Title }).IsUnique();
+
+            entity.Property(e => e.Title).HasMaxLength(100).IsRequired();
+        });
+
+        modelBuilder.Entity<SalaryGrade>(entity =>
+        {
+            entity.ToTable("salary_grades");
+
+            entity.HasKey(e => e.Id);
+
+            entity.HasIndex(e => new { e.TenantId, e.Grade }).IsUnique();
+
+            entity.Property(e => e.Grade).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.MinSalary).HasColumnType("decimal(18,2)").IsRequired();
+            entity.Property(e => e.MaxSalary).HasColumnType("decimal(18,2)").IsRequired();
         });
     }
 }

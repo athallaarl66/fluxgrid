@@ -9,7 +9,7 @@ const columns = [
   { key: "picking", label: "Picking", statuses: ["PICKING"], color: "border-t-[#5a8fbf]" },
   { key: "to-pack", label: "To Pack", statuses: ["PACKED"], color: "border-t-[#9b72cf]" },
   { key: "shipped", label: "Shipped", statuses: ["SHIPPED"], color: "border-t-[#6ba368]" },
-] as const;
+];
 
 interface OutboundKanbanProps {
   orders: SalesOrder[];
