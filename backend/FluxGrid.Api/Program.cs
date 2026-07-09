@@ -119,6 +119,9 @@ builder.Services.AddScoped<FinanceDashboardService>();
 builder.Services.AddScoped<StockLedgerService>();
 builder.Services.AddScoped<PurchaseOrderService>();
 builder.Services.AddScoped<PurchaseReceiptService>();
+builder.Services.AddScoped<SalesOrderService>();
+builder.Services.AddScoped<PickListService>();
+builder.Services.AddScoped<ShipmentService>();
 builder.Services.AddScoped<AuditService>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -166,5 +169,6 @@ app.MapStockLedgerEndpoints();
 app.MapInventoryBalanceEndpoints();
 app.MapPurchaseOrderEndpoints();
 app.MapPurchaseReceiptEndpoints();
+app.MapOutboundEndpoints();
 
 app.Run();

@@ -32,25 +32,31 @@ public static class WmsDataSeeder
 
             var items = await db.InventoryItems.Where(i => i.TenantId == tenantId).ToListAsync();
             var sku001 = items.First(i => i.Sku == "SKU-001");
+            var sku002 = items.First(i => i.Sku == "SKU-002");
+            var whMain = await db.Locations.FirstAsync(l => l.TenantId == tenantId && l.Code == "WH-MAIN");
 
-            db.PurchaseOrders.Add(new PurchaseOrder
+            db.InventoryBalances.AddRange(
+                new InventoryBalance { Id = Guid.NewGuid(), ItemId = sku001.Id, LocationId = whMain.Id, BalanceQty = 200, BalanceValue = 0, TenantId = tenantId },
+                new InventoryBalance { Id = Guid.NewGuid(), ItemId = sku002.Id, LocationId = whMain.Id, BalanceQty = 150, BalanceValue = 0, TenantId = tenantId }
+            );
+
+            await db.SaveChangesAsync();
+
+            var order = new SalesOrder
             {
                 Id = Guid.NewGuid(),
-                PoNumber = "PO-9999",
-                SupplierName = "Acme Supply Co.",
-                PoDate = DateTime.UtcNow,
+                OrderNo = "SO-123",
+                Status = SalesOrderStatus.PENDING,
+                CustomerId = Guid.NewGuid(),
+                CustomerName = "Test Customer",
                 TenantId = tenantId,
                 Lines =
                 [
-                    new PurchaseOrderLine
-                    {
-                        Id = Guid.NewGuid(),
-                        ItemId = sku001.Id,
-                        OrderedQty = 100,
-                        ReceivedQty = 0
-                    }
+                    new SalesOrderLine { Id = Guid.NewGuid(), ItemId = sku001.Id, QtyOrdered = 5, QtyReserved = 0, QtyPicked = 0, QtyShipped = 0 },
+                    new SalesOrderLine { Id = Guid.NewGuid(), ItemId = sku002.Id, QtyOrdered = 10, QtyReserved = 0, QtyPicked = 0, QtyShipped = 0 }
                 ]
-            });
+            };
+            db.SalesOrders.Add(order);
         }
 
         await db.SaveChangesAsync();

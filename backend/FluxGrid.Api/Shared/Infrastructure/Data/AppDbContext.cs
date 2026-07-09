@@ -25,6 +25,11 @@ public class AppDbContext : DbContext
     public DbSet<PurchaseOrderLine> PurchaseOrderLines => Set<PurchaseOrderLine>();
     public DbSet<PurchaseReceipt> PurchaseReceipts => Set<PurchaseReceipt>();
     public DbSet<PurchaseReceiptLine> PurchaseReceiptLines => Set<PurchaseReceiptLine>();
+    public DbSet<SalesOrder> SalesOrders => Set<SalesOrder>();
+    public DbSet<SalesOrderLine> SalesOrderLines => Set<SalesOrderLine>();
+    public DbSet<PickList> PickLists => Set<PickList>();
+    public DbSet<PickListItem> PickListItems => Set<PickListItem>();
+    public DbSet<Shipment> Shipments => Set<Shipment>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -257,6 +262,94 @@ public class AppDbContext : DbContext
                   .WithMany()
                   .HasForeignKey(e => e.PutawayLocId)
                   .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<SalesOrder>(entity =>
+        {
+            entity.ToTable("sales_orders");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.TenantId, e.OrderNo }).IsUnique();
+            entity.Property(e => e.OrderNo).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.Status).HasConversion<string>().HasMaxLength(20).IsRequired();
+            entity.Property(e => e.CustomerName).HasMaxLength(200).IsRequired();
+            entity.Property(e => e.Notes).HasMaxLength(1000);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
+            entity.HasIndex(e => e.TenantId);
+
+            entity.HasMany(e => e.Lines)
+                  .WithOne(e => e.Order)
+                  .HasForeignKey(e => e.OrderId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<SalesOrderLine>(entity =>
+        {
+            entity.ToTable("sales_order_lines");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.QtyOrdered).HasColumnType("decimal(18,4)").IsRequired();
+            entity.Property(e => e.QtyReserved).HasColumnType("decimal(18,4)").IsRequired().HasDefaultValue(0);
+            entity.Property(e => e.QtyPicked).HasColumnType("decimal(18,4)").IsRequired().HasDefaultValue(0);
+            entity.Property(e => e.QtyShipped).HasColumnType("decimal(18,4)").IsRequired().HasDefaultValue(0);
+            entity.HasOne(e => e.Item)
+                  .WithMany()
+                  .HasForeignKey(e => e.ItemId)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<PickList>(entity =>
+        {
+            entity.ToTable("pick_lists");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Status).HasConversion<string>().HasMaxLength(20).IsRequired();
+            entity.Property(e => e.AssignedTo).HasMaxLength(100);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
+            entity.HasIndex(e => e.TenantId);
+
+            entity.HasOne(e => e.Order)
+                  .WithMany()
+                  .HasForeignKey(e => e.OrderId)
+                  .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasMany(e => e.Items)
+                  .WithOne(e => e.PickList)
+                  .HasForeignKey(e => e.PickListId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<PickListItem>(entity =>
+        {
+            entity.ToTable("pick_list_items");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.QtyExpected).HasColumnType("decimal(18,4)").IsRequired();
+            entity.Property(e => e.QtyPicked).HasColumnType("decimal(18,4)").IsRequired().HasDefaultValue(0);
+            entity.Property(e => e.ShortPickReason).HasMaxLength(200);
+            entity.HasOne(e => e.OrderLine)
+                  .WithMany()
+                  .HasForeignKey(e => e.OrderLineId)
+                  .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Item)
+                  .WithMany()
+                  .HasForeignKey(e => e.ItemId)
+                  .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Location)
+                  .WithMany()
+                  .HasForeignKey(e => e.LocationId)
+                  .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<Shipment>(entity =>
+        {
+            entity.ToTable("shipments");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.ShipmentNo).IsUnique();
+            entity.Property(e => e.ShipmentNo).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.Status).HasConversion<string>().HasMaxLength(20).IsRequired();
+            entity.HasIndex(e => e.TenantId);
+
+            entity.HasOne(e => e.Order)
+                  .WithMany()
+                  .HasForeignKey(e => e.OrderId)
+                  .OnDelete(DeleteBehavior.Restrict);
         });
     }
 }

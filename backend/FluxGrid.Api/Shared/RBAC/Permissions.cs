@@ -9,6 +9,7 @@ public static class Permissions
     public const string WmsAdmin = "WMS:Admin";
     public const string WmsInboundCreate = "wms.inbound.create";
     public const string WmsInboundApprove = "wms.inbound.approve";
+    public const string WmsOutboundProcess = "wms.outbound.process";
 
     public const string FinanceRead = "Finance:Read";
     public const string FinanceWrite = "Finance:Write";
@@ -33,7 +34,7 @@ public static class Permissions
 
     public static readonly string[] All = [
         DashboardRead,
-        WmsRead, WmsWrite, WmsAdmin, WmsInboundCreate, WmsInboundApprove,
+        WmsRead, WmsWrite, WmsAdmin, WmsInboundCreate, WmsInboundApprove, WmsOutboundProcess,
         FinanceRead, FinanceWrite, FinanceAdmin, FinanceCoaRead, FinanceCoaManage,
         FinanceJournalView, FinanceJournalCreate, FinanceJournalApprove,
         FinancePeriodRead, FinancePeriodAdmin, FinanceBudgetRead, FinanceBudgetManage, FinanceReportRead,
