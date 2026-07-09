@@ -13,7 +13,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FluxGrid.Api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260709013310_AddPurchaseOrdersAndReceipts")]
+    [Migration("20260709021430_AddPurchaseOrdersAndReceipts")]
     partial class AddPurchaseOrdersAndReceipts
     {
         /// <inheritdoc />
