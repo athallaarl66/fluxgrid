@@ -11,10 +11,10 @@ export function useEmployeeList(params: {
 }) {
   const searchParams = new URLSearchParams();
   if (params.search) searchParams.set("search", params.search);
-  if (params.departmentId) searchParams.set("department_id", params.departmentId);
+  if (params.departmentId) searchParams.set("departmentId", params.departmentId);
   if (params.status) searchParams.set("status", params.status);
   if (params.page) searchParams.set("page", String(params.page));
-  if (params.pageSize) searchParams.set("page_size", String(params.pageSize));
+  if (params.pageSize) searchParams.set("pageSize", String(params.pageSize));
 
   return useQuery<PaginatedResponse<Employee>>({
     queryKey: ["employees", params],

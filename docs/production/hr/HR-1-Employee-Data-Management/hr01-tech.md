@@ -1,104 +1,299 @@
 # Technical Specifications: Employee Data Management (HR-1)
 
-## 1. System Architecture
-- **Frontend**: Next.js Client Components with TanStack Query for caching directory data.
-- **Backend**: Next.js API Routes.
-- **Database**: PostgreSQL (Neon). Uses Adjacency List (`manager_id`) for Org Chart.
+## 1. Change Overview
 
-## 2. Database Schema
+**Branch:** `feat/DB-init-testing`
+**Commits**:
 
-### Table: `departments`
-| Column Name | Type | Constraints | Description |
-|-------------|------|-------------|-------------|
-| `id` | UUID | PRIMARY KEY | |
-| `name` | VARCHAR(100) | NOT NULL | e.g., "Engineering" |
-| `parent_id` | UUID | FK | Reference to `departments.id` |
-| `tenant_id` | UUID | NOT NULL, FK| |
+| # | Hash | Message |
+|---|------|---------|
+| 1 | `e3d4b82` | feat(hr-1): implement backend Domain, Infrastructure, and Application layers |
+| 2 | `9f8dfae` | feat(hr-1): frontend Section 7-10 — layout, directory, profile, form modal |
 
-### Table: `employees`
-| Column Name | Type | Constraints | Description |
-|-------------|------|-------------|-------------|
-| `id` | UUID | PRIMARY KEY | |
-| `user_id` | UUID | UNIQUE, FK | Links to Auth User |
-| `employee_no` | VARCHAR(50) | UNIQUE | e.g., "EMP-001" |
-| `first_name` | VARCHAR(100) | NOT NULL | |
-| `last_name` | VARCHAR(100) | NOT NULL | |
-| `email` | VARCHAR(255) | UNIQUE, NOT NULL | |
-| `department_id` | UUID | FK | |
-| `manager_id` | UUID | FK | Reference to `employees.id` |
-| `job_title` | VARCHAR(100) | NOT NULL | |
-| `base_salary` | DECIMAL | | (Requires strict RLS) |
-| `status` | VARCHAR(20) | NOT NULL | ACTIVE, ON_LEAVE, TERMINATED |
-| `hire_date` | DATE | NOT NULL | |
-| `termination_date`| DATE | | |
-| `tenant_id` | UUID | NOT NULL, FK| |
+**Total**: ~45 files changed across backend + frontend
 
-## 3. Drizzle ORM Schema Snippet
-```typescript
-import { pgTable, uuid, varchar, date, decimal, timestamp, AnyPgColumn } from "drizzle-orm/pg-core";
+---
 
-export const departments = pgTable("departments", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  name: varchar("name", { length: 100 }).notNull(),
-  parentId: uuid("parent_id").references((): AnyPgColumn => departments.id),
-  tenantId: uuid("tenant_id").notNull(),
-});
+## 2. Complete File Inventory
 
-export const employees = pgTable("employees", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  userId: uuid("user_id").unique(),
-  employeeNo: varchar("employee_no", { length: 50 }).notNull().unique(),
-  firstName: varchar("first_name", { length: 100 }).notNull(),
-  lastName: varchar("last_name", { length: 100 }).notNull(),
-  email: varchar("email", { length: 255 }).notNull().unique(),
-  departmentId: uuid("department_id").references(() => departments.id),
-  managerId: uuid("manager_id").references((): AnyPgColumn => employees.id),
-  jobTitle: varchar("job_title", { length: 100 }).notNull(),
-  baseSalary: decimal("base_salary"),
-  status: varchar("status", { length: 20 }).notNull().default("ACTIVE"),
-  hireDate: date("hire_date").notNull(),
-  tenantId: uuid("tenant_id").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+### 2.1 Backend (.NET 8) — 15 files
+
+```
+Modules/HR/
+├── API/
+│   ├── HrDtos.cs                   ← CreateEmployeeRequest, EmployeeResponse,
+│   │                                  EmployeeDetailResponse, DepartmentResponse, OrgChartNode
+│   └── HrEndpoints.cs              ← /api/v1/hr/employees, /departments, /org-chart
+├── Application/
+│   ├── DepartmentService.cs        ← CRUD + max depth + circular ref + employee guard
+│   ├── EmployeeService.cs          ← CRUD + search/filter/paginate + salary exclusion
+│   └── OrgChartService.cs          ← GET flat active employees
+├── Domain/
+│   ├── Entities/
+│   │   ├── Department.cs           ← Id, Name, ParentId, TenantId, IsActive
+│   │   └── Employee.cs             ← Id, EmployeeNo, Name, Email, Status, Salary, etc.
+│   └── Events/
+│       ├── EmployeeHired.cs        ← Domain event on create
+│       ├── EmployeeTerminated.cs   ← Domain event on terminate
+│       └── EmployeeUpdated.cs      ← Domain event on update
 ```
 
-## 4. API Endpoints
+Backend infrastructure changes:
+```
+M  Program.cs                       ← Register EmployeeService, DepartmentService, OrgChartService
+M  Shared/Domain/Entities/User.cs   ← (existing) referenced by Employee.UserId
+M  Shared/Infrastructure/Data/AppDbContext.cs  ← DbSet<Employee>, DbSet<Department>
+M  Shared/Infrastructure/Audit/AuditService.cs ← ReferenceHandler.IgnoreCycles fix
+```
 
-### GET `/api/v1/hr/employees`
-- **Description**: Fetch employee directory.
-- **Query Params**: `department_id`, `status`, `search`.
-- **Security**: Exclude `base_salary` from the select statement unless the user has `hr.payroll.read`.
+### 2.2 Frontend (Next.js 16) — 22 files
 
-### POST `/api/v1/hr/employees`
-- **Description**: Create new employee.
-- **Action**: Inserts into `employees`. Dispatches `EmployeeHired` event. Optionally creates a `users` record if auth is handled internally.
+```
+app/hr/
+├── layout.tsx                      ← AuthProvider + Sidebar + Header + Footer
+├── page.tsx                        ← Redirect to /hr/employees
+├── employees/
+│   ├── page.tsx                    ← Directory page (search, filter, pagination)
+│   └── [id]/page.tsx              ← Profile page (tabbed: personal, employment, payroll)
+├── org-chart/
+│   └── page.tsx                    ← Org chart with zoom/pan (desktop) / indented list (mobile)
+└── departments/
+    └── page.tsx                    ← Department list with CRUD
 
-### PUT `/api/v1/hr/employees/{id}/terminate`
-- **Description**: Terminate employee.
-- **Action**: Sets `status` = TERMINATED. Dispatches `EmployeeTerminated` event (which triggers auth revocation).
+components/hr/
+├── EmployeeTable.tsx               ← Dense data table (36px row, #9CAB84 border)
+├── EmployeeGrid.tsx                ← Card grid view
+├── EmployeeCard.tsx                ← Avatar initials with hash color
+├── EmployeeToolbar.tsx             ← Search, filter dropdowns, view toggle, Add button
+├── EmployeeFormModal.tsx           ← Create/edit employee modal form
+├── ProfileHeader.tsx               ← Avatar, name, employee no, status badge
+├── PersonalInfoTab.tsx             ← Editable personal details (Zod validation)
+├── EmploymentTab.tsx               ← Department, manager, hire date + timeline
+├── EmploymentTimeline.tsx          ← Vertical timeline (hire, promotions, transfers)
+├── PayrollTab.tsx                  ← Masked salary with eye toggle (permission-gated)
+├── MaskedField.tsx                 ← Reusable masked sensitive data component
+├── OrgChartNode.tsx                ← Employee node with avatar, name, title
+├── OrgChartTree.tsx                ← Recursive tree with drag-to-pan, ctrl+wheel zoom
+├── OrgChartMobileList.tsx          ← Indented hierarchical list (mobile <768px)
+├── DepartmentTable.tsx             ← Hierarchy-indented table with tree building
+└── DepartmentFormModal.tsx         ← Create/edit department with parent selector
 
-### GET `/api/v1/hr/org-chart`
-- **Description**: Get flat list of employees to build the org chart.
+hooks/
+├── useEmployees.ts                 ← TanStack Query: list, detail, create, update, terminate
+├── useDepartments.ts               ← TanStack Query: list, create, update, delete
+└── useOrgChart.ts                  ← TanStack Query: fetch flat list + buildTree()
 
-## 5. Domain Events
-- **Raised**: 
-  - `EmployeeHired` -> TaskProject module listens to create onboarding tasks.
-  - `EmployeeTerminated` -> TaskProject module listens to reassign open tasks.
-- **Consumed**: `CandidateHired` (from Recruitment) -> Auto-populates POST endpoint.
+lib/
+└── hr-types.ts                     ← Employee, EmployeeDetail, Department, OrgChartNode,
+                                       PaginatedResponse, CreateEmployeeRequest, etc.
+```
 
-## 6. Permissions (RBAC)
-- `hr.employee.read`: View basic directory.
-- `hr.employee.manage`: Create/Edit profiles.
-- `hr.payroll.read`: View sensitive fields (salary, bank).
+---
 
-## 7. Performance Considerations
-- Org chart generation should be cached or built client-side from a flat list to prevent heavy recursive SQL queries on every page load.
+## 3. Architecture Diagram
 
-## 8. Security Considerations
-- Use Drizzle ORM's specific column selection to ensure `baseSalary` is never accidentally sent to the frontend directory payload.
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│  Browser                                                                  │
+│  ┌────────────────┐  ┌─────────────────────────────────────────────────┐ │
+│  │ /hr/employees  │  │ /hr/org-chart    │  /hr/departments              │ │
+│  │ (dir page)     │  │ (zoom/pan tree)  │  (hierarchy table)           │ │
+│  │ Table / Grid   │  │ Mobile: list     │  CRUD modal                   │ │
+│  ├────────────────┤  │ Desktop: tree    │                               │ │
+│  │ /hr/employees/ │  └──────────────────┴───────────────────────────────┘ │
+│  │  [id] (profile)│                                                     │
+│  └───────┬────────┘                                                     │
+│          │ api-client.ts → http://localhost:5020                         │
+└──────────┼──────────────────────────────────────────────────────────────┘
+           │
+┌──────────▼──────────────────────────────────────────────────────────────┐
+│  Program.cs (.NET 8 Minimal API)                                        │
+│  ┌──────────────────────────────────────────────────────────────────┐   │
+│  │  /api/v1/hr/employees     → EmployeeService                     │   │
+│  │  /api/v1/hr/departments   → DepartmentService                   │   │
+│  │  /api/v1/hr/org-chart     → OrgChartService                     │   │
+│  │                                                                  │   │
+│  │  Middleware: JWT Auth → Permission Claims → Tenant isolation     │   │
+│  │  AuditService.LogAsync → DomainEventDispatcher → Event handlers  │   │
+│  └──────────────────────────────┬───────────────────────────────────┘   │
+│                                 │ EF Core (Npgsql)                      │
+│                                 ▼                                        │
+│  PostgreSQL 18 (fluxgrid)                                                │
+│  Tables: Employees, Departments, Users, Roles, AuditLogs                │
+└─────────────────────────────────────────────────────────────────────────┘
+```
 
-## 9. Error Handling
-- Prevent circular references in `manager_id`.
+---
 
-## 10. Seed Data
-- Seed a "CEO" employee and a basic department structure (HR, IT, Finance) to allow testing the org chart immediately.
+## 4. Database Schema (EF Core)
+
+### Table: `Departments`
+
+| Column | Type | Constraints |
+|--------|------|-------------|
+| `Id` | UUID | PK |
+| `Name` | VARCHAR(100) | NOT NULL |
+| `ParentId` | UUID | FK → Departments.Id (self-ref) |
+| `TenantId` | UUID | NOT NULL |
+| `IsActive` | BOOLEAN | DEFAULT true |
+
+**Indexes**: `IX_Departments_TenantId`, `IX_Departments_ParentId`
+
+### Table: `Employees`
+
+| Column | Type | Constraints |
+|--------|------|-------------|
+| `Id` | UUID | PK |
+| `UserId` | UUID | FK → Users.Id (nullable) |
+| `EmployeeNo` | VARCHAR(50) | NOT NULL, UNIQUE |
+| `FirstName` | VARCHAR(100) | NOT NULL |
+| `LastName` | VARCHAR(100) | NOT NULL |
+| `Email` | VARCHAR(255) | NOT NULL, UNIQUE |
+| `Phone` | VARCHAR(50) | |
+| `Address` | TEXT | |
+| `DateOfBirth` | DATE | |
+| `Nik` | VARCHAR(50) | National ID |
+| `EmergencyContact` | VARCHAR(200) | |
+| `DepartmentId` | UUID | FK → Departments.Id |
+| `ManagerId` | UUID | FK → Employees.Id (self-ref) |
+| `JobTitle` | VARCHAR(100) | |
+| `BaseSalary` | DECIMAL | Permission-gated (HR:PayrollRead) |
+| `BankName` | VARCHAR(100) | |
+| `BankAccount` | VARCHAR(50) | |
+| `TaxId` | VARCHAR(50) | NPWP |
+| `Status` | VARCHAR(20) | NOT NULL — ACTIVE / ON_LEAVE / TERMINATED |
+| `HireDate` | DATE | NOT NULL |
+| `TerminationDate` | DATE | |
+| `TenantId` | UUID | NOT NULL |
+| `CreatedAt` | TIMESTAMP | |
+| `UpdatedAt` | TIMESTAMP | |
+
+**Indexes**: `IX_Employees_TenantId`, `IX_Employees_EmployeeNo` (unique), `IX_Employees_Email` (unique), `IX_Employees_DepartmentId`, `IX_Employees_ManagerId`
+
+---
+
+## 5. API Contract
+
+| Method | Endpoint | Auth | Body | Response | Notes |
+|--------|----------|------|------|----------|-------|
+| GET | `/api/v1/hr/employees` | HR:EmployeeRead | — | `{ items[], total, page, pageSize }` | Query: `search`, `status`, `departmentId`, `page`, `pageSize`. Salary excluded unless HR:PayrollRead |
+| GET | `/api/v1/hr/employees/{id}` | HR:EmployeeRead | — | EmployeeDetail | Salary null unless HR:PayrollRead |
+| POST | `/api/v1/hr/employees` | HR:EmployeeManage | `CreateEmployeeRequest` | EmployeeDetail | Auto-generates EMP-NNN, provisions User account |
+| PUT | `/api/v1/hr/employees/{id}` | HR:EmployeeManage | `UpdateEmployeeRequest` | EmployeeDetail | Validates circular manager reference |
+| POST | `/api/v1/hr/employees/{id}/terminate` | HR:EmployeeManage | — | EmployeeDetail | Sets TERMINATED, deactivates User |
+| GET | `/api/v1/hr/departments` | HR:EmployeeRead | — | Department[] | |
+| POST | `/api/v1/hr/departments` | HR:EmployeeManage | `CreateDepartmentRequest` | Department | Validates max depth (5 levels) |
+| PUT | `/api/v1/hr/departments/{id}` | HR:EmployeeManage | `UpdateDepartmentRequest` | Department | Validates circular ref, max depth |
+| DELETE | `/api/v1/hr/departments/{id}` | HR:EmployeeManage | — | 204 | Blocked if employees or children exist |
+| GET | `/api/v1/hr/org-chart` | HR:EmployeeRead | — | OrgChartNode[] | Flat list of ACTIVE employees, ordered by EmployeeNo |
+
+---
+
+## 6. Domain Events
+
+| Event | Raised By | Consumer | Payload |
+|-------|-----------|----------|---------|
+| `EmployeeHired` | EmployeeService.CreateAsync | Logged only (MVP) | employeeId, employeeNo, name, departmentId, managerId, jobTitle |
+| `EmployeeUpdated` | EmployeeService.UpdateAsync | Logged only (MVP) | employeeId, employeeNo, before/after jobTitle, departmentId, managerId |
+| `EmployeeTerminated` | EmployeeService.TerminateAsync | deactivates User account | employeeId, employeeNo, userId, terminationDate |
+
+---
+
+## 7. Key Business Logic
+
+| Rule | Implementation |
+|------|----------------|
+| **Employee No** | Auto-generated `EMP-NNN` format; increments per tenant |
+| **Circular Manager** | Traverses ancestor chain — rejects if candidate is descendant |
+| **Salary Gating** | Backend: DTO projection omits `base_salary` unless `HR:PayrollRead` claim exists |
+| **Department Depth** | Max 5 levels; check depth of candidate parent before assignment |
+| **Delete Guard** | Department deletion blocked if employees or child departments exist |
+| **Termination** | Sets `status=TERMINATED`, `terminationDate=UtcNow`, deactivates linked User |
+| **User Provisioning** | On employee create: creates User with default "Staff" role + random password |
+| **Audit Trail** | All mutating endpoints call `AuditService.LogAsync` |
+| **Tenant Isolation** | All queries filter by `TenantId` |
+
+---
+
+## 8. Frontend State Management
+
+```
+TanStack Query Key Hierarchy:
+├── ["employees", {search, departmentId, status, page, pageSize}]  → useEmployeeList
+├── ["employee", id]                                               → useEmployee
+├── ["departments"]                                                → useDepartmentList
+├── ["org-chart"]                                                  → useOrgChart (builds tree client-side)
+```
+
+**Org Chart Tree Construction** (client-side):
+```typescript
+function buildTree(employees: OrgChartNode[]): OrgChartNode[] {
+  const map = new Map(employees.map(e => [e.id, { ...e, children: [] }]));
+  const roots: OrgChartNode[] = [];
+  for (const emp of employees) {
+    const node = map.get(emp.id)!;
+    if (emp.managerId && map.has(emp.managerId))
+      map.get(emp.managerId)!.children.push(node);
+    else
+      roots.push(node);
+  }
+  return roots;
+}
+```
+
+---
+
+## 9. Dependencies
+
+### Backend (.NET 8)
+
+| Package | Version |
+|---------|---------|
+| `Microsoft.AspNetCore.Authentication.JwtBearer` | 8.0.0 |
+| `Microsoft.EntityFrameworkCore.Design` | 8.0.0 |
+| `Npgsql.EntityFrameworkCore.PostgreSQL` | 8.0.0 |
+| `BCrypt.Net-Next` | 4.0.3 |
+
+### Frontend (Next.js 16)
+
+| Package | Version |
+|---------|---------|
+| `next` | 16.2.10 |
+| `@tanstack/react-query` | ^5.101.2 |
+| `lucide-react` | ^1.23.0 |
+| `recharts` | ^2.15.0 |
+
+---
+
+## 10. Local Dev Setup
+
+```bash
+# Backend
+cd backend/FluxGrid.Api
+dotnet run
+# → http://localhost:5020
+
+# Frontend (separate terminal)
+cd frontend
+npm run dev
+# → http://localhost:3000
+
+# Test employee list
+curl -X GET http://localhost:5020/api/v1/hr/employees?page=1\&page_size=20 \
+  -H "Authorization: Bearer <token>"
+
+# Run HR unit tests
+cd tests/unit/hr/hr-1-employee-data-management.Test
+dotnet test
+```
+
+---
+
+## 11. Known Limitations (MVP)
+
+- No self-service portal (employee editing own profile) — deferred
+- No bulk import/export (CSV/Excel)
+- No drag-and-drop org chart editing — read-only tree
+- No advanced reporting (turnover, headcount analytics)
+- Event consumers are log-only; no cross-module side effects yet
+- User provisioning uses default "Staff" role — no role selection on create

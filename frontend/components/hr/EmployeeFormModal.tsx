@@ -45,7 +45,7 @@ export function EmployeeFormModal({ onClose, employee }: EmployeeFormModalProps)
   const [submitting, setSubmitting] = useState(false);
 
   const departments = deptData || [];
-  const employees = empData?.data || [];
+  const employees = empData?.items || [];
 
   const filteredManagers = employees.filter(
     (e) => {

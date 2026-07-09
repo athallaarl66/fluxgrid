@@ -102,9 +102,8 @@ export interface OrgChartNode {
 }
 
 export interface PaginatedResponse<T> {
-  data: T[];
+  items: T[];
   total: number;
   page: number;
   pageSize: number;
-  totalPages: number;
 }

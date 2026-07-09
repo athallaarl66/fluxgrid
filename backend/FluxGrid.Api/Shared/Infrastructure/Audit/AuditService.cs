@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using FluxGrid.Api.Shared.Domain.Entities;
 using FluxGrid.Api.Shared.Infrastructure.Data;
 
@@ -6,6 +7,11 @@ namespace FluxGrid.Api.Shared.Infrastructure.Audit;
 
 public class AuditService
 {
+    private static readonly JsonSerializerOptions _jsonOptions = new()
+    {
+        ReferenceHandler = ReferenceHandler.IgnoreCycles
+    };
+
     private readonly AppDbContext _db;
 
     public AuditService(AppDbContext db)
@@ -30,7 +36,7 @@ public class AuditService
             ResourceId = resourceId,
             IpAddress = ipAddress,
             UserAgent = userAgent,
-            ChangesJson = changes.Count > 0 ? JsonSerializer.Serialize(changes) : null
+            ChangesJson = changes.Count > 0 ? JsonSerializer.Serialize(changes, _jsonOptions) : null
         };
 
         _db.AuditLogs.Add(log);

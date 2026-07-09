@@ -90,7 +90,7 @@ export default function EmployeeDirectoryPage() {
           <p className="text-sm text-destructive font-medium">Failed to load employees</p>
           <p className="text-xs text-muted-foreground mt-1">Please try again later</p>
         </div>
-      ) : data && data.data.length === 0 ? (
+      ) : data && data.items.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <Users className="size-12 text-muted-foreground/40 mb-3" />
           <p className="text-sm font-medium text-foreground">No employees match your search</p>
@@ -99,15 +99,15 @@ export default function EmployeeDirectoryPage() {
       ) : data ? (
         <>
           {viewMode === "table" ? (
-            <EmployeeTable employees={data.data} />
+            <EmployeeTable employees={data.items} />
           ) : (
-            <EmployeeGrid employees={data.data} />
+            <EmployeeGrid employees={data.items} />
           )}
 
-          {data.totalPages > 1 && (
+          {data.total > data.pageSize && (
             <div className="flex items-center justify-between pt-2">
               <p className="text-xs text-muted-foreground">
-                Page {data.page} of {data.totalPages} ({data.total} total)
+                Page {data.page} of {Math.ceil(data.total / data.pageSize)} ({data.total} total)
               </p>
               <div className="flex items-center gap-1">
                 <button
@@ -120,7 +120,7 @@ export default function EmployeeDirectoryPage() {
                 </button>
                 <button
                   type="button"
-                  disabled={page >= data.totalPages}
+                  disabled={page >= Math.ceil(data.total / data.pageSize)}
                   onClick={() => setPage((p) => p + 1)}
                   className="h-7 rounded border border-border px-2 text-xs text-foreground disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed hover:bg-muted transition-colors"
                 >
