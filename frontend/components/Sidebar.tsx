@@ -46,7 +46,15 @@ const navItems: NavItem[] = [
       { label: "Reports", href: "/finance/reports" },
     ],
   },
-  { label: "HR", href: "/hr", icon: Users },
+  {
+    label: "HR",
+    href: "/hr",
+    icon: Users,
+    children: [
+      { label: "Employees", href: "/hr/employees" },
+      { label: "Org Chart", href: "/hr/org-chart" },
+    ],
+  },
   { label: "Projects", href: "/projects", icon: ClipboardList },
 ];
 

@@ -37,6 +37,7 @@ public static class DataSeeder
 
             await FinanceDataSeeder.SeedAsync(db, DefaultTenantId);
             await WmsDataSeeder.SeedAsync(db, DefaultTenantId);
+            await HrDataSeeder.SeedAsync(db, DefaultTenantId);
             return;
         }
 
@@ -102,5 +103,6 @@ public static class DataSeeder
         await db.SaveChangesAsync();
         await FinanceDataSeeder.SeedAsync(db, DefaultTenantId);
         await WmsDataSeeder.SeedAsync(db, DefaultTenantId);
+        await HrDataSeeder.SeedAsync(db, DefaultTenantId);
     }
 }

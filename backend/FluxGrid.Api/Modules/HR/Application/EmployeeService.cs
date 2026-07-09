@@ -1,6 +1,7 @@
 using FluxGrid.Api.Modules.HR.API;
 using FluxGrid.Api.Modules.HR.Domain.Entities;
 using FluxGrid.Api.Modules.HR.Domain.Events;
+using FluxGrid.Api.Shared.Domain.Entities;
 using FluxGrid.Api.Shared.Infrastructure.Audit;
 using FluxGrid.Api.Shared.Infrastructure.Data;
 using FluxGrid.Api.Shared.Infrastructure.Events;
@@ -118,6 +119,25 @@ public class EmployeeService
         _db.Employees.Add(employee);
         await _db.SaveChangesAsync();
 
+        var defaultRole = await _db.Roles.FirstOrDefaultAsync(r => r.Name == "Staff");
+        var tempPassword = $"Emp{employee.EmployeeNo}!{(new Random().Next(100000, 999999))}";
+        var user = new User
+        {
+            Id = Guid.NewGuid(),
+            Username = employee.Email,
+            Email = employee.Email,
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(tempPassword),
+            IsActive = true,
+            MustChangePassword = true,
+            TenantId = tenantId,
+            Roles = defaultRole is not null ? [defaultRole] : []
+        };
+        _db.Users.Add(user);
+        await _db.SaveChangesAsync();
+
+        employee.UserId = user.Id;
+        await _db.SaveChangesAsync();
+
         await _audit.LogAsync(userId, tenantId, "CREATE", "employees", employee.Id, ipAddress, userAgent, null, employee);
 
         _events.Raise(new EmployeeHired(
@@ -187,6 +207,16 @@ public class EmployeeService
         employee.Status = "TERMINATED";
         employee.TerminationDate = DateTime.UtcNow;
         employee.UpdatedAt = DateTime.UtcNow;
+
+        if (employee.UserId.HasValue)
+        {
+            var user = await _db.Users.FindAsync(employee.UserId.Value);
+            if (user is not null)
+            {
+                user.IsActive = false;
+            }
+        }
+
         await _db.SaveChangesAsync();
 
         var after = MapToDetail(employee);
