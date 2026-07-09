@@ -7,11 +7,11 @@
 - **Priority**: Could Have
 
 ## 2. Business Value & ROI
-- **Business Value**: Bridges the gap between "Time spent in office" (Attendance) and "Actual work delivered" (Tasks completed). Identifies high performers and bottlenecks using hard data instead of subjective manager opinions.
+- **Business Value**: Bridges the gap between "Time spent in office" (Attendance from Task App) and "Actual work delivered" (Tasks completed). Identifies high performers and bottlenecks using hard data instead of subjective manager opinions.
 - **ROI Estimation**: Improves workforce efficiency by identifying under-utilized resources or overloaded employees, potentially reducing overtime costs by 15%.
 
 ## 3. Success Metrics
-- Dashboard visualizes the correlation between Attendance hours and Task completion rates.
+- Dashboard visualizes the correlation between Task App Attendance hours and Task completion rates.
 - Generates a "Productivity Score" for employees based on completed tasks vs scheduled hours.
 
 ## 4. User Persona
@@ -29,7 +29,7 @@
 
 ## 6. Acceptance Criteria
 - [ ] Consume `TaskCompleted` and `TimeLogUpdated` events from the TaskProject module.
-- [ ] Aggregate task data against attendance records (HR-2).
+- [ ] Aggregate task data against attendance records from Task App.
 - [ ] Visualize data via charts (Bar charts, Line graphs).
 - [ ] Calculate a unified Productivity Score algorithm.
 
@@ -39,7 +39,7 @@
 
 ## 8. Dependencies on Other Modules
 - Strictly dependent on the **TaskProject** module. If TaskProject is not used, this feature is disabled.
-- Dependent on **HR-2 (Attendance)** for the baseline denominator (Hours Worked).
+- Dependent on **Task App (Attendance)** for the baseline denominator (Hours Worked), via API integration.
 
 ## 9. Out of Scope
 - AI-based prescriptive recommendations for firing/promoting (Keep the AI out of direct personnel actions due to ethical/legal risks). The system only provides deterministic data visualization.

@@ -35,12 +35,10 @@ FluxGrid ERP adalah sistem Modular Monolith untuk industri berat (Mining, Oil & 
 
 **3. HR & Payroll**
 - Master data karyawan dengan struktur jabatan
-- **Web-Based Attendance (PWA):** GPS Geofencing, AI Face Recognition, Offline Support
-- Mesin absensi berbasis rule (late tolerance, overtime)
 - Payroll engine: take-home pay = base + allowances − deductions − tax (PPh 21)
 - Slip gaji per periode
 - HR Recruitment: Upload CV, parsing otomatis, candidate scoring
-- AI Integration: CV Parsing, Candidate-Job Matching, Interview Generation, Productivity Analytics, Face Recognition
+- AI Integration: CV Parsing, Candidate-Job Matching, Interview Generation, Productivity Analytics
 
 **Shared Features:**
 - **Monorepo:** Frontend (Next.js 15) + Backend (.NET 8) dalam satu repository
@@ -135,7 +133,7 @@ Saat ini, operasional perusahaan di industri Mining, Oil & Gas, Logistics, Manuf
 **HR Manager:** Employee management, payroll, recruitment
 **Finance Staff:** Daily accounting operations, journal entries, reporting
 **Warehouse Staff:** Daily warehouse operations, inbound/outbound processing
-**HR Staff:** Daily HR operations, attendance, payroll processing
+**HR Staff:** Daily HR operations, payroll processing
 **IT Team:** Maintenance, integration, system administration
 **External Auditor:** Compliance, audit trail access, reporting
 **Management:** Strategic decisions, budget approval, resource planning
@@ -273,19 +271,6 @@ Saat ini, operasional perusahaan di industri Mining, Oil & Gas, Logistics, Manuf
 
 **Priority:** Must Have
 
-**User Story HR-2: Attendance Management**
-**As a** HR Staff
-**I want** to track employee attendance
-**So that** payroll calculation is accurate
-
-**Acceptance Criteria:**
-- [ ] Clock in/out recording
-- [ ] Late tolerance rules
-- [ ] Overtime calculation
-- [ ] Leave management
-
-**Priority:** Must Have
-
 **User Story HR-3: Payroll Processing**
 **As a** HR Manager
 **I want** to process payroll automatically
@@ -344,7 +329,7 @@ Saat ini, operasional perusahaan di industri Mining, Oil & Gas, Logistics, Manuf
 **So that** I can identify top performers and areas for improvement
 
 **Acceptance Criteria:**
-- [ ] Correlate attendance data with task completion
+- [ ] Correlate Task App attendance data with task completion
 - [ ] Productivity score calculation
 - [ ] Performance trend analysis
 - [ ] Integration with Task App module (standalone, see TASK-APP.md)
@@ -376,14 +361,14 @@ Saat ini, operasional perusahaan di industri Mining, Oil & Gas, Logistics, Manuf
 
 #### HR Module
 - **FR-HR-1:** System harus manage employee master data dengan organizational structure
-- **FR-HR-2:** System harus track attendance dengan clock in/out
-- **FR-HR-3:** System harus calculate overtime berdasarkan company rules
+- **FR-HR-2:** [Task App] Attendance dengan clock in/out, face recognition, GPS geofencing, PWA
+- **FR-HR-3:** [Task App] Overtime calculation & late detection
 - **FR-HR-4:** System harus process payroll dengan PPh 21 calculation
 - **FR-HR-5:** System harus generate payslips per periode
 - **FR-HR-6:** System harus accept CV uploads (PDF, DOCX, TXT)
 - **FR-HR-7:** System harus parse CV menggunakan Groq API
 - **FR-HR-8:** System harus match candidates dengan job descriptions
-- **FR-HR-9:** System harus correlate attendance dengan task completion untuk productivity
+- **FR-HR-9:** System harus correlate attendance (dari Task App) dengan task completion untuk productivity
 
 #### Shared Kernel
 - **FR-SHARED-1:** System harus enforce RBAC dengan granular permissions
@@ -399,7 +384,7 @@ Saat ini, operasional perusahaan di industri Mining, Oil & Gas, Logistics, Manuf
 ### 5.1 Performance Requirements
 - **WMS:** Stock ledger update < 1 second, Inbound/Outbound processing < 3 seconds
 - **Finance:** Journal entry posting < 2 seconds, Financial report generation < 5 seconds
-- **HR:** Attendance recording < 1 second, Payroll processing < 30 seconds (async), CV upload < 2 seconds, CV parsing < 10 seconds (async)
+- **HR:** Payroll processing < 30 seconds (async), CV upload < 2 seconds, CV parsing < 10 seconds (async)
 - **Overall:** Support 100+ concurrent users, P95 latency < 300ms untuk read operations
 
 ### 5.2 Security Requirements
@@ -440,7 +425,7 @@ Saat ini, operasional perusahaan di industri Mining, Oil & Gas, Logistics, Manuf
 - Progressive disclosure untuk complex data
 - Keyboard shortcuts untuk power users
 - Onboarding guide untuk new users
-- Mobile-friendly untuk basic operations (attendance, time tracking)
+- Mobile-friendly untuk basic operations
 
 ---
 
@@ -464,7 +449,6 @@ Saat ini, operasional perusahaan di industri Mining, Oil & Gas, Logistics, Manuf
 **HR Pages:**
 - **Employee List Page:** Table view dengan filter, search, organizational structure
 - **Employee Detail Page:** Profile summary, employment history, salary info
-- **Attendance Page:** Clock in/out, attendance calendar, leave management
 - **Payroll Page:** Payroll processing, payslip generation, payroll history
 - **Recruitment Pages:** Candidate list, candidate detail, CV upload, job management, job matching
 - **Dashboard Page:** HR overview, productivity analytics, recruitment pipeline
@@ -508,8 +492,6 @@ Saat ini, operasional perusahaan di industri Mining, Oil & Gas, Logistics, Manuf
 - **employees:** Master data karyawan
 - **organizational_units:** Department/division structure
 - **positions:** Job positions dan salary grades
-- **attendance:** Clock in/out records
-- **leaves:** Leave requests dan approvals
 - **payroll_periods:** Payroll processing periods
 - **payroll_records:** Calculatedipayroll per employee
 - **candidates:** Recruitment candidate profiles
@@ -540,11 +522,11 @@ Saat ini, operasional perusahaan di industri Mining, Oil & Gas, Logistics, Manuf
 4. HR payroll processed → Post journal entries to Finance
 
 **HR Flow:**
-1. Employee clock in/out → Attendance recorded → Overtime calculated
+1. [Task App] Employee clock in/out → Attendance recorded → Overtime calculated
 2. Payroll period end → Calculate take-home pay → Generate payslips → Post to Finance
 3. CV uploaded → Text extraction → AI parsing → Store candidate data
 4. Job posting created → Generate embeddings → Match candidates → Score and rank
-5. Task App time logs → Correlate with attendance → Calculate productivity
+5. Task App time logs → Correlate with Task App attendance → Calculate productivity
 
 **Cross-Module Flow (via Domain Events):**
 - PayrollProcessed (HR) → Post journal entries (Finance)
@@ -553,7 +535,7 @@ Saat ini, operasional perusahaan di industri Mining, Oil & Gas, Logistics, Manuf
 ### 7.3 Data Retention
 - **WMS:** Stock ledger retained indefinitely (7 years for compliance), Purchase receipts 7 years, Sales orders 7 years
 - **Finance:** Journal entries retained indefinitely (7 years for compliance), Audit logs indefinitely
-- **HR:** Employee data retained indefinitely, Attendance records 2 years, Payroll records 7 years, Active candidates indefinitely, Rejected candidates auto-archive 1 year, delete 2 years
+- **HR:** Employee data retained indefinitely, Payroll records 7 years, Active candidates indefinitely, Rejected candidates auto-archive 1 year, delete 2 years
 - **Shared:** Audit logs retained indefinitely, PII data encrypted, access restricted
 
 ---
@@ -611,8 +593,6 @@ Saat ini, operasional perusahaan di industri Mining, Oil & Gas, Logistics, Manuf
 
 **HR Endpoints:**
 - GET /api/v1/hr/employees
-- POST /api/v1/hr/attendance/clock-in
-- POST /api/v1/hr/attendance/clock-out
 - POST /api/v1/hr/payroll/process
 - POST /api/v1/hr/recruitment/candidates/upload
 - GET /api/v1/hr/recruitment/candidates
@@ -640,8 +620,8 @@ Saat ini, operasional perusahaan di industri Mining, Oil & Gas, Logistics, Manuf
 | BR-FIN-003 | Budget variance threshold | Variance > 20% | Flag in variance report |
 | BR-FIN-004 | Approval required | Journal entry amount > threshold | Require manager approval |
 | **HR Rules** ||||
-| BR-HR-001 | Late tolerance | Clock in > tolerance minutes | Mark as late, deduct from attendance |
-| BR-HR-002 | Overtime calculation | Work hours > daily limit | Calculate overtime pay at 1.5x rate |
+| BR-HR-001 | [Task App] Late tolerance | Clock in > tolerance minutes | Mark as late, deduct from attendance |
+| BR-HR-002 | [Task App] Overtime calculation | Work hours > daily limit | Calculate overtime pay at 1.5x rate |
 | BR-HR-003 | Payroll posting | Payroll processed | Auto-post journal entries to Finance |
 | BR-HR-004 | Duplicate candidate | Email/phone match existing | Flag as potential duplicate |
 | BR-HR-005 | Minimum match score | Candidate score < 30% | Hide from top results |

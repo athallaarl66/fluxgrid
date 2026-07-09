@@ -35,10 +35,9 @@ Technical design document untuk FluxGrid ERP - sistem Modular Monolith untuk ind
 
 **3. HR & Payroll**
 - Employee data management
-- Web-Based Attendance (PWA) dengan GPS Geofencing, AI Face Recognition, Offline Support
 - Payroll engine dengan PPh 21
 - HR Recruitment (CV parsing, job matching)
-- AI Integration: CV Parsing, Candidate-Job Matching, Productivity Analytics, Face Recognition
+- AI Integration: CV Parsing, Candidate-Job Matching, Productivity Analytics
 
 **Shared Features:**
 - Modular Monolith architecture dengan Clean Architecture dan DDD
@@ -133,7 +132,6 @@ erDiagram
     journal_entries ||--o{ anomalies : "may be flagged as"
     
     %% HR Entities
-    employees ||--o{ attendance : "has records"
     employees ||--o{ leaves : "requests"
     employees ||--o{ payroll_records : "paid in"
     organizational_units ||--o{ employees : "contains"
@@ -233,14 +231,6 @@ erDiagram
 **GET /api/v1/hr/employees**
 - **Description**: List employees
 - **Authentication**: Required (HR:Read)
-
-**POST /api/v1/hr/attendance/clock-in**
-- **Description**: Clock in for attendance
-- **Authentication**: Required (HR:Write)
-
-**POST /api/v1/hr/attendance/clock-out**
-- **Description**: Clock out for attendance
-- **Authentication**: Required (HR:Write)
 
 **POST /api/v1/hr/payroll/process**
 - **Description**: Process payroll for period
@@ -421,7 +411,6 @@ fluxgrid-frontend/
 │   │   └── dashboard/page.tsx
 │   ├── hr/
 │   │   ├── employees/page.tsx
-│   │   ├── attendance/page.tsx
 │   │   ├── payroll/page.tsx
 │   │   ├── recruitment/
 │   │   │   ├── candidates/page.tsx
@@ -443,7 +432,6 @@ fluxgrid-frontend/
 │   │   └── ReportViewer.tsx
 │   ├── hr/
 │   │   ├── EmployeeCard.tsx
-│   │   ├── AttendanceCalendar.tsx
 │   │   └── CVUploader.tsx
 └── hooks/
     ├── useWMS.ts
@@ -470,7 +458,6 @@ fluxgrid-frontend/
 | /finance/reports | Financial Reports | Finance:Read |
 | /finance/dashboard | Finance Dashboard | Finance:Read |
 | /hr/employees | Employee List | HR:Read |
-| /hr/attendance | Attendance | HR:Read/Write |
 | /hr/payroll | Payroll | HR:PayrollProcess |
 | /hr/recruitment/candidates | Candidates | HR:CVRead |
 | /hr/recruitment/jobs | Jobs | HR:CandidateManage |
@@ -486,8 +473,7 @@ fluxgrid-frontend/
 - Keyboard shortcuts untuk power users
 - Consistent UI patterns across all modules (shadcn/ui)
 - Real-time updates untuk collaborative features
-- Mobile-friendly untuk basic operations (attendance, time tracking)
-- PWA Support: Attendance module accessible via installable web app dengan offline capability
+- Mobile-friendly untuk basic operations
 
 ---
 
@@ -532,7 +518,7 @@ fluxgrid-frontend/
 | Content-Security-Policy | default-src 'self' | Prevent XSS |
 | X-XSS-Protection | 1; mode=block | XSS protection |
 | Referrer-Policy | strict-origin-when-cross-origin | Control referrer info |
-| Permissions-Policy | geolocation=(self), microphone=(), camera=(self) | Allow GPS & Camera for PWA Attendance |
+| Permissions-Policy | geolocation=(), microphone=(), camera=() | Restrict features |
 
 ---
 
@@ -648,7 +634,7 @@ fluxgrid-frontend/
 - **Test Scenarios**: 
   - WMS: Purchase receipt flow, pick/pack/ship flow
   - Finance: Journal entry creation, period closing, report generation
-   - HR: Employee onboarding, attendance tracking, payroll processing, CV upload flow
+   - HR: Employee onboarding, payroll processing, CV upload flow
 
 ### 11.4 Performance Testing
 - **Tools**: k6

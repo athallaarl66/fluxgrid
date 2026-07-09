@@ -173,7 +173,7 @@ Lihat [`docs/DESIGN.md`](./docs/DESIGN.md) untuk dokumentasi lengkap:
 | ------------------ | ----------------------------------------------------- |
 | **WMS**            | Warehouse Management — inbound/outbound, stock ledger |
 | **Finance**        | General Ledger — double-entry, P&L, balance sheet     |
-| **HR**             | Employee data, attendance, payroll, recruitment AI    |
+| **HR**             | Employee data, payroll, recruitment AI                |
 
 > **Catatan:** Modul **Task & Project** (kanban, time tracking, task dependencies) telah di-extract menjadi standalone app terpisah. Lihat [`TASK-APP.md`](./TASK-APP.md) untuk dokumentasi lengkap.
 

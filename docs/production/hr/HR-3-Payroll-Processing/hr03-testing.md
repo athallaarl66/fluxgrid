@@ -18,7 +18,7 @@ Testing for Payroll is high-risk. Focus heavily on mathematical assertions, pror
 
 ### TC-03: Variable Components (Overtime & Lateness)
 - **Given** an employee with 2 hours of approved overtime and 60 minutes of lateness.
-- **When** the payroll aggregates attendance.
+- **When** the payroll aggregates attendance from Task App API.
 - **Then** the Overtime Allowance is added to Gross Pay.
 - **And** the Lateness Penalty is added to Deductions.
 
@@ -42,7 +42,7 @@ Testing for Payroll is high-risk. Focus heavily on mathematical assertions, pror
 - **Then** the system blocks the finalization because the resulting journal entry would be rejected by Finance.
 
 ## 3. Performance Testing
-- Processing payroll for 2,000 employees involves thousands of database reads (attendance logs, salary history, tax brackets). Ensure the calculation engine can process a batch of 2,000 employees in under 30 seconds using background jobs or optimized bulk queries.
+- Processing payroll for 2,000 employees involves thousands of database reads (Task App attendance API calls, salary history, tax brackets). Ensure the calculation engine can process a batch of 2,000 employees in under 30 seconds using background jobs or optimized bulk queries.
 
 ## 4. Security & Access Testing
 - Only `hr.payroll.process` can initiate or finalize a run.

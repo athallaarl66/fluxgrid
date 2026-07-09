@@ -37,7 +37,7 @@
 - **Circular Reporting Lines**: Prevent Employee A from reporting to Employee B, while Employee B reports to Employee A.
 
 ## 8. Dependencies on Other Modules
-- Feeds into **HR-2 (Attendance)** and **HR-3 (Payroll)**.
+- Feeds into **Task App (Attendance)** dan **HR-3 (Payroll)**.
 - Domain Event `EmployeeHired` triggers tasks in the **TaskProject** module (e.g., "Setup Laptop", "Create Email").
 
 ## 9. Out of Scope

@@ -435,64 +435,6 @@ page_size: integer (optional, default: 20)
 
 ---
 
-#### POST /hr/attendance/clock-in
-**Purpose:** Clock in for attendance (PWA with GPS Geofencing & Face Recognition)
-
-**Request Headers:**
-```
-Authorization: Bearer {jwt_token}
-Content-Type: application/json
-```
-
-**Request Body:**
-```json
-{
-  "latitude": -6.2088,
-  "longitude": 106.8456,
-  "selfie_image": "data:image/jpeg;base64,...",
-  "device_info": {
-    "user_agent": "Mozilla/5.0...",
-    "is_pwa": true
-  }
-}
-```
-
-**Notes:**
-- `employee_id` is extracted from the JWT token (server-side), NOT from the client payload.
-- `timestamp` is generated server-side via `DateTime.UtcNow` to prevent time spoofing.
-- `latitude` / `longitude` are validated against the company's Geofence (configurable radius, e.g., 200 meters).
-- `selfie_image` is processed via Face Recognition to match against the employee's enrolled photo.
-- If the request comes from offline PWA sync, a `synced_at` field is added by the Service Worker.
-
-**Required Permission:** HR:Write
-
----
-
-#### POST /hr/attendance/clock-out
-**Purpose:** Clock out for attendance (PWA with GPS Geofencing & Face Recognition)
-
-**Request Headers:**
-```
-Authorization: Bearer {jwt_token}
-Content-Type: application/json
-```
-
-**Request Body:**
-```json
-{
-  "latitude": -6.2088,
-  "longitude": 106.8456,
-  "selfie_image": "data:image/jpeg;base64,..."
-}
-```
-
-**Notes:**
-- Same validation rules as clock-in (GPS + Face Recognition).
-
-**Required Permission:** HR:Write
-
----
-
 #### POST /hr/payroll/process
 **Purpose:** Process payroll for period
 
@@ -1210,7 +1152,7 @@ Retry-After: 60
 | Content-Security-Policy | default-src 'self'; script-src 'self' 'unsafe-inline' | Prevent XSS |
 | X-XSS-Protection | 1; mode=block | XSS protection |
 | Referrer-Policy | strict-origin-when-cross-origin | Control referrer info |
-| Permissions-Policy | geolocation=(), microphone=(), camera=() | Restrict features |
+| Permissions-Policy | geolocation=(), microphone=(), camera=() | Restrict unused features |
 
 ### 4.7 Audit Logging
 

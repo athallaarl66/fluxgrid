@@ -29,7 +29,7 @@
 | `run_id` | UUID | NOT NULL, FK | Reference to `payroll_runs` |
 | `employee_id` | UUID | NOT NULL, FK | Reference to `employees` |
 | `base_salary` | DECIMAL | NOT NULL | Snapshot of current salary |
-| `overtime_pay`| DECIMAL | DEFAULT 0 | Calculated from attendance |
+| `overtime_pay`| DECIMAL | DEFAULT 0 | Calculated from Task App attendance data |
 | `gross_pay` | DECIMAL | NOT NULL | |
 | `tax_deduction`| DECIMAL| DEFAULT 0 | PPh 21 |
 | `net_pay` | DECIMAL | NOT NULL | |
@@ -74,7 +74,7 @@ export const payrollRecords = pgTable("payroll_records", {
 
 ### POST `/api/v1/hr/payroll/calculate`
 - **Description**: Generates a Draft payroll run.
-- **Action**: Aggregates data from `attendance_logs` and `employees`. Calculates tax. Saves to DB.
+- **Action**: Aggregates attendance data from Task App API and employee data from `employees`. Calculates tax. Saves to DB.
 
 ### PUT `/api/v1/hr/payroll/{id}/finalize`
 - **Description**: Locks the run.
@@ -95,7 +95,7 @@ export const payrollRecords = pgTable("payroll_records", {
 - **Employee**: Can only GET their own `employee_id` payslips.
 
 ## 7. Performance Considerations
-- The calculation endpoint involves many joins (Employees -> Shifts -> Attendance -> Leaves). Do NOT run this synchronously in a single request if employees > 50. Use background workers.
+- Payroll calculation fetches attendance summary from Task App API, then joins with employee data. Do NOT run this synchronously in a single request if employees > 50. Use background workers.
 
 ## 8. Security Considerations
 - The `PayrollProcessed` event handler in the Finance module must be idempotent. If it receives the same event twice, it should not create duplicate journal entries.

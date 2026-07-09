@@ -13,7 +13,7 @@
 | `id` | UUID | PRIMARY KEY | |
 | `employee_id` | UUID | NOT NULL, FK | Reference to `employees` |
 | `date` | DATE | NOT NULL | e.g., 2026-05-15 |
-| `hours_worked`| DECIMAL | DEFAULT 0 | Copied from `attendance_logs` |
+| `hours_worked`| DECIMAL | DEFAULT 0 | Copied from Task App Attendance API |
 | `tasks_completed`| INT | DEFAULT 0 | Incremented via Domain Event |
 | `hours_logged`| DECIMAL | DEFAULT 0 | Incremented via Domain Event (Time Tracking) |
 | `tenant_id` | UUID | NOT NULL, FK | |
