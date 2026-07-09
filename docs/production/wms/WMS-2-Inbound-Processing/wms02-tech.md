@@ -1,9 +1,26 @@
 # Technical Specifications: Inbound Processing (WMS-2)
 
+## 0. Enums
+
+### `ReceiptStatus`
+```csharp
+public enum ReceiptStatus { DRAFT, PENDING_PUTAWAY, COMPLETED }
+```
+- **DRAFT**: Initial state after creation. Lines can be edited.
+- **PENDING_PUTAWAY**: Confirmed by approver, ready for bin assignment.
+- **COMPLETED**: Putaway processed, stock ledger updated.
+
+### `LocationType`
+```csharp
+public enum LocationType { WAREHOUSE, TRANSIT, SUPPLIER, CUSTOMER, QUARANTINE }
+```
+- **QUARANTINE**: Auto-assigned for failed QA items during putaway.
+
 ## 1. System Architecture
 - **Frontend**: Next.js Server Actions for processing form submissions.
-- **Backend**: API Routes enforcing business logic (e.g., PO quantity validation).
-- **Database**: PostgreSQL (Neon) with transaction wrapping to ensure receipt headers, lines, and stock ledger entries are committed atomically.
+- **Backend**: Minimal API endpoints with service layer enforcing business logic (e.g., PO quantity validation, tenant isolation).
+- **Database**: PostgreSQL (Npgsql) with explicit `BeginTransactionAsync` to ensure receipt headers, lines, stock ledger entries, and inventory balances are committed atomically.
+- **Auth**: JWT Bearer + claim-based authorization with granular permission policies.
 
 ## 2. Database Schema
 
@@ -11,85 +28,194 @@
 | Column Name | Type | Constraints | Description |
 |-------------|------|-------------|-------------|
 | `id` | UUID | PRIMARY KEY | Unique identifier |
-| `receipt_no` | VARCHAR(50) | UNIQUE, NOT NULL | Auto-generated standard number |
+| `receipt_no` | VARCHAR(50) | UNIQUE, NOT NULL | Auto-generated standard number (`RCP-{yyyyMMdd}-{N:D4}`) |
 | `po_reference`| VARCHAR(50) | NOT NULL | External PO number |
-| `status` | VARCHAR(50) | NOT NULL | Enum: DRAFT, PENDING_PUTAWAY, COMPLETED |
-| `received_by` | UUID | NOT NULL, FK | Reference to `users` |
-| `tenant_id` | UUID | NOT NULL, FK | Multi-tenancy isolation |
+| `status` | VARCHAR(20) | NOT NULL | Enum: DRAFT, PENDING_PUTAWAY, COMPLETED (stored as string) |
+| `received_by` | VARCHAR(100) | NOT NULL | User ID of receiver |
+| `tenant_id` | UUID | NOT NULL, FK, Indexed | Multi-tenancy isolation |
 | `created_at` | TIMESTAMP | DEFAULT NOW() | |
 
 ### Table: `purchase_receipt_lines`
 | Column Name | Type | Constraints | Description |
 |-------------|------|-------------|-------------|
 | `id` | UUID | PRIMARY KEY | Unique identifier |
-| `receipt_id` | UUID | NOT NULL, FK | Reference to `purchase_receipts` |
-| `item_id` | UUID | NOT NULL, FK | Reference to `inventory_items` |
-| `qty_received`| DECIMAL | NOT NULL | |
-| `qty_passed` | DECIMAL | NOT NULL | |
-| `qty_failed` | DECIMAL | NOT NULL | |
-| `putaway_loc_id`| UUID | FK | Reference to `locations` (set during putaway) |
+| `receipt_id` | UUID | NOT NULL, FK (CASCADE) | Reference to `purchase_receipts` |
+| `item_id` | UUID | NOT NULL, FK (RESTRICT) | Reference to `inventory_items` |
+| `ordered_qty`| DECIMAL(18,4) | NOT NULL | Original PO ordered quantity (snapshot) |
+| `qty_received`| DECIMAL(18,4) | NOT NULL | Total quantity received |
+| `qty_passed` | DECIMAL(18,4) | NOT NULL | Quantity that passed QA inspection |
+| `qty_failed` | DECIMAL(18,4) | NOT NULL | Quantity that failed QA inspection |
+| `putaway_loc_id`| UUID | FK (SET NULL) | Reference to `locations` (set during putaway) |
 
-## 3. Drizzle ORM Schema Snippet
-```typescript
-import { pgTable, uuid, varchar, decimal, timestamp } from "drizzle-orm/pg-core";
-import { inventoryItems, locations } from "./wms01"; // References
+### Additional Tables
 
-export const purchaseReceipts = pgTable("purchase_receipts", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  receiptNo: varchar("receipt_no", { length: 50 }).notNull().unique(),
-  poReference: varchar("po_reference", { length: 50 }).notNull(),
-  status: varchar("status", { length: 50 }).notNull().default("PENDING_PUTAWAY"),
-  receivedBy: uuid("received_by").notNull(),
-  tenantId: uuid("tenant_id").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+#### `purchase_orders`
+| Column Name | Type | Constraints | Description |
+|-------------|------|-------------|-------------|
+| `id` | UUID | PRIMARY KEY | Unique identifier |
+| `po_number` | VARCHAR(50) | NOT NULL | PO number (unique per tenant) |
+| `supplier_name` | VARCHAR(200) | NOT NULL | Supplier name |
+| `po_date` | DATE | NOT NULL | PO issue date |
+| `tenant_id` | UUID | NOT NULL, FK | Multi-tenancy isolation |
+
+Unique index on `(tenant_id, po_number)`.
+
+#### `purchase_order_lines`
+| Column Name | Type | Constraints | Description |
+|-------------|------|-------------|-------------|
+| `id` | UUID | PRIMARY KEY | Unique identifier |
+| `po_id` | UUID | NOT NULL, FK (CASCADE) | Reference to `purchase_orders` |
+| `item_id` | UUID | NOT NULL, FK (RESTRICT) | Reference to `inventory_items` |
+| `ordered_qty`| DECIMAL(18,4) | NOT NULL | Quantity ordered |
+| `received_qty`| DECIMAL(18,4) | DEFAULT 0 | Cumulative quantity received |
+
+## 3. EF Core Entity Configuration
+
+Purchase receipts and orders are configured via Fluent API in `AppDbContext.OnModelCreating`:
+
+```csharp
+// PurchaseReceipt
+modelBuilder.Entity<PurchaseReceipt>(entity =>
+{
+    entity.ToTable("purchase_receipts");
+    entity.HasKey(e => e.Id);
+    entity.HasIndex(e => e.ReceiptNo).IsUnique();
+    entity.Property(e => e.ReceiptNo).HasMaxLength(50).IsRequired();
+    entity.Property(e => e.PoReference).HasMaxLength(50).IsRequired();
+    entity.Property(e => e.Status).HasConversion<string>().HasMaxLength(20).IsRequired();
+    entity.Property(e => e.ReceivedBy).HasMaxLength(100).IsRequired();
+    entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
+    entity.HasMany(e => e.Lines).WithOne(e => e.Receipt)
+          .HasForeignKey(e => e.ReceiptId).OnDelete(DeleteBehavior.Cascade);
 });
 
-export const purchaseReceiptLines = pgTable("purchase_receipt_lines", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  receiptId: uuid("receipt_id").references(() => purchaseReceipts.id).notNull(),
-  itemId: uuid("item_id").references(() => inventoryItems.id).notNull(),
-  qtyReceived: decimal("qty_received").notNull(),
-  qtyPassed: decimal("qty_passed").notNull(),
-  qtyFailed: decimal("qty_failed").notNull(),
-  putawayLocId: uuid("putaway_loc_id").references(() => locations.id),
+// PurchaseReceiptLine
+modelBuilder.Entity<PurchaseReceiptLine>(entity =>
+{
+    entity.ToTable("purchase_receipt_lines");
+    entity.HasKey(e => e.Id);
+    entity.Property(e => e.OrderedQty).HasColumnType("decimal(18,4)").IsRequired();
+    entity.Property(e => e.QtyReceived).HasColumnType("decimal(18,4)").IsRequired();
+    entity.Property(e => e.QtyPassed).HasColumnType("decimal(18,4)").IsRequired();
+    entity.Property(e => e.QtyFailed).HasColumnType("decimal(18,4)").IsRequired();
+    entity.HasOne(e => e.Item).WithMany()
+          .HasForeignKey(e => e.ItemId).OnDelete(DeleteBehavior.Restrict);
+    entity.HasOne(e => e.PutawayLoc).WithMany()
+          .HasForeignKey(e => e.PutawayLocId).OnDelete(DeleteBehavior.SetNull);
 });
 ```
 
+Entity classes are plain C# POCOs. Enums (`ReceiptStatus`, `LocationType`) are stored as strings via `HasConversion<string>()`.
+
 ## 4. API Endpoints
 
-### POST `/api/v1/wms/purchase-receipts`
-- **Description**: Create the initial receipt.
-- **Request Body**: PO Ref, array of line items (item ID, qty received, passed, failed).
-- **Action**: Creates `purchase_receipts` header and lines. Sets status to PENDING_PUTAWAY. 
+All endpoints are registered via extension methods in `Program.cs` and require JWT Bearer authentication with specific permission claims.
 
-### POST `/api/v1/wms/purchase-receipts/{id}/putaway`
-- **Description**: Confirm putaway locations.
-- **Request Body**: Array mapping line item IDs to `putawayLocId`.
-- **Action**: 
-  1. Updates lines with location IDs.
-  2. Updates status to COMPLETED.
-  3. Inserts records into `stock_ledger` (Debit assigned location, Credit Supplier).
-  4. Dispatches `ReceiptProcessed` domain event.
+### Purchase Order Endpoints (`PurchaseOrderEndpoints.cs`)
+
+| Method | Path | Permission | Description |
+|--------|------|------------|-------------|
+| POST | `/api/v1/wms/purchase-orders` | `wms.inbound.create` | Create a new purchase order with lines |
+| GET | `/api/v1/wms/purchase-orders` | `WMS:Read` | List POs with search & pagination |
+| GET | `/api/v1/wms/purchase-orders/{id}` | `WMS:Read` | Get PO by ID with line details |
+
+### Purchase Receipt Endpoints (`PurchaseReceiptEndpoints.cs`)
+
+| Method | Path | Permission | Description |
+|--------|------|------------|-------------|
+| POST | `/api/v1/wms/receipts` | `wms.inbound.create` | Create receipt (DRAFT). Validates PO exists, over-receiving, qty mismatch, tenant check |
+| GET | `/api/v1/wms/receipts` | `WMS:Read` | List receipts with status/PO/date filters & pagination |
+| GET | `/api/v1/wms/receipts/{id}` | `WMS:Read` | Get receipt by ID with line details |
+| POST | `/api/v1/wms/receipts/{id}/confirm` | `wms.inbound.approve` | Confirm receipt: DRAFT → PENDING_PUTAWAY |
+| POST | `/api/v1/wms/receipts/{id}/putaway` | `wms.inbound.approve` | Process putaway: assigns bins, creates stock ledger entries (DEBIT/CREDIT), updates balances, marks COMPLETED |
+
+### Receipt Creation (CreateReceiptAsync)
+1. Validates PO exists for tenant
+2. For each line: checks `passed + failed == received`, item belongs to PO, and no over-receiving beyond PO ordered qty
+3. Generates receipt no: `RCP-{yyyyMMdd}-{N:D4}`
+4. Sets status to `DRAFT`
+5. Logs audit: `CREATE` action on `purchase_receipt`
+
+### Putaway Processing (ProcessPutawayAsync)
+Runs inside `BeginTransactionAsync` for atomicity:
+1. Validates receipt status is `PENDING_PUTAWAY`
+2. Finds `SUPPLIER-TRANSIT` location (credit side)
+3. For each line: validates line & location belong to tenant
+4. Double-entry stock ledger: DEBIT destination location, CREDIT transit
+5. Updates/creates `InventoryBalance` records
+6. Auto-routes failed QA qty to `QUARANTINE` location
+7. Sets status to `COMPLETED`
+8. Updates PO line `ReceivedQty`
+9. Logs audit: `PUTAWAY` action
+10. Raises `ReceiptProcessed` domain event
 
 ## 5. Domain Events
+
+Domain events are raised via the `DomainEventDispatcher` (scoped in-memory collector pattern).
+
 - **Raised**:
-  - `ReceiptProcessed` (ReceiptID, Total Value) -> Finance module listens to this to create Accounts Payable journal entries.
+  - `ReceiptProcessed(Guid ReceiptId, decimal TotalValue, Guid TenantId)` — Dispatched after successful putaway. Finance module subscribes to create Accounts Payable journal entries.
+  - `StockMovement` — Raised by stock ledger service during inventory movements.
+  - `StockOutAlert` — Raised when stock balance drops below threshold.
+
 - **Consumed**:
-  - `PurchaseOrderCreated` (External) -> Creates expected receipts (if applicable based on integration scope).
+  - `PurchaseOrderCreated` (external integration) — Creates expected receipts (future scope).
 
 ## 6. Permissions (RBAC)
-- `wms.inbound.create`: Required to access the receive forms.
-- `wms.inbound.approve`: (Optional) Required if quantity exceeds PO limit.
+
+Defined as string constants in `Permissions.cs` and auto-registered as authorization policies in `Program.cs`. Each policy checks for the claim `"permissions"` containing the required value, or the `"Admin"` role.
+
+| Permission | Endpoints | Description |
+|------------|-----------|-------------|
+| `wms.inbound.create` | POST create PO, POST create receipt | Create inbound documents |
+| `wms.inbound.approve` | POST confirm receipt, POST putaway | Approve/inspect inbound operations |
+| `WMS:Read` | GET all WMS endpoints | View WMS data |
+| `WMS:Write` | POST stock-ledger/inventory | Write stock movements |
+| `WMS:Admin` | — | Full WMS administrative access |
 
 ## 7. Performance Considerations
-- Use a single database transaction for the Putaway endpoint. Writing to the receipt table and the stock ledger table simultaneously must be atomic to prevent orphaned inventory records.
+- Use a single database transaction (`BeginTransactionAsync`) for the Putaway endpoint. Writing to receipt lines, stock ledger entries, and inventory balances must be atomic to prevent orphaned inventory records.
+- Pagination with `Skip`/`Take` on list endpoints to prevent large result sets.
+- EF Core includes are limited to immediate navigation properties; no deep eager loading beyond 2 levels.
+- Composite indexes on `(TenantId, PoNumber)` and `(ItemId, LocationId, TenantId)` for common query patterns.
 
 ## 8. Security Considerations
-- Validate all incoming item IDs and location IDs to ensure they belong to the user's `tenant_id`.
+- All service methods filter by `tenant_id` — every query includes `TenantId == tenantId` to enforce multi-tenant data isolation.
+- Permission-based endpoint authorization via `[Permissions]` attribute — no unauthenticated access to WMS endpoints.
+- Input validation: Item IDs and Location IDs are validated against the user's tenant before any write operation.
+- Audit logging with `userId`, `ipAddress`, and `userAgent` for all CREATE, CONFIRM, and PUTAWAY actions.
 
 ## 9. Error Handling Strategy
-- Check constraint: Ensure `qty_passed + qty_failed == qty_received` at the database level using a CHECK constraint or Drizzle validation.
-- Rollback transaction completely if any ledger insertion fails.
+- Application-level validation: `qty_passed + qty_failed == qty_received` enforced in `CreateReceiptAsync` before any DB write.
+- Over-receiving prevention: Validates receipt qty against `OrderedQty - ReceivedQty` remaining balance.
+- Transaction rollback: `catch` block in `ProcessPutawayAsync` calls `tx.RollbackAsync()` if any ledger insertion or balance update fails.
+- Business errors returned as result objects (`ReceiptCreateResult`, `ReceiptActionResult`) with string error codes — no exceptions for expected validation failures.
+- Tenant isolation: all queries include tenant filter — cross-tenant access returns "not found" rather than authorization error to avoid leaking existence info.
 
-## 10. Seed Data Examples
-- Seed a dummy PO number `PO-9999` to allow testing of the receipt creation without relying on an external system initially.
+## 10. Seed Data (`WmsDataSeeder.cs`)
+
+Seeded during application startup via `DataSeeder.SeedAsync()`:
+
+| Entity | Data |
+|--------|------|
+| **Locations** | `SUPPLIER-TRANSIT` (TRANSIT), `WH-MAIN` (WAREHOUSE), `QUARANTINE` (QUARANTINE) |
+| **Inventory Items** | `SKU-001` (Safety Helmet), `SKU-002` (Work Gloves) |
+| **Purchase Order** | `PO-9999` — 100x SKU-001, Supplier: "Seed Supplier" |
+
+## 11. Service Layer
+
+### PurchaseOrderService
+| Method | Description |
+|--------|-------------|
+| `CreatePoAsync` | Creates PO with lines. Checks for duplicate PO number per tenant. Logs audit. |
+| `GetPoByIdAsync` | Returns PO with line details including item SKU/Name and open qty. |
+| `GetPoListAsync` | Paginated list with search by PO number or supplier name. |
+
+### PurchaseReceiptService
+| Method | Description |
+|--------|-------------|
+| `CreateReceiptAsync` | Validates PO, qty constraints, item ownership. Creates receipt in DRAFT. Generates receipt no. |
+| `GetReceiptAsync` | Single receipt with lines, item details, and putaway location. |
+| `GetReceiptListAsync` | Paginated list with status/PO/date filters. |
+| `ConfirmReceiptAsync` | DRAFT → PENDING_PUTAWAY. Validates receipt exists and is in DRAFT status. |
+| `ProcessPutawayAsync` | Atomic putaway: double-entry stock ledger, inventory balances, PO received qty update, ReceiptProcessed event. |

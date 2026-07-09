@@ -21,6 +21,10 @@ public class AppDbContext : DbContext
     public DbSet<Location> Locations => Set<Location>();
     public DbSet<StockLedgerEntry> StockLedgerEntries => Set<StockLedgerEntry>();
     public DbSet<InventoryBalance> InventoryBalances => Set<InventoryBalance>();
+    public DbSet<PurchaseOrder> PurchaseOrders => Set<PurchaseOrder>();
+    public DbSet<PurchaseOrderLine> PurchaseOrderLines => Set<PurchaseOrderLine>();
+    public DbSet<PurchaseReceipt> PurchaseReceipts => Set<PurchaseReceipt>();
+    public DbSet<PurchaseReceiptLine> PurchaseReceiptLines => Set<PurchaseReceiptLine>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -189,6 +193,70 @@ public class AppDbContext : DbContext
             entity.Property(e => e.BalanceValue).HasColumnType("decimal(18,4)").IsRequired();
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("NOW()");
             entity.HasIndex(e => e.TenantId);
+        });
+
+        modelBuilder.Entity<PurchaseOrder>(entity =>
+        {
+            entity.ToTable("purchase_orders");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.TenantId, e.PoNumber }).IsUnique();
+            entity.Property(e => e.PoNumber).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.SupplierName).HasMaxLength(200).IsRequired();
+            entity.Property(e => e.PoDate).IsRequired();
+            entity.HasIndex(e => e.TenantId);
+
+            entity.HasMany(e => e.Lines)
+                  .WithOne(e => e.Po)
+                  .HasForeignKey(e => e.PoId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<PurchaseOrderLine>(entity =>
+        {
+            entity.ToTable("purchase_order_lines");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.OrderedQty).HasColumnType("decimal(18,4)").IsRequired();
+            entity.Property(e => e.ReceivedQty).HasColumnType("decimal(18,4)").IsRequired().HasDefaultValue(0);
+            entity.HasOne(e => e.Item)
+                  .WithMany()
+                  .HasForeignKey(e => e.ItemId)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<PurchaseReceipt>(entity =>
+        {
+            entity.ToTable("purchase_receipts");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.ReceiptNo).IsUnique();
+            entity.Property(e => e.ReceiptNo).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.PoReference).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.Status).HasConversion<string>().HasMaxLength(20).IsRequired();
+            entity.Property(e => e.ReceivedBy).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
+            entity.HasIndex(e => e.TenantId);
+
+            entity.HasMany(e => e.Lines)
+                  .WithOne(e => e.Receipt)
+                  .HasForeignKey(e => e.ReceiptId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<PurchaseReceiptLine>(entity =>
+        {
+            entity.ToTable("purchase_receipt_lines");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.OrderedQty).HasColumnType("decimal(18,4)").IsRequired();
+            entity.Property(e => e.QtyReceived).HasColumnType("decimal(18,4)").IsRequired();
+            entity.Property(e => e.QtyPassed).HasColumnType("decimal(18,4)").IsRequired();
+            entity.Property(e => e.QtyFailed).HasColumnType("decimal(18,4)").IsRequired();
+            entity.HasOne(e => e.Item)
+                  .WithMany()
+                  .HasForeignKey(e => e.ItemId)
+                  .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.PutawayLoc)
+                  .WithMany()
+                  .HasForeignKey(e => e.PutawayLocId)
+                  .OnDelete(DeleteBehavior.SetNull);
         });
     }
 }

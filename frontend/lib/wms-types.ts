@@ -9,8 +9,51 @@ export interface InventoryItem {
 export interface Location {
   id: string;
   code: string;
-  type: "WAREHOUSE" | "TRANSIT" | "SUPPLIER" | "CUSTOMER";
+  type: "WAREHOUSE" | "TRANSIT" | "SUPPLIER" | "CUSTOMER" | "QUARANTINE";
   tenantId: string;
+}
+
+export interface PurchaseOrder {
+  id: string;
+  poNumber: string;
+  supplierName: string;
+  poDate: string;
+  lines: PurchaseOrderLine[];
+  tenantId: string;
+}
+
+export interface PurchaseOrderLine {
+  id: string;
+  itemId: string;
+  itemSku: string | null;
+  itemName: string | null;
+  orderedQty: number;
+  receivedQty: number;
+  openQty: number;
+}
+
+export interface PurchaseReceipt {
+  id: string;
+  receiptNo: string;
+  poReference: string;
+  status: string;
+  receivedBy: string;
+  createdAt: string;
+  lines: PurchaseReceiptLine[];
+  tenantId: string;
+}
+
+export interface PurchaseReceiptLine {
+  id: string;
+  itemId: string;
+  itemSku: string | null;
+  itemName: string | null;
+  orderedQty: number;
+  qtyReceived: number;
+  qtyPassed: number;
+  qtyFailed: number;
+  putawayLocId: string | null;
+  putawayLocCode: string | null;
 }
 
 export interface StockLedgerEntry {

@@ -5,5 +5,6 @@ public enum LocationType
     WAREHOUSE,
     TRANSIT,
     SUPPLIER,
-    CUSTOMER
+    CUSTOMER,
+    QUARANTINE
 }
