@@ -50,6 +50,10 @@ export function getPurchaseOrders(params: PoListParams = {}) {
 }
 
 export function getPurchaseOrder(id: string) {
+  return apiClient<PurchaseOrder>(`/api/v1/wms/purchase-orders/by-number/${encodeURIComponent(id)}`);
+}
+
+export function getPurchaseOrderById(id: string) {
   return apiClient<PurchaseOrder>(`/api/v1/wms/purchase-orders/${id}`);
 }
 

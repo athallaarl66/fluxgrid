@@ -167,6 +167,7 @@ app.MapBudgetEndpoints();
 app.MapFinanceDashboardEndpoints();
 app.MapStockLedgerEndpoints();
 app.MapInventoryBalanceEndpoints();
+app.MapWmsDashboardEndpoints();
 app.MapPurchaseOrderEndpoints();
 app.MapPurchaseReceiptEndpoints();
 app.MapOutboundEndpoints();

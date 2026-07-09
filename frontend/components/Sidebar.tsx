@@ -30,7 +30,6 @@ const navItems: NavItem[] = [
     href: "/wms",
     icon: Warehouse,
     children: [
-      { label: "Dashboard", href: "/wms" },
       { label: "Stock Ledger", href: "/wms/stock-ledger" },
       { label: "Inbound", href: "/wms/inbound" },
       { label: "Outbound", href: "/wms/outbound" },

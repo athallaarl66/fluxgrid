@@ -1,6 +1,8 @@
+using FluxGrid.Api.Shared.Infrastructure.Data;
 using FluxGrid.Api.Modules.WMS.Application;
 using FluxGrid.Api.Shared.RBAC;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace FluxGrid.Api.Modules.WMS.API;
 
@@ -57,6 +59,24 @@ public static class StockLedgerEndpoints
             if (balance == null)
                 return Results.NotFound();
             return Results.Ok(balance);
+        })
+        .RequireAuthorization(Permissions.WmsRead);
+    }
+
+    public static void MapWmsDashboardEndpoints(this WebApplication app)
+    {
+        app.MapGet("/api/v1/wms/dashboard", async (AppDbContext db, HttpContext http) =>
+        {
+            var (tenantId, _, _, _) = GetAuditContext(http);
+            var itemCount = await db.InventoryItems.CountAsync(i => i.TenantId == tenantId);
+            var locationCount = await db.Locations.CountAsync(l => l.TenantId == tenantId);
+            var inboundMtd = await db.StockLedgerEntries
+                .Where(e => e.TenantId == tenantId && e.Quantity > 0 && e.CreatedAt.Month == DateTime.UtcNow.Month)
+                .SumAsync(e => e.Quantity);
+            var outboundMtd = await db.StockLedgerEntries
+                .Where(e => e.TenantId == tenantId && e.Quantity < 0 && e.CreatedAt.Month == DateTime.UtcNow.Month)
+                .SumAsync(e => Math.Abs(e.Quantity));
+            return Results.Ok(new { itemCount, locationCount, inboundMtd, outboundMtd });
         })
         .RequireAuthorization(Permissions.WmsRead);
     }
