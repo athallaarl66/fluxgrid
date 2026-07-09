@@ -1,21 +1,40 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { Skeleton } from "@/components/ui/skeleton";
 import { WmsNav } from "@/components/wms/WmsNav";
+import { apiClient } from "@/lib/api-client";
 import { Warehouse, ScrollText, PackageOpen, ArrowRightFromLine, ArrowLeftFromLine } from "lucide-react";
+
+interface WmsStats {
+  itemCount: number;
+  locationCount: number;
+  inboundMtd: number;
+  outboundMtd: number;
+}
 
 export default function WmsDashboardPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
+  const [stats, setStats] = useState<WmsStats | null>(null);
+  const [statsLoading, setStatsLoading] = useState(true);
 
   useEffect(() => {
     if (!authLoading && !user) {
       router.push("/login?redirect=/wms");
     }
   }, [user, authLoading, router]);
+
+  useEffect(() => {
+    if (user) {
+      apiClient<WmsStats>("/api/v1/wms/dashboard")
+        .then(setStats)
+        .catch(() => setStats(null))
+        .finally(() => setStatsLoading(false));
+    }
+  }, [user]);
 
   if (authLoading) {
     return (
@@ -52,50 +71,26 @@ export default function WmsDashboardPage() {
       <WmsNav />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="rounded-xl border border-border bg-card p-4">
-          <div className="flex items-start justify-between">
-            <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground">Total SKUs</p>
-              <p className="text-xl font-semibold text-foreground tabular-nums">—</p>
-            </div>
-            <div className="flex size-9 items-center justify-center rounded-lg bg-accent shrink-0">
-              <PackageOpen className="size-4 text-accent-foreground" />
-            </div>
-          </div>
-        </div>
-        <div className="rounded-xl border border-border bg-card p-4">
-          <div className="flex items-start justify-between">
-            <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground">Locations</p>
-              <p className="text-xl font-semibold text-foreground tabular-nums">—</p>
-            </div>
-            <div className="flex size-9 items-center justify-center rounded-lg bg-accent shrink-0">
-              <Warehouse className="size-4 text-accent-foreground" />
-            </div>
-          </div>
-        </div>
-        <div className="rounded-xl border border-border bg-card p-4">
-          <div className="flex items-start justify-between">
-            <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground">Inbound MTD</p>
-              <p className="text-xl font-semibold text-foreground tabular-nums">—</p>
-            </div>
-            <div className="flex size-9 items-center justify-center rounded-lg bg-accent shrink-0">
-              <ArrowLeftFromLine className="size-4 text-accent-foreground" />
-            </div>
-          </div>
-        </div>
-        <div className="rounded-xl border border-border bg-card p-4">
-          <div className="flex items-start justify-between">
-            <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground">Outbound MTD</p>
-              <p className="text-xl font-semibold text-foreground tabular-nums">—</p>
-            </div>
-            <div className="flex size-9 items-center justify-center rounded-lg bg-accent shrink-0">
-              <ArrowRightFromLine className="size-4 text-accent-foreground" />
-            </div>
-          </div>
-        </div>
+        <StatCard
+          label="Total SKUs"
+          value={statsLoading ? "—" : String(stats?.itemCount ?? 0)}
+          icon={<PackageOpen className="size-4 text-accent-foreground" />}
+        />
+        <StatCard
+          label="Locations"
+          value={statsLoading ? "—" : String(stats?.locationCount ?? 0)}
+          icon={<Warehouse className="size-4 text-accent-foreground" />}
+        />
+        <StatCard
+          label="Inbound MTD"
+          value={statsLoading ? "—" : String(Math.round(stats?.inboundMtd ?? 0))}
+          icon={<ArrowLeftFromLine className="size-4 text-accent-foreground" />}
+        />
+        <StatCard
+          label="Outbound MTD"
+          value={statsLoading ? "—" : String(Math.round(stats?.outboundMtd ?? 0))}
+          icon={<ArrowRightFromLine className="size-4 text-accent-foreground" />}
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -140,6 +135,22 @@ export default function WmsDashboardPage() {
           <p className="text-sm text-muted-foreground py-8 text-center">
             No recent movements — start by recording inventory movements in Stock Ledger
           </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StatCard({ label, value, icon }: { label: string; value: string; icon: React.ReactNode }) {
+  return (
+    <div className="rounded-xl border border-border bg-card p-4">
+      <div className="flex items-start justify-between">
+        <div className="space-y-1">
+          <p className="text-xs font-medium text-muted-foreground">{label}</p>
+          <p className="text-xl font-semibold text-foreground tabular-nums">{value}</p>
+        </div>
+        <div className="flex size-9 items-center justify-center rounded-lg bg-accent shrink-0">
+          {icon}
         </div>
       </div>
     </div>

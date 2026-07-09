@@ -44,6 +44,17 @@ public class PurchaseOrderService
         return new PoCreateResult(true, po.Id, null);
     }
 
+    public async Task<PoDetail?> GetPoByNumberAsync(Guid tenantId, string poNumber)
+    {
+        var po = await _db.PurchaseOrders
+            .Include(p => p.Lines)
+            .ThenInclude(l => l.Item)
+            .FirstOrDefaultAsync(p => p.TenantId == tenantId && p.PoNumber == poNumber);
+
+        if (po is null) return null;
+        return MapPoDetail(po);
+    }
+
     public async Task<PoDetail?> GetPoByIdAsync(Guid tenantId, Guid id)
     {
         var po = await _db.PurchaseOrders

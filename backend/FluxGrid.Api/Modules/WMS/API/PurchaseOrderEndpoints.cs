@@ -37,6 +37,19 @@ public static class PurchaseOrderEndpoints
         })
         .RequireAuthorization(Permissions.WmsRead);
 
+        group.MapGet("/by-number/{poNumber}", async (
+            string poNumber,
+            PurchaseOrderService service,
+            HttpContext http) =>
+        {
+            var (tenantId, _, _, _) = GetAuditContext(http);
+            var result = await service.GetPoByNumberAsync(tenantId, poNumber);
+            if (result is null)
+                return Results.NotFound();
+            return Results.Ok(result);
+        })
+        .RequireAuthorization(Permissions.WmsRead);
+
         group.MapGet("/{id:guid}", async (
             Guid id,
             PurchaseOrderService service,

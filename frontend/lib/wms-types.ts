@@ -118,3 +118,91 @@ export interface ValuationResponse {
   totalValue: number;
   layers: CostLayerDto[] | null;
 }
+
+export interface SalesOrder {
+  id: string;
+  orderNo: string;
+  status: string;
+  customerId: string;
+  customerName: string;
+  notes: string | null;
+  createdAt: string;
+  lines: SalesOrderLine[];
+  tenantId: string;
+}
+
+export interface SalesOrderLine {
+  id: string;
+  itemId: string;
+  itemSku: string | null;
+  itemName: string | null;
+  qtyOrdered: number;
+  qtyReserved: number;
+  qtyPicked: number;
+  qtyShipped: number;
+}
+
+export interface SoListResult {
+  items: SalesOrder[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface PickList {
+  id: string;
+  orderId: string;
+  orderNo: string | null;
+  status: string;
+  assignedTo: string | null;
+  createdAt: string;
+  items: PickListItem[];
+  tenantId: string;
+}
+
+export interface PickListItem {
+  id: string;
+  orderLineId: string;
+  itemId: string;
+  itemSku: string | null;
+  itemName: string | null;
+  locationId: string | null;
+  locationCode: string | null;
+  qtyExpected: number;
+  qtyPicked: number;
+  shortPickReason: string | null;
+}
+
+export interface Shipment {
+  id: string;
+  shipmentNo: string;
+  orderId: string;
+  orderNo: string | null;
+  status: string;
+  shippedAt: string | null;
+  tenantId: string;
+}
+
+export interface ShipListResult {
+  items: Shipment[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface SoCreateRequest {
+  orderNo: string;
+  customerId: string;
+  customerName: string;
+  notes?: string;
+  lines: { itemId: string; qtyOrdered: number }[];
+}
+
+export interface PickExecuteRequest {
+  items: { itemId: string; qtyPicked: number; shortPickReason?: string | null }[];
+}
+
+export interface VerifyRequest {
+  orderId: string;
+  lines: { itemId: string; verifiedQty: number }[];
+}
