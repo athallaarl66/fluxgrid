@@ -19,10 +19,6 @@ public class S3FileStorageService : IFileStorageService
         var args = new PresignedPutObjectArgs()
             .WithBucket(bucketName)
             .WithObject(objectKey)
-            .WithHeaders(new Dictionary<string, string>
-            {
-                { "Content-Type", contentType }
-            })
             .WithExpiry(expiryMinutes * 60);
 
         return await _client.PresignedPutObjectAsync(args);
