@@ -31,6 +31,19 @@ services:
       - pgdata:/var/lib/postgresql/data
     restart: unless-stopped
 
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - miniodata:/data
+    restart: unless-stopped
+
   frontend:
     build:
       context: ./frontend
@@ -46,3 +59,4 @@ services:
 
 volumes:
   pgdata:
+  miniodata:

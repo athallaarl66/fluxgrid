@@ -15,6 +15,8 @@ using FluxGrid.Api.Shared.Infrastructure.Caching;
 using FluxGrid.Api.Shared.Infrastructure.Data;
 using FluxGrid.Api.Shared.Infrastructure.Events;
 using FluxGrid.Api.Shared.Infrastructure.Seed;
+using FluxGrid.Api.Shared.Infrastructure.Storage;
+using Minio;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
@@ -28,6 +30,32 @@ var builder = WebApplication.CreateBuilder(args);
 
 var jwtSecret = builder.Configuration["Jwt:SecretKey"] ?? throw new InvalidOperationException("JWT SecretKey not configured");
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("DefaultConnection not configured");
+
+var storageProvider = builder.Configuration["Storage:Provider"] ?? "Local";
+var storageBucketName = builder.Configuration["Storage:BucketName"] ?? "fluxgrid-cvs";
+
+if (storageProvider == "S3")
+{
+    var storageEndpoint = builder.Configuration["Storage:Endpoint"] ?? throw new InvalidOperationException("Storage:Endpoint not configured");
+    var storageAccessKey = builder.Configuration["Storage:AccessKey"] ?? throw new InvalidOperationException("Storage:AccessKey not configured");
+    var storageSecretKey = builder.Configuration["Storage:SecretKey"] ?? throw new InvalidOperationException("Storage:SecretKey not configured");
+    var storageUseSsl = bool.TryParse(builder.Configuration["Storage:UseSsl"], out var ssl) && ssl;
+
+    builder.Services.AddSingleton<IMinioClient>(_ =>
+        new MinioClient()
+            .WithEndpoint(storageEndpoint)
+            .WithCredentials(storageAccessKey, storageSecretKey)
+            .WithSSL(storageUseSsl)
+            .Build());
+    builder.Services.AddSingleton<IFileStorageService>(sp =>
+        new S3FileStorageService(sp.GetRequiredService<IMinioClient>(), storageUseSsl));
+}
+else
+{
+    builder.Services.AddSingleton<LocalFileStorageService>();
+    builder.Services.AddSingleton<IFileStorageService>(sp =>
+        sp.GetRequiredService<LocalFileStorageService>());
+}
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
@@ -146,6 +174,7 @@ builder.Services.AddScoped<EmployeeService>();
 builder.Services.AddScoped<DepartmentService>();
 builder.Services.AddScoped<OrgChartService>();
 builder.Services.AddScoped<PayrollService>();
+builder.Services.AddScoped<RecruitmentService>();
 builder.Services.AddScoped(sp =>
 {
     var config = sp.GetRequiredService<IConfiguration>();
@@ -205,5 +234,40 @@ app.MapPurchaseReceiptEndpoints();
 app.MapOutboundEndpoints();
 app.MapHrEndpoints();
 app.MapPayrollEndpoints();
+app.MapRecruitmentEndpoints();
+
+if (storageProvider != "S3")
+{
+    app.MapPut("/api/v1/hr/storage/{**objectKey}", async (
+        string objectKey,
+        HttpRequest request,
+        LocalFileStorageService storage) =>
+    {
+        var path = storage.GetFilePath("fluxgrid-cvs", objectKey);
+        var dir = Path.GetDirectoryName(path);
+        if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
+        await using var stream = request.Body;
+        await using var fileStream = File.Create(path);
+        await stream.CopyToAsync(fileStream);
+        return Results.Ok();
+    });
+
+    app.MapGet("/api/v1/hr/storage/{**objectKey}", async (
+        string objectKey,
+        LocalFileStorageService storage) =>
+    {
+        var path = storage.GetFilePath("fluxgrid-cvs", objectKey);
+        if (!File.Exists(path)) return Results.NotFound();
+        var ext = Path.GetExtension(path).ToLower();
+        var contentType = ext switch
+        {
+            ".pdf" => "application/pdf",
+            ".docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            _ => "application/octet-stream"
+        };
+        var stream = File.OpenRead(path);
+        return Results.File(stream, contentType, Path.GetFileName(path));
+    });
+}
 
 app.Run();

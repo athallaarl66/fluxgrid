@@ -39,6 +39,12 @@ public class AppDbContext : DbContext
     public DbSet<PayrollRun> PayrollRuns => Set<PayrollRun>();
     public DbSet<PayrollRecord> PayrollRecords => Set<PayrollRecord>();
 
+    public DbSet<Candidate> Candidates => Set<Candidate>();
+    public DbSet<CandidateEducation> CandidateEducations => Set<CandidateEducation>();
+    public DbSet<CandidateExperience> CandidateExperiences => Set<CandidateExperience>();
+    public DbSet<CandidateSkill> CandidateSkills => Set<CandidateSkill>();
+    public DbSet<CandidateDocument> CandidateDocuments => Set<CandidateDocument>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<User>(entity =>
@@ -472,6 +478,103 @@ public class AppDbContext : DbContext
             entity.Property(e => e.GrossPay).HasColumnType("decimal(18,2)");
             entity.Property(e => e.TaxDeduction).HasColumnType("decimal(18,2)");
             entity.Property(e => e.NetPay).HasColumnType("decimal(18,2)");
+        });
+
+        modelBuilder.Entity<Candidate>(entity =>
+        {
+            entity.ToTable("candidates");
+
+            entity.HasKey(e => e.Id);
+
+            entity.HasIndex(e => new { e.TenantId, e.FileHash }).IsUnique();
+
+            entity.Property(e => e.Name).HasMaxLength(200).IsRequired();
+            entity.Property(e => e.Email).HasMaxLength(255).IsRequired();
+            entity.Property(e => e.Phone).HasMaxLength(30);
+            entity.Property(e => e.Location).HasMaxLength(200);
+            entity.Property(e => e.LinkedInUrl).HasMaxLength(500);
+            entity.Property(e => e.GitHubUrl).HasMaxLength(500);
+            entity.Property(e => e.PortfolioUrl).HasMaxLength(500);
+            entity.Property(e => e.Summary).HasMaxLength(2000);
+            entity.Property(e => e.TotalExperienceMonths);
+            entity.Property(e => e.ExpectedSalaryMin).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.ExpectedSalaryMax).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.NoticePeriodDays);
+            entity.Property(e => e.Status).HasMaxLength(20).IsRequired().HasDefaultValue("DRAFT");
+            entity.Property(e => e.FileUrl).HasMaxLength(1000);
+            entity.Property(e => e.FileHash).HasMaxLength(64);
+            entity.Property(e => e.OriginalFilename).HasMaxLength(500);
+            entity.Property(e => e.FileType).HasMaxLength(50);
+            entity.Property(e => e.FileSizeBytes);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
+            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("NOW()");
+
+            entity.HasMany(e => e.Education)
+                  .WithOne(e => e.Candidate)
+                  .HasForeignKey(e => e.CandidateId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasMany(e => e.Experience)
+                  .WithOne(e => e.Candidate)
+                  .HasForeignKey(e => e.CandidateId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasMany(e => e.Skills)
+                  .WithOne(e => e.Candidate)
+                  .HasForeignKey(e => e.CandidateId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasMany(e => e.Documents)
+                  .WithOne(e => e.Candidate)
+                  .HasForeignKey(e => e.CandidateId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CandidateEducation>(entity =>
+        {
+            entity.ToTable("candidate_education");
+
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Institution).HasMaxLength(200).IsRequired();
+            entity.Property(e => e.Degree).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.FieldOfStudy).HasMaxLength(200);
+            entity.Property(e => e.Gpa).HasColumnType("decimal(3,2)");
+        });
+
+        modelBuilder.Entity<CandidateExperience>(entity =>
+        {
+            entity.ToTable("candidate_experience");
+
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Company).HasMaxLength(200).IsRequired();
+            entity.Property(e => e.Role).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.Description).HasMaxLength(2000);
+            entity.Property(e => e.Location).HasMaxLength(200);
+        });
+
+        modelBuilder.Entity<CandidateSkill>(entity =>
+        {
+            entity.ToTable("candidate_skills");
+
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.SkillName).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.SkillCategory).HasMaxLength(100);
+            entity.Property(e => e.ProficiencyLevel).HasMaxLength(50);
+        });
+
+        modelBuilder.Entity<CandidateDocument>(entity =>
+        {
+            entity.ToTable("candidate_documents");
+
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.FileName).HasMaxLength(500).IsRequired();
+            entity.Property(e => e.FileType).HasMaxLength(50);
+            entity.Property(e => e.FileUrl).HasMaxLength(1000);
+            entity.Property(e => e.UploadedAt).HasDefaultValueSql("NOW()");
         });
     }
 }

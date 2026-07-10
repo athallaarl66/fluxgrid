@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
@@ -52,6 +52,7 @@ const navItems: NavItem[] = [
     icon: Users,
     children: [
       { label: "Employees", href: "/hr/employees" },
+      { label: "Recruitment", href: "/hr/recruitment" },
       { label: "Org Chart", href: "/hr/org-chart" },
       { label: "Payroll", href: "/hr/payroll" },
     ],
@@ -65,11 +66,14 @@ function isChildActive(pathname: string, children?: NavItem["children"]) {
 
 export function Sidebar() {
   const pathname = usePathname();
-  const [expanded, setExpanded] = useState<string | null>(
-    () =>
-      navItems.find((item) => isChildActive(pathname, item.children))?.href ??
-      null,
+  const [expanded, setExpanded] = useState<string | null>(() =>
+    navItems.find((item) => isChildActive(pathname, item.children))?.href ?? null,
   );
+
+  useEffect(() => {
+    const parent = navItems.find((item) => isChildActive(pathname, item.children))?.href ?? null;
+    if (parent) setExpanded(parent);
+  }, [pathname]);
 
   function toggleExpand(href: string) {
     setExpanded((prev) => (prev === href ? null : href));
@@ -122,9 +126,7 @@ export function Sidebar() {
                   <button
                     type="button"
                     onClick={() => toggleExpand(item.href)}
-                    className={cn(
-                      "flex size-7 items-center justify-center rounded-r text-muted-foreground transition-colors duration-200 cursor-pointer hover:text-foreground",
-                    )}
+                    className="flex size-7 items-center justify-center rounded-r text-muted-foreground hover:text-foreground transition-colors duration-200 cursor-pointer"
                   >
                     <ChevronDown
                       className={cn(

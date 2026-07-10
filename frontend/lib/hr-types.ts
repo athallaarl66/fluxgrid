@@ -149,3 +149,107 @@ export interface CreatePayrollRequest {
   startDate: string;
   endDate: string;
 }
+
+export type CandidateStatus = "DRAFT" | "PARSED" | "PARSE_FAILED" | "ACTIVE" | "INTERVIEW" | "HIRED" | "REJECTED" | "ARCHIVED";
+
+export interface CandidateListItem {
+  id: string;
+  name: string;
+  email: string;
+  status: CandidateStatus;
+  originalFilename: string | null;
+  fileType: string | null;
+  createdAt: string;
+}
+
+export interface CandidateDetail {
+  id: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  location: string | null;
+  linkedInUrl: string | null;
+  gitHubUrl: string | null;
+  portfolioUrl: string | null;
+  summary: string | null;
+  totalExperienceMonths: number | null;
+  expectedSalaryMin: number | null;
+  expectedSalaryMax: number | null;
+  noticePeriodDays: number | null;
+  status: CandidateStatus;
+  fileUrl: string | null;
+  originalFilename: string | null;
+  fileType: string | null;
+  fileSizeBytes: number | null;
+  createdAt: string;
+  updatedAt: string;
+  education: CandidateEducation[];
+  experience: CandidateExperience[];
+  skills: CandidateSkill[];
+  documents: CandidateDocument[];
+}
+
+export interface CandidateEducation {
+  id: string;
+  institution: string;
+  degree: string;
+  fieldOfStudy: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  gpa: number | null;
+}
+
+export interface CandidateExperience {
+  id: string;
+  company: string;
+  role: string;
+  startDate: string | null;
+  endDate: string | null;
+  isCurrent: boolean;
+  description: string | null;
+  location: string | null;
+}
+
+export interface CandidateSkill {
+  id: string;
+  skillName: string;
+  skillCategory: string | null;
+  proficiencyLevel: string | null;
+  yearsExperience: number | null;
+}
+
+export interface CandidateDocument {
+  id: string;
+  fileName: string;
+  fileType: string | null;
+  fileUrl: string | null;
+  fileSizeBytes: number | null;
+  isPrimary: boolean;
+  uploadedAt: string;
+}
+
+export interface UploadUrlResponse {
+  presignedUrl: string;
+  objectKey: string;
+  fileHash: string;
+}
+
+export interface CreateCandidateRequest {
+  name: string;
+  email: string;
+  phone?: string;
+  location?: string;
+  linkedInUrl?: string;
+  gitHubUrl?: string;
+  portfolioUrl?: string;
+  summary?: string;
+  totalExperienceMonths?: number;
+  expectedSalaryMin?: number;
+  expectedSalaryMax?: number;
+  noticePeriodDays?: number;
+  fileUrl: string;
+  fileHash: string;
+  originalFilename: string;
+  fileType: string;
+  fileSizeBytes: number;
+}
