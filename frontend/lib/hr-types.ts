@@ -107,3 +107,45 @@ export interface PaginatedResponse<T> {
   page: number;
   pageSize: number;
 }
+
+export type PayrollRunStatus = "DRAFT" | "FINALIZED";
+
+export interface PayrollRun {
+  id: string;
+  periodName: string;
+  startDate: string;
+  endDate: string;
+  status: PayrollRunStatus;
+  totalGross: number | null;
+  totalNet: number | null;
+  processedBy: string;
+  tenantId: string;
+  createdAt: string;
+}
+
+export interface PayrollRecord {
+  id: string;
+  runId: string;
+  employeeId: string;
+  employeeNo: string;
+  employeeName: string;
+  baseSalary: number | null;
+  overtimePay: number | null;
+  latenessDeduction: number | null;
+  grossPay: number | null;
+  taxDeduction: number | null;
+  netPay: number | null;
+  tenantId: string;
+}
+
+export interface PayrollRunDetail {
+  run: PayrollRun;
+  totalRecords: number;
+  records: PayrollRecord[];
+}
+
+export interface CreatePayrollRequest {
+  periodName: string;
+  startDate: string;
+  endDate: string;
+}

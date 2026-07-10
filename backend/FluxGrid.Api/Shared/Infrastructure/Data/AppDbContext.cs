@@ -36,6 +36,8 @@ public class AppDbContext : DbContext
     public DbSet<Department> Departments => Set<Department>();
     public DbSet<Position> Positions => Set<Position>();
     public DbSet<SalaryGrade> SalaryGrades => Set<SalaryGrade>();
+    public DbSet<PayrollRun> PayrollRuns => Set<PayrollRun>();
+    public DbSet<PayrollRecord> PayrollRecords => Set<PayrollRecord>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -431,6 +433,45 @@ public class AppDbContext : DbContext
             entity.Property(e => e.Grade).HasMaxLength(50).IsRequired();
             entity.Property(e => e.MinSalary).HasColumnType("decimal(18,2)").IsRequired();
             entity.Property(e => e.MaxSalary).HasColumnType("decimal(18,2)").IsRequired();
+        });
+
+        modelBuilder.Entity<PayrollRun>(entity =>
+        {
+            entity.ToTable("payroll_runs");
+
+            entity.HasKey(e => e.Id);
+
+            entity.HasIndex(e => new { e.TenantId, e.PeriodName }).IsUnique();
+
+            entity.Property(e => e.PeriodName).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.StartDate).IsRequired();
+            entity.Property(e => e.EndDate).IsRequired();
+            entity.Property(e => e.Status).HasMaxLength(20).IsRequired().HasDefaultValue("DRAFT");
+            entity.Property(e => e.TotalGross).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.TotalNet).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.ProcessedBy).HasMaxLength(100);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
+
+            entity.HasMany(e => e.Records)
+                  .WithOne(e => e.Run)
+                  .HasForeignKey(e => e.RunId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<PayrollRecord>(entity =>
+        {
+            entity.ToTable("payroll_records");
+
+            entity.HasKey(e => e.Id);
+
+            entity.HasIndex(e => new { e.RunId, e.EmployeeId }).IsUnique();
+
+            entity.Property(e => e.BaseSalary).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.OvertimePay).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.LatenessDeduction).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.GrossPay).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.TaxDeduction).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.NetPay).HasColumnType("decimal(18,2)");
         });
     }
 }

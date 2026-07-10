@@ -147,3 +147,24 @@
     @apply font-sans;
   }
 }
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .payslip-document,
+  .payslip-document * {
+    visibility: visible;
+  }
+  .payslip-document {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    border: none !important;
+    box-shadow: none !important;
+  }
+  header, footer, nav, aside, button, .no-print {
+    display: none !important;
+  }
+}
