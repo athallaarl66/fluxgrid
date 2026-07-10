@@ -105,6 +105,24 @@ builder.Services.Configure<IpRateLimitOptions>(options =>
             Endpoint = "POST:/api/auth/login",
             Limit = 5,
             Period = "1m"
+        },
+        new RateLimitRule
+        {
+            Endpoint = "POST:/api/v1/hr/payroll/calculate",
+            Limit = 10,
+            Period = "1m"
+        },
+        new RateLimitRule
+        {
+            Endpoint = "put:/api/v1/hr/payroll/*/finalize",
+            Limit = 10,
+            Period = "1m"
+        },
+        new RateLimitRule
+        {
+            Endpoint = "put:/api/v1/hr/payroll/*/recalculate",
+            Limit = 10,
+            Period = "1m"
         }
     ];
 });
@@ -127,6 +145,15 @@ builder.Services.AddScoped<ShipmentService>();
 builder.Services.AddScoped<EmployeeService>();
 builder.Services.AddScoped<DepartmentService>();
 builder.Services.AddScoped<OrgChartService>();
+builder.Services.AddScoped<PayrollService>();
+builder.Services.AddScoped(sp =>
+{
+    var config = sp.GetRequiredService<IConfiguration>();
+    var client = new HttpClient();
+    client.BaseAddress = new Uri(config["TaskApp:BaseUrl"] ?? "http://localhost:4000");
+    client.Timeout = TimeSpan.FromSeconds(30);
+    return client;
+});
 builder.Services.AddScoped<AuditService>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -177,5 +204,6 @@ app.MapPurchaseOrderEndpoints();
 app.MapPurchaseReceiptEndpoints();
 app.MapOutboundEndpoints();
 app.MapHrEndpoints();
+app.MapPayrollEndpoints();
 
 app.Run();
