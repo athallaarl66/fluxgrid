@@ -15,6 +15,8 @@ using FluxGrid.Api.Shared.Infrastructure.Caching;
 using FluxGrid.Api.Shared.Infrastructure.Data;
 using FluxGrid.Api.Shared.Infrastructure.Events;
 using FluxGrid.Api.Shared.Infrastructure.Seed;
+using FluxGrid.Api.Shared.Infrastructure.Storage;
+using Minio;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
@@ -28,6 +30,21 @@ var builder = WebApplication.CreateBuilder(args);
 
 var jwtSecret = builder.Configuration["Jwt:SecretKey"] ?? throw new InvalidOperationException("JWT SecretKey not configured");
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("DefaultConnection not configured");
+
+var storageEndpoint = builder.Configuration["Storage:Endpoint"] ?? throw new InvalidOperationException("Storage:Endpoint not configured");
+var storageAccessKey = builder.Configuration["Storage:AccessKey"] ?? throw new InvalidOperationException("Storage:AccessKey not configured");
+var storageSecretKey = builder.Configuration["Storage:SecretKey"] ?? throw new InvalidOperationException("Storage:SecretKey not configured");
+var storageBucketName = builder.Configuration["Storage:BucketName"] ?? throw new InvalidOperationException("Storage:BucketName not configured");
+var storageUseSsl = bool.TryParse(builder.Configuration["Storage:UseSsl"], out var ssl) && ssl;
+
+builder.Services.AddSingleton<IMinioClient>(_ =>
+    new MinioClient()
+        .WithEndpoint(storageEndpoint)
+        .WithCredentials(storageAccessKey, storageSecretKey)
+        .WithSSL(storageUseSsl)
+        .Build());
+builder.Services.AddSingleton<IFileStorageService>(sp =>
+    new S3FileStorageService(sp.GetRequiredService<IMinioClient>(), storageUseSsl));
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
@@ -146,6 +163,7 @@ builder.Services.AddScoped<EmployeeService>();
 builder.Services.AddScoped<DepartmentService>();
 builder.Services.AddScoped<OrgChartService>();
 builder.Services.AddScoped<PayrollService>();
+builder.Services.AddScoped<RecruitmentService>();
 builder.Services.AddScoped(sp =>
 {
     var config = sp.GetRequiredService<IConfiguration>();
@@ -205,5 +223,6 @@ app.MapPurchaseReceiptEndpoints();
 app.MapOutboundEndpoints();
 app.MapHrEndpoints();
 app.MapPayrollEndpoints();
+app.MapRecruitmentEndpoints();
 
 app.Run();
