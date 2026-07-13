@@ -29,6 +29,10 @@ function isTokenExpired(token: string): boolean {
   return Date.now() >= payload.exp * 1000;
 }
 
+export const config = {
+  matcher: ["/((?!api/|_next/|favicon.ico).*)"],
+};
+
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 

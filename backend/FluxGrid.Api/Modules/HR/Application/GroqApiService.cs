@@ -15,6 +15,8 @@ public partial class GroqApiService
     public GroqApiService(IHttpClientFactory httpFactory, IConfiguration config)
     {
         _http = httpFactory.CreateClient("GroqApi");
+        var apiKey = config["Groq:ApiKey"] ?? throw new InvalidOperationException("Groq:ApiKey not configured");
+        _http.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiKey);
         _model = config["Groq:Model"] ?? "llama3-70b-8192";
     }
 

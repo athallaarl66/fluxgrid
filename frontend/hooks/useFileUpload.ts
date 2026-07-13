@@ -125,10 +125,11 @@ export function useFileUpload(): UseFileUploadReturn {
         });
 
         const contentType = item.file.type === "application/pdf" ? "pdf" : "docx";
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5020";
         await createCandidate.mutateAsync({
           name: item.name.replace(/\.[^/.]+$/, ""),
           email: `${item.name.replace(/\.[^/.]+$/, "").toLowerCase().replace(/\s+/g, ".")}@pending`,
-          fileUrl: urlResp.objectKey,
+          fileUrl: `${baseUrl}/api/v1/hr/storage/fluxgrid-cvs/${urlResp.objectKey}`,
           fileHash,
           originalFilename: item.name,
           fileType: contentType,

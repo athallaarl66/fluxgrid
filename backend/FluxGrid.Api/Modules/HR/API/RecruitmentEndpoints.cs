@@ -110,6 +110,24 @@ public static class RecruitmentEndpoints
         })
         .RequireAuthorization(Permissions.HrRecruitmentManage);
 
+        recruitment.MapDelete("/candidates/{id:guid}", async (
+            Guid id,
+            RecruitmentService service,
+            HttpContext http) =>
+        {
+            var (tenantId, userId, ip, ua) = GetAuditContext(http);
+            try
+            {
+                await service.DeleteCandidateAsync(id, tenantId, userId, ip, ua);
+                return Results.Ok(new { deleted = true });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.Problem(ex.Message, statusCode: 404);
+            }
+        })
+        .RequireAuthorization(Permissions.HrRecruitmentManage);
+
         recruitment.MapPost("/parse-webhook", async (
             HttpContext http,
             CvParsingService cvParsing) =>

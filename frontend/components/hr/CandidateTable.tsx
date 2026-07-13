@@ -50,7 +50,7 @@ export function CandidateTable({ candidates }: { candidates: CandidateListItem[]
               <td className="h-9 px-2 text-xs text-muted-foreground uppercase">
                 {c.fileType || "—"}
               </td>
-              <td className="h-9 px-2">
+              <td className="h-9 px-2 space-x-2">
                 <button
                   type="button"
                   onClick={(e) => {
@@ -61,6 +61,18 @@ export function CandidateTable({ candidates }: { candidates: CandidateListItem[]
                 >
                   View
                 </button>
+                {c.status === "PARSED" && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      router.push(`/hr/recruitment/${c.id}/review`);
+                    }}
+                    className="text-xs text-[#5A7A3A] hover:text-[#2D4A1E] underline underline-offset-2 cursor-pointer font-medium"
+                  >
+                    Review
+                  </button>
+                )}
               </td>
             </tr>
           ))}

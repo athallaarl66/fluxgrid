@@ -253,7 +253,8 @@ if (storageProvider != "S3")
         HttpRequest request,
         LocalFileStorageService storage) =>
     {
-        var path = storage.GetFilePath("fluxgrid-cvs", objectKey);
+        var key = objectKey.StartsWith("fluxgrid-cvs/") ? objectKey["fluxgrid-cvs/".Length..] : objectKey;
+        var path = storage.GetFilePath("fluxgrid-cvs", key);
         var dir = Path.GetDirectoryName(path);
         if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
         await using var stream = request.Body;
@@ -266,7 +267,8 @@ if (storageProvider != "S3")
         string objectKey,
         LocalFileStorageService storage) =>
     {
-        var path = storage.GetFilePath("fluxgrid-cvs", objectKey);
+        var key = objectKey.StartsWith("fluxgrid-cvs/") ? objectKey["fluxgrid-cvs/".Length..] : objectKey;
+        var path = storage.GetFilePath("fluxgrid-cvs", key);
         if (!File.Exists(path)) return Results.NotFound();
         var ext = Path.GetExtension(path).ToLower();
         var contentType = ext switch
@@ -276,7 +278,7 @@ if (storageProvider != "S3")
             _ => "application/octet-stream"
         };
         var stream = File.OpenRead(path);
-        return Results.File(stream, contentType, Path.GetFileName(path));
+        return Results.File(stream, contentType);
     });
 }
 
