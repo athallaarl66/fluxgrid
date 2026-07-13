@@ -22,15 +22,14 @@ public partial class GroqApiService
 
     public async Task<JsonElement> ParseCvTextAsync(string rawText, CancellationToken ct = default)
     {
-        var sanitized = RedactPii(rawText);
-        var truncated = TruncateToTokens(sanitized, MaxTokens);
+        var truncated = TruncateToTokens(rawText, MaxTokens);
         var prompt = BuildPrompt(truncated);
 
         for (var attempt = 1; attempt <= MaxRetries; attempt++)
         {
             try
             {
-                var response = await _http.PostAsync("/chat/completions", prompt, ct);
+                var response = await _http.PostAsync("chat/completions", prompt, ct);
                 if (response.IsSuccessStatusCode)
                 {
                     var json = await response.Content.ReadFromJsonAsync<JsonElement>(ct);
@@ -56,19 +55,36 @@ public partial class GroqApiService
 
     private StringContent BuildPrompt(string text)
     {
-        var userMessage = $@"Extract structured candidate data from the following CV text. Return ONLY valid JSON with this exact schema (no markdown, no code fences):
+        var userMessage = $@"Extract structured candidate data from this CV. Return ONLY valid JSON (no markdown, no code fences).
+
+SCHEMA:
 {{
   ""firstName"": ""..."",
   ""lastName"": ""..."",
   ""email"": ""..."",
   ""phone"": ""..."",
+  ""linkedInUrl"": ""... or empty"",
+  ""githubUrl"": ""... or empty"",
+  ""portfolioUrl"": ""... or empty"",
   ""summary"": ""..."",
   ""experience"": [{{ ""company"": ""..."", ""role"": ""..."", ""startDate"": ""..."", ""endDate"": ""..."", ""isCurrent"": false, ""description"": ""..."", ""location"": ""..."" }}],
   ""education"": [{{ ""institution"": ""..."", ""degree"": ""..."", ""fieldOfStudy"": ""..."", ""startDate"": ""..."", ""endDate"": ""..."", ""gpa"": null }}],
-  ""skills"": [{{ ""skillName"": ""..."", ""skillCategory"": ""..."", ""proficiencyLevel"": ""..."", ""yearsExperience"": null }}]
+  ""skills"": [{{ ""skillName"": ""..."", ""skillCategory"": null, ""proficiencyLevel"": null, ""yearsExperience"": null }}]
 }}
 
-CV text:
+GUIDELINES (read carefully):
+- CV can be Indonesian or English. Recognize both.
+- Summary: from ""Summary"", ""Objective"", ""Profil"", ""Tentang Saya"", or first paragraph.
+- Phone: handle any format (+62, 08, 62-, etc.) — output digits and + only.
+- LinkedIn/GitHub/Portfolio: find URLs anywhere in the CV.
+- Education: recognize ""S1/S2/S3/D3"", ""Bachelor/Master"", ""SMK/SMA"", ""IPK"" = gpa.
+- Dates: handle ""2019-2023"", ""2019 – 2023"", ""1 Agu 2025"", ""Aug 2025"", ""2025"". Output as-is, any format.
+- Experience: recognize ""Pengalaman Kerja"", ""Work Experience"", ""Riwayat Pekerjaan"", ""Employment"".
+- Skills: extract EVERY skill mentioned — from skill sections, tag clouds, or inline text. skillCategory/proficiencyLevel/yearsExperience are optional (set null).
+- If a field is missing, use empty string """" or null. Never invent data.
+- isCurrent: true if endDate says ""Present"", ""Sekarang"", ""Current"", or similar.
+
+CV TEXT:
 {text}";
 
         var body = new

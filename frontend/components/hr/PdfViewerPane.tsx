@@ -1,10 +1,13 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { Document, Page } from "react-pdf";
+import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+
+pdfjs.GlobalWorkerOptions.workerSrc =
+  `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 export function PdfViewerPane({ fileUrl }: { fileUrl: string | null }) {
   const [numPages, setNumPages] = useState(0);

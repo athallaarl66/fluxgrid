@@ -176,7 +176,7 @@ builder.Services.AddScoped<OrgChartService>();
 builder.Services.AddScoped<PayrollService>();
 builder.Services.AddHttpClient("GroqApi", client =>
 {
-    client.BaseAddress = new Uri("https://api.groq.com/openai/v1");
+    client.BaseAddress = new Uri("https://api.groq.com/openai/v1/");
     client.Timeout = TimeSpan.FromSeconds(60);
 });
 builder.Services.AddScoped<PdfTextExtractor>();
@@ -263,7 +263,7 @@ if (storageProvider != "S3")
         return Results.Ok();
     });
 
-    app.MapGet("/api/v1/hr/storage/{**objectKey}", async (
+    app.MapGet("/api/v1/hr/storage/{**objectKey}", (
         string objectKey,
         LocalFileStorageService storage) =>
     {

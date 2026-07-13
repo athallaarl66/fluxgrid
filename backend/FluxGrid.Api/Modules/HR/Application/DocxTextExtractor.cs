@@ -9,8 +9,8 @@ public class DocxTextExtractor
     {
         using var ms = new MemoryStream(docxBytes);
         using var wordDoc = WordprocessingDocument.Open(ms, false);
-        var body = wordDoc.MainDocumentPart?.Document.Body;
-        if (body == null) return string.Empty;
+        var body = wordDoc.MainDocumentPart?.Document?.Body;
+        if (body is null) return string.Empty;
 
         var texts = body.Descendants<Text>()
             .Where(t => t.Text != null)
