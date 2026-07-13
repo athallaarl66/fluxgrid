@@ -495,6 +495,7 @@ public class AppDbContext : DbContext
             entity.Property(e => e.LinkedInUrl).HasMaxLength(500);
             entity.Property(e => e.GitHubUrl).HasMaxLength(500);
             entity.Property(e => e.PortfolioUrl).HasMaxLength(500);
+            entity.Property(e => e.RawText).HasColumnType("text");
             entity.Property(e => e.Summary).HasMaxLength(2000);
             entity.Property(e => e.TotalExperienceMonths);
             entity.Property(e => e.ExpectedSalaryMin).HasColumnType("decimal(18,2)");

@@ -1,5 +1,7 @@
 using Minio;
 using Minio.DataModel.Args;
+using Minio.DataModel;
+using System.IO;
 
 namespace FluxGrid.Api.Shared.Infrastructure.Storage;
 
@@ -32,6 +34,17 @@ public class S3FileStorageService : IFileStorageService
             .WithExpiry(expiryHours * 3600);
 
         return await _client.PresignedGetObjectAsync(args);
+    }
+
+    public async Task<byte[]> ReadFileAsync(string bucketName, string objectKey)
+    {
+        using var ms = new MemoryStream();
+        var args = new GetObjectArgs()
+            .WithBucket(bucketName)
+            .WithObject(objectKey)
+            .WithCallbackStream(stream => stream.CopyTo(ms));
+        await _client.GetObjectAsync(args);
+        return ms.ToArray();
     }
 
     public async Task DeleteFileAsync(string bucketName, string objectKey)

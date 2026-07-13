@@ -120,6 +120,18 @@ public sealed record CandidateDocumentResponse(
     DateTime UploadedAt
 );
 
+public sealed record ApproveCandidateResponse(
+    Guid Id,
+    string Status,
+    string Message
+);
+
+public sealed record RejectCandidateResponse(
+    Guid Id,
+    string Status,
+    string Message
+);
+
 public sealed record PaginatedResponse<T>(
     List<T> Items,
     int Total,

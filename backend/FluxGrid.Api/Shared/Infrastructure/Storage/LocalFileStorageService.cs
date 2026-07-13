@@ -26,6 +26,12 @@ public class LocalFileStorageService : IFileStorageService
         return Task.FromResult(url);
     }
 
+    public async Task<byte[]> ReadFileAsync(string bucketName, string objectKey)
+    {
+        var path = Path.Combine(_basePath, bucketName, objectKey);
+        return await File.ReadAllBytesAsync(path);
+    }
+
     public Task DeleteFileAsync(string bucketName, string objectKey)
     {
         var path = Path.Combine(_basePath, bucketName, objectKey);

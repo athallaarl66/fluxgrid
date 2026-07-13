@@ -10,6 +10,7 @@ public class Candidate
     public string? LinkedInUrl { get; set; }
     public string? GitHubUrl { get; set; }
     public string? PortfolioUrl { get; set; }
+    public string? RawText { get; set; }
     public string? Summary { get; set; }
     public int? TotalExperienceMonths { get; set; }
     public decimal? ExpectedSalaryMin { get; set; }

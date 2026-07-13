@@ -1,3 +1,4 @@
+using System.Text.Json;
 using FluxGrid.Api.Modules.HR.Application;
 using FluxGrid.Api.Shared.RBAC;
 using Microsoft.AspNetCore.Mvc;
@@ -72,6 +73,62 @@ public static class RecruitmentEndpoints
             return candidate is null ? Results.NotFound() : Results.Ok(candidate);
         })
         .RequireAuthorization(Permissions.HrRecruitmentManage);
+
+        recruitment.MapPut("/candidates/{id:guid}/approve", async (
+            Guid id,
+            RecruitmentService service,
+            HttpContext http) =>
+        {
+            var (tenantId, userId, ip, ua) = GetAuditContext(http);
+            try
+            {
+                var result = await service.ApproveCandidateAsync(id, tenantId, userId, ip, ua);
+                return Results.Ok(result);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.Problem(ex.Message, statusCode: 400);
+            }
+        })
+        .RequireAuthorization(Permissions.HrRecruitmentManage);
+
+        recruitment.MapPut("/candidates/{id:guid}/reject", async (
+            Guid id,
+            RecruitmentService service,
+            HttpContext http) =>
+        {
+            var (tenantId, userId, ip, ua) = GetAuditContext(http);
+            try
+            {
+                var result = await service.RejectCandidateAsync(id, tenantId, userId, ip, ua);
+                return Results.Ok(result);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.Problem(ex.Message, statusCode: 400);
+            }
+        })
+        .RequireAuthorization(Permissions.HrRecruitmentManage);
+
+        recruitment.MapPost("/parse-webhook", async (
+            HttpContext http,
+            CvParsingService cvParsing) =>
+        {
+            using var reader = new StreamReader(http.Request.Body);
+            var body = await reader.ReadToEndAsync();
+            var data = JsonSerializer.Deserialize<JsonElement>(body);
+
+            if (!data.TryGetProperty("candidateId", out var cid) ||
+                !data.TryGetProperty("tenantId", out var tid) ||
+                !data.TryGetProperty("userId", out var uid))
+                return Results.Problem("Missing required fields: candidateId, tenantId, userId", statusCode: 400);
+
+            await cvParsing.ParseCandidateAsync(
+                cid.GetGuid(), uid.GetGuid(), tid.GetGuid());
+
+            return Results.Ok(new { status = "parsing_initiated" });
+        })
+        .AddEndpointFilter<QStashSignatureFilter>();
     }
 
     private static (Guid tenantId, Guid userId, string? ip, string? ua) GetAuditContext(HttpContext http)

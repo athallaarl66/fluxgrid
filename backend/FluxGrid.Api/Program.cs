@@ -174,6 +174,16 @@ builder.Services.AddScoped<EmployeeService>();
 builder.Services.AddScoped<DepartmentService>();
 builder.Services.AddScoped<OrgChartService>();
 builder.Services.AddScoped<PayrollService>();
+builder.Services.AddHttpClient("GroqApi", client =>
+{
+    client.BaseAddress = new Uri("https://api.groq.com/openai/v1");
+    client.Timeout = TimeSpan.FromSeconds(60);
+});
+builder.Services.AddScoped<PdfTextExtractor>();
+builder.Services.AddTransient<QStashSignatureFilter>();
+builder.Services.AddScoped<DocxTextExtractor>();
+builder.Services.AddScoped<GroqApiService>();
+builder.Services.AddScoped<CvParsingService>();
 builder.Services.AddScoped<RecruitmentService>();
 builder.Services.AddScoped(sp =>
 {

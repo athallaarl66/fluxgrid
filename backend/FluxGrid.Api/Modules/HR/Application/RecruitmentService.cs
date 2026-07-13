@@ -16,6 +16,7 @@ public class RecruitmentService
     private readonly IFileStorageService _storage;
     private readonly AuditService _audit;
     private readonly DomainEventDispatcher _events;
+    private readonly CvParsingService _cvParsing;
     private readonly string _bucketName;
 
     private static readonly string[] AllowedFileTypes = ["pdf", "docx"];
@@ -31,12 +32,14 @@ public class RecruitmentService
         IFileStorageService storage,
         AuditService audit,
         DomainEventDispatcher events,
+        CvParsingService cvParsing,
         IConfiguration config)
     {
         _db = db;
         _storage = storage;
         _audit = audit;
         _events = events;
+        _cvParsing = cvParsing;
         _bucketName = config["Storage:BucketName"] ?? "fluxgrid-cvs";
     }
 
@@ -118,6 +121,12 @@ public class RecruitmentService
             request.OriginalFilename, request.FileHash, request.FileSizeBytes,
             userId, tenantId));
 
+        _ = Task.Run(async () =>
+        {
+            try { await _cvParsing.ParseCandidateAsync(candidate.Id, userId, tenantId, ipAddress, userAgent); }
+            catch { /* parsing failure handled inside service */ }
+        });
+
         return new CandidateResponse(
             candidate.Id, candidate.Name, candidate.Email, candidate.Status,
             candidate.OriginalFilename, candidate.FileType, candidate.CreatedAt, candidate.TenantId);
@@ -151,6 +160,48 @@ public class RecruitmentService
             .ToListAsync();
 
         return new PaginatedResponse<CandidateListItem>(items, total, page, pageSize);
+    }
+
+    public async Task<ApproveCandidateResponse> ApproveCandidateAsync(Guid id, Guid tenantId,
+        Guid userId, string? ipAddress = null, string? userAgent = null)
+    {
+        var candidate = await _db.Candidates
+            .FirstOrDefaultAsync(c => c.Id == id && c.TenantId == tenantId)
+            ?? throw new InvalidOperationException("Candidate not found");
+
+        if (candidate.Status != CandidateStatus.Parsed)
+            throw new InvalidOperationException($"Cannot approve candidate in status '{candidate.Status}'. Only PARSED candidates can be approved.");
+
+        candidate.Status = CandidateStatus.Active;
+        candidate.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        await _audit.LogAsync(userId, tenantId, "APPROVE", "candidates", id, ipAddress, userAgent,
+            new { previousStatus = CandidateStatus.Parsed },
+            new { newStatus = CandidateStatus.Active });
+
+        return new ApproveCandidateResponse(id, CandidateStatus.Active, "Candidate approved successfully");
+    }
+
+    public async Task<RejectCandidateResponse> RejectCandidateAsync(Guid id, Guid tenantId,
+        Guid userId, string? ipAddress = null, string? userAgent = null)
+    {
+        var candidate = await _db.Candidates
+            .FirstOrDefaultAsync(c => c.Id == id && c.TenantId == tenantId)
+            ?? throw new InvalidOperationException("Candidate not found");
+
+        if (candidate.Status != CandidateStatus.Parsed)
+            throw new InvalidOperationException($"Cannot reject candidate in status '{candidate.Status}'. Only PARSED candidates can be rejected.");
+
+        candidate.Status = CandidateStatus.Rejected;
+        candidate.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        await _audit.LogAsync(userId, tenantId, "REJECT", "candidates", id, ipAddress, userAgent,
+            new { previousStatus = CandidateStatus.Parsed },
+            new { newStatus = CandidateStatus.Rejected });
+
+        return new RejectCandidateResponse(id, CandidateStatus.Rejected, "Candidate rejected");
     }
 
     public async Task<CandidateDetailResponse?> GetCandidateDetailAsync(Guid id, Guid tenantId)
