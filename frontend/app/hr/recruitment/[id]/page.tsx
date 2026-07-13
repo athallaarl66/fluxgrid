@@ -3,7 +3,7 @@
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, ExternalLink, Globe, Mail, MapPin, GraduationCap, Briefcase, Award, FileText, Phone } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
-import { useCandidate } from "@/hooks/useRecruitment";
+import { useCandidate, useDeleteCandidate } from "@/hooks/useRecruitment";
 import { CandidateStatusBadge } from "@/components/hr/CandidateStatusBadge";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -44,6 +44,7 @@ export default function CandidateDetailPage() {
   const id = params.id as string;
 
   const { data: candidate, isLoading, error } = useCandidate(id);
+  const deleteMutation = useDeleteCandidate();
 
   if (!authLoading && !user) {
     router.push("/login?redirect=/hr/recruitment/" + id);
@@ -92,6 +93,20 @@ export default function CandidateDetailPage() {
           </div>
           <p className="mt-1 text-sm text-muted-foreground">{candidate.email}</p>
         </div>
+        <button
+          type="button"
+          onClick={async () => {
+            if (!confirm("Delete this candidate and its CV file?")) return;
+            try {
+              await deleteMutation.mutateAsync(id);
+              router.push("/hr/recruitment");
+            } catch {}
+          }}
+          disabled={deleteMutation.isPending}
+          className="h-8 rounded-lg border border-input px-3 text-xs text-muted-foreground hover:text-destructive hover:border-destructive disabled:opacity-50 cursor-pointer transition-colors"
+        >
+          {deleteMutation.isPending ? "Deleting..." : "Delete"}
+        </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
@@ -244,10 +259,24 @@ export default function CandidateDetailPage() {
                   <p className="text-xs text-foreground font-medium truncate">{candidate.originalFilename || "CV"}</p>
                   <p className="text-[11px] text-muted-foreground tabular-nums">{candidate.fileType?.toUpperCase() || ""}{candidate.fileSizeBytes ? " \u2022 " + (candidate.fileSizeBytes / 1024).toFixed(0) + " KB" : ""}</p>
                 </div>
-                <button type="button" onClick={() => window.open("/api/v1/hr/recruitment/candidates/" + candidate.id + "/cv", "_blank")} className="flex items-center gap-1 text-xs text-[#9CAB84] hover:text-[#7A8D6A] cursor-pointer">
+                <button type="button" onClick={() => window.open(candidate.fileUrl!, "_blank")} className="flex items-center gap-1 text-xs text-[#9CAB84] hover:text-[#7A8D6A] cursor-pointer">
                   <ExternalLink className="size-3" /> View CV
                 </button>
               </div>
+            </div>
+          )}
+
+          {candidate.status === "PARSED" && (
+            <div className="rounded-xl border border-[#C5D89D] bg-[#F6F0D7] p-4">
+              <p className="text-xs font-medium text-[#5A7A3A]">AI Extraction Ready</p>
+              <p className="text-[11px] text-[#7A8D6A] mt-1">Parsed data is ready for review.</p>
+              <button
+                type="button"
+                onClick={() => router.push(`/hr/recruitment/${candidate.id}/review`)}
+                className="mt-3 inline-flex items-center gap-1 h-7 rounded-lg bg-[#C5D89D] px-3 text-[11px] font-medium text-[#2D4A1E] hover:bg-[#A8C47A] cursor-pointer transition-colors"
+              >
+                Review & Approve
+              </button>
             </div>
           )}
         </div>

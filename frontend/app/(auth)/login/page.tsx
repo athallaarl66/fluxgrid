@@ -29,17 +29,22 @@ function LoginForm() {
     setLoading(true);
 
     try {
-      const response = await fetch("/api/auth/login", {
+      const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5020";
+      const response = await fetch(`${API}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
       });
 
       if (!response.ok) {
-        const data = await response.json();
+        const data = await response.json().catch(() => ({}));
         setError(data.message || "Invalid credentials");
         return;
       }
+
+      const data = await response.json();
+      document.cookie = `token=${data.token}; path=/; maxAge=${60 * 60}; SameSite=Lax`;
+      localStorage.setItem("token", data.token);
 
       const redirect = searchParams.get("redirect") || "/dashboard";
       router.push(redirect);

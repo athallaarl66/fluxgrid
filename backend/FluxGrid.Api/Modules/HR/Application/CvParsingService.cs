@@ -16,6 +16,7 @@ public class CvParsingService
     private readonly PdfTextExtractor _pdfExtractor;
     private readonly DocxTextExtractor _docxExtractor;
     private readonly GroqApiService _groq;
+    private readonly ILogger<CvParsingService> _logger;
     private readonly string _bucketName;
 
     public CvParsingService(
@@ -25,6 +26,7 @@ public class CvParsingService
         PdfTextExtractor pdfExtractor,
         DocxTextExtractor docxExtractor,
         GroqApiService groq,
+        ILogger<CvParsingService> logger,
         IConfiguration config)
     {
         _db = db;
@@ -33,6 +35,7 @@ public class CvParsingService
         _pdfExtractor = pdfExtractor;
         _docxExtractor = docxExtractor;
         _groq = groq;
+        _logger = logger;
         _bucketName = config["Storage:BucketName"] ?? "fluxgrid-cvs";
     }
 
@@ -50,14 +53,19 @@ public class CvParsingService
 
         try
         {
+            _logger.LogInformation("Starting CV parsing for candidate {Id}", candidateId);
             var objectKey = $"{tenantId}/{candidate.FileHash}/{candidate.OriginalFilename}";
+            _logger.LogInformation("Reading file: bucket={Bucket}, key={Key}", _bucketName, objectKey);
             var fileBytes = await _storage.ReadFileAsync(_bucketName, objectKey);
 
             var rawText = ExtractText(fileBytes, candidate.FileType);
             candidate.RawText = rawText;
 
+            _logger.LogInformation("Extracted text length: {Len}", rawText?.Length ?? 0);
+
             if (PdfTextExtractor.IsScannedDocument(rawText))
             {
+                _logger.LogWarning("Scanned document detected, text length={Len}", rawText?.Length ?? 0);
                 candidate.Status = CandidateStatus.ParseFailed;
                 await _db.SaveChangesAsync(ct);
                 await _audit.LogAsync(userId, tenantId, "CV_PARSE_FAILED", "candidate",
@@ -66,11 +74,14 @@ public class CvParsingService
                 return;
             }
 
+            _logger.LogInformation("Calling Groq API...");
             var parsed = await _groq.ParseCvTextAsync(rawText, ct);
+            _logger.LogInformation("Groq response received, kind={Kind}", parsed.ValueKind);
 
             if (parsed.ValueKind == JsonValueKind.Undefined || parsed.ValueKind == JsonValueKind.Null ||
                 !parsed.TryGetProperty("firstName", out _))
             {
+                _logger.LogWarning("Groq returned invalid/empty response");
                 candidate.Status = CandidateStatus.ParseFailed;
                 await _db.SaveChangesAsync(ct);
                 await _audit.LogAsync(userId, tenantId, "CV_PARSE_FAILED", "candidate",
@@ -91,13 +102,14 @@ public class CvParsingService
                 candidate.Id, ipAddress, userAgent, null,
                 new { parsedData = parsed });
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogError(ex, "CV parsing failed for candidate {Id}", candidateId);
             candidate.Status = CandidateStatus.ParseFailed;
             await _db.SaveChangesAsync(ct);
             await _audit.LogAsync(userId, tenantId, "CV_PARSE_FAILED", "candidate",
                 candidate.Id, ipAddress, userAgent, null,
-                new { reason = "exception" });
+                new { reason = ex.Message });
         }
     }
 

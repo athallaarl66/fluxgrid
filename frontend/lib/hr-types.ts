@@ -234,6 +234,18 @@ export interface UploadUrlResponse {
   fileHash: string;
 }
 
+export interface ApproveCandidateResponse {
+  id: string;
+  status: CandidateStatus;
+  message: string;
+}
+
+export interface RejectCandidateResponse {
+  id: string;
+  status: CandidateStatus;
+  message: string;
+}
+
 export interface CreateCandidateRequest {
   name: string;
   email: string;

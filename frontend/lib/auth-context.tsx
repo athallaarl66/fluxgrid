@@ -47,7 +47,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const fetchUser = useCallback(async () => {
     try {
-      const res = await fetch("/api/auth/me");
+      const token = document.cookie.replace(/(?:(?:^|.*;\s*)token\s*=\s*([^;]*).*$)|^.*$/, "$1") || localStorage.getItem("token");
+      if (!token) { setUser(null); return; }
+      const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5020";
+      const res = await fetch(`${API}/api/auth/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (res.ok) {
         const data = await res.json();
         setUser(data.user);
@@ -65,7 +70,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (username: string, password: string): Promise<LoginResult> => {
     try {
-      const response = await fetch("/api/auth/login", {
+      const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5020";
+      const response = await fetch(`${API}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
@@ -84,6 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (data.token) {
         document.cookie = `token=${data.token}; path=/; max-age=${60 * 60 * 24}; SameSite=Lax`;
+        localStorage.setItem("token", data.token);
       }
 
       await fetchUser();

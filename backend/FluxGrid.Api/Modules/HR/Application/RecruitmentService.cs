@@ -16,7 +16,7 @@ public class RecruitmentService
     private readonly IFileStorageService _storage;
     private readonly AuditService _audit;
     private readonly DomainEventDispatcher _events;
-    private readonly CvParsingService _cvParsing;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly string _bucketName;
 
     private static readonly string[] AllowedFileTypes = ["pdf", "docx"];
@@ -32,14 +32,14 @@ public class RecruitmentService
         IFileStorageService storage,
         AuditService audit,
         DomainEventDispatcher events,
-        CvParsingService cvParsing,
+        IServiceScopeFactory scopeFactory,
         IConfiguration config)
     {
         _db = db;
         _storage = storage;
         _audit = audit;
         _events = events;
-        _cvParsing = cvParsing;
+        _scopeFactory = scopeFactory;
         _bucketName = config["Storage:BucketName"] ?? "fluxgrid-cvs";
     }
 
@@ -123,7 +123,9 @@ public class RecruitmentService
 
         _ = Task.Run(async () =>
         {
-            try { await _cvParsing.ParseCandidateAsync(candidate.Id, userId, tenantId, ipAddress, userAgent); }
+            using var scope = _scopeFactory.CreateScope();
+            var cvParsing = scope.ServiceProvider.GetRequiredService<CvParsingService>();
+            try { await cvParsing.ParseCandidateAsync(candidate.Id, userId, tenantId, ipAddress, userAgent); }
             catch { /* parsing failure handled inside service */ }
         });
 
@@ -202,6 +204,24 @@ public class RecruitmentService
             new { newStatus = CandidateStatus.Rejected });
 
         return new RejectCandidateResponse(id, CandidateStatus.Rejected, "Candidate rejected");
+    }
+
+    public async Task DeleteCandidateAsync(Guid id, Guid tenantId, Guid userId,
+        string? ipAddress = null, string? userAgent = null)
+    {
+        var candidate = await _db.Candidates
+            .FirstOrDefaultAsync(c => c.Id == id && c.TenantId == tenantId)
+            ?? throw new InvalidOperationException("Candidate not found");
+
+        var objectKey = $"{tenantId}/{candidate.FileHash}/{candidate.OriginalFilename}";
+        await _storage.DeleteFileAsync(_bucketName, objectKey);
+
+        _db.Candidates.Remove(candidate);
+        await _db.SaveChangesAsync();
+
+        await _audit.LogAsync(userId, tenantId, "DELETE", "candidates", id, ipAddress, userAgent,
+            new { deletedCandidate = candidate },
+            null);
     }
 
     public async Task<CandidateDetailResponse?> GetCandidateDetailAsync(Guid id, Guid tenantId)

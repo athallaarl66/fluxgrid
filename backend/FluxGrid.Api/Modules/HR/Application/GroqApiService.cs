@@ -15,6 +15,8 @@ public partial class GroqApiService
     public GroqApiService(IHttpClientFactory httpFactory, IConfiguration config)
     {
         _http = httpFactory.CreateClient("GroqApi");
+        var apiKey = config["Groq:ApiKey"] ?? throw new InvalidOperationException("Groq:ApiKey not configured");
+        _http.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiKey);
         _model = config["Groq:Model"] ?? "llama3-70b-8192";
     }
 
@@ -104,7 +106,7 @@ CV text:
         }
     }
 
-    internal static string RedactPii(string text)
+    public static string RedactPii(string text)
     {
         var result = EmailRegex().Replace(text, "[EMAIL]");
         result = PhoneRegex().Replace(result, "[PHONE]");
@@ -112,7 +114,7 @@ CV text:
         return result;
     }
 
-    internal static string TruncateToTokens(string text, int maxTokens)
+    public static string TruncateToTokens(string text, int maxTokens)
     {
         if (string.IsNullOrEmpty(text)) return text;
         var approxTokens = text.Length / 4;

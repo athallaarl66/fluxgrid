@@ -1,98 +1,238 @@
 # Technical Specifications: Automatic CV Parsing (HR-5)
 
 ## 1. System Architecture
-- **Trigger**: Upstash QStash webhook triggered by the `CandidateUploaded` event from HR-4.
-- **PDF Extraction**: Node.js library `pdf-parse` (or equivalent serverless-friendly tool).
-- **AI Service Layer**: Groq API (Llama 3) for inference.
-- **Database**: PostgreSQL (Neon).
+- **Trigger**: In-process fire-and-forget via `Task.Run` with `IServiceScopeFactory` in `RecruitmentService.CreateCandidateAsync`. Optional QStash webhook as alternative entry point.
+- **PDF Extraction**: `UglyToad.PdfPig` (pure .NET, no native dependencies).
+- **DOCX Extraction**: `DocumentFormat.OpenXml` (official Microsoft library).
+- **AI Service Layer**: Groq API (Llama 3 70B) via `IHttpClientFactory` named `"GroqApi"`.
+- **Database**: PostgreSQL with EF Core 8.
+- **Storage**: Local filesystem or MinIO/S3 (configurable via `Storage:Provider`).
+- **Frontend**: Next.js 16 split-screen review UI with `react-pdf`.
 
 ## 2. Database Schema
 
-### Table: `candidate_profiles` (1:1 with `candidates`)
-| Column Name | Type | Constraints | Description |
-|-------------|------|-------------|-------------|
-| `candidate_id`| UUID | PRIMARY KEY, FK | Reference to `candidates` |
-| `first_name` | VARCHAR(100) | | |
-| `last_name` | VARCHAR(100) | | |
-| `email` | VARCHAR(255) | | |
-| `phone` | VARCHAR(50) | | |
-| `raw_text` | TEXT | | The unparsed PDF text |
-| `tenant_id` | UUID | NOT NULL, FK | |
+### Table: `candidates` (existing, extended)
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | UUID | PK |
+| `name` | VARCHAR(200) | Overwritten by Groq first_name + last_name |
+| `email` | VARCHAR(255) | Overwritten by Groq |
+| `phone` | VARCHAR(30) | Overwritten by Groq |
+| `location` | VARCHAR(200) | |
+| `summary` | VARCHAR(2000) | Overwritten by Groq summary |
+| `raw_text` | TEXT | Raw extracted PDF/DOCX text (added in HR-5) |
+| `status` | VARCHAR(20) | DRAFT → PARSED / PARSE_FAILED → ACTIVE / REJECTED |
+| `file_url` | VARCHAR(1000) | Download URL for CV file |
+| `file_hash` | VARCHAR(64) | SHA-256 of uploaded file |
+| `tenant_id` | UUID | Tenant isolation |
+| *(other fields from HR-4)* | | |
 
-### Table: `candidate_experience` (1:N)
-| Column Name | Type | Constraints | Description |
-|-------------|------|-------------|-------------|
-| `id` | UUID | PRIMARY KEY | |
-| `candidate_id`| UUID | NOT NULL, FK | |
-| `company_name`| VARCHAR(255) | | |
-| `job_title` | VARCHAR(255) | | |
-| `start_year` | INT | | |
-| `end_year` | INT | | NULL means 'Present' |
-| `description` | TEXT | | |
+### Table: `candidate_education` (existing)
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | UUID | PK |
+| `candidate_id` | UUID | FK → candidates |
+| `institution` | VARCHAR(200) | |
+| `degree` | VARCHAR(100) | |
+| `field_of_study` | VARCHAR(200) | |
+| `start_date` | TIMESTAMP | |
+| `end_date` | TIMESTAMP | |
+| `gpa` | DECIMAL(3,2) | |
 
-*(Similar tables for `candidate_education` and `candidate_skills`)*
+### Table: `candidate_experience` (existing)
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | UUID | PK |
+| `candidate_id` | UUID | FK → candidates |
+| `company` | VARCHAR(200) | |
+| `role` | VARCHAR(100) | |
+| `start_date` | TIMESTAMP | |
+| `end_date` | TIMESTAMP | |
+| `is_current` | BOOLEAN | |
+| `description` | VARCHAR(2000) | |
+| `location` | VARCHAR(200) | |
 
-## 3. Drizzle ORM Schema Snippet
-```typescript
-import { pgTable, uuid, varchar, text, integer } from "drizzle-orm/pg-core";
-import { candidates } from "./hr04";
+### Table: `candidate_skills` (existing)
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | UUID | PK |
+| `candidate_id` | UUID | FK → candidates |
+| `skill_name` | VARCHAR(100) | |
+| `skill_category` | VARCHAR(100) | |
+| `proficiency_level` | VARCHAR(50) | |
+| `years_experience` | INTEGER | |
 
-export const candidateProfiles = pgTable("candidate_profiles", {
-  candidateId: uuid("candidate_id").primaryKey().references(() => candidates.id),
-  firstName: varchar("first_name", { length: 100 }),
-  lastName: varchar("last_name", { length: 100 }),
-  email: varchar("email", { length: 255 }),
-  phone: varchar("phone", { length: 50 }),
-  rawText: text("raw_text"),
-  tenantId: uuid("tenant_id").notNull(),
-});
+## 3. Backend Service Architecture
 
-export const candidateExperience = pgTable("candidate_experience", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  candidateId: uuid("candidate_id").references(() => candidates.id).notNull(),
-  companyName: varchar("company_name", { length: 255 }),
-  jobTitle: varchar("job_title", { length: 255 }),
-  startYear: integer("start_year"),
-  endYear: integer("end_year"),
-  description: text("description"),
-});
-// Education and Skills omitted for brevity
-```
+### 3.1 PdfTextExtractor
+- **File**: `Modules/HR/Application/PdfTextExtractor.cs`
+- **Method**: `string ExtractText(byte[] pdfBytes)` — uses PdfPig to iterate pages and concatenate text.
+- **Static Helper**: `bool IsScannedDocument(string text)` — returns true if text length < 50 characters.
+
+### 3.2 DocxTextExtractor
+- **File**: `Modules/HR/Application/DocxTextExtractor.cs`
+- **Method**: `string ExtractText(byte[] docxBytes)` — uses DocumentFormat.OpenXml to extract `<Text>` elements from the document body.
+
+### 3.3 GroqApiService
+- **File**: `Modules/HR/Application/GroqApiService.cs`
+- **Constructor**: Takes `IHttpClientFactory` (creates named client `"GroqApi"`) and `IConfiguration` (reads `Groq:ApiKey` and `Groq:Model`).
+- **Method**: `Task<JsonElement> ParseCvTextAsync(string rawText, CancellationToken)`
+  - PII redaction: regex replaces email/phone/address before sending.
+  - Token truncation: approximates 4 chars per token, truncates to 4000 tokens.
+  - Retry: exponential backoff up to 3 retries for 429/5xx errors.
+  - Prompt: system + user message with strict JSON schema, `response_format: { type: "json_object" }`.
+  - Response validation: parses JSON, falls back to stripping code fences.
+
+### 3.4 CvParsingService
+- **File**: `Modules/HR/Application/CvParsingService.cs`
+- **Method**: `Task ParseCandidateAsync(Guid candidateId, Guid userId, Guid tenantId, ...)`
+  - Loads candidate with Education/Experience/Skills navigation properties.
+  - Reads file bytes from storage via `IFileStorageService.ReadFileAsync`.
+  - Selects PdfTextExtractor or DocxTextExtractor based on `FileType`.
+  - Checks for scanned document (< 50 chars) → sets PARSE_FAILED immediately.
+  - Calls GroqApiService → validates response has `firstName` property.
+  - Saves parsed data to Education/Experience/Skills tables.
+  - Sets status to PARSED on success, PARSE_FAILED on any failure.
+  - Logs audit events: `CV_PARSED` / `CV_PARSE_FAILED`.
 
 ## 4. Groq API Integration (Prompt Engineering)
-- **Model**: `llama3-70b-8192` (Preferred for complex JSON schemas).
-- **Prompt**: 
-  "You are an expert HR data extractor. Extract the following candidate information from the provided raw CV text. 
-  You MUST respond ONLY with a valid JSON object matching this exact schema:
-  `{ firstName: string, lastName: string, email: string, phone: string, experience: [{ company: string, title: string, startYear: number, endYear: number|null }], education: [{ institution: string, degree: string, year: number }], skills: [string] }`
-  Do not include markdown blocks or any other text."
-- **JSON Mode**: Enable `response_format: { type: "json_object" }` if supported by the Groq SDK.
+- **Model**: `llama3-70b-8192` (configured via `Groq:Model`).
+- **Auth**: Bearer token from `Groq:ApiKey` (set via `.env` or env var `Groq__ApiKey`).
+- **Endpoint**: `POST https://api.groq.com/openai/v1/chat/completions`
+- **Temperature**: 0.1
+- **Response Format**: `{ type: "json_object" }`
+- **Schema**:
+```json
+{
+  "firstName": "...",
+  "lastName": "...",
+  "email": "...",
+  "phone": "...",
+  "summary": "...",
+  "experience": [{ "company": "", "role": "", "startDate": "", "endDate": "", "isCurrent": false, "description": "", "location": "" }],
+  "education": [{ "institution": "", "degree": "", "fieldOfStudy": "", "startDate": "", "endDate": "", "gpa": null }],
+  "skills": [{ "skillName": "", "skillCategory": "", "proficiencyLevel": "", "yearsExperience": null }]
+}
+```
 
 ## 5. API Endpoints
 
+### GET `/api/v1/hr/recruitment/candidates`
+- Existing from HR-4. Supports `?status=PARSED` for review queue filtering.
+
+### GET `/api/v1/hr/recruitment/candidates/{id}`
+- Existing from HR-4. Returns full detail with education/experience/skills sub-entities.
+
 ### POST `/api/v1/hr/recruitment/parse-webhook`
-- **Description**: Upstash QStash target endpoint.
-- **Action**:
-  1. Downloads PDF from S3.
-  2. Extracts text via `pdf-parse`.
-  3. Sends text to Groq.
-  4. Uses Zod to strictly validate the Groq JSON response.
-  5. Inserts into relational tables.
-  6. Updates `candidates.status` to `PARSED`.
+- QStash target endpoint (optional — in-process trigger is default).
+- Validates `Upstash-Signature` header via HMAC-SHA256 (QStashSignatureFilter).
+- Body: `{ candidateId, tenantId, userId }`.
+- Returns `{ status: "parsing_initiated" }`.
 
 ### PUT `/api/v1/hr/recruitment/candidates/{id}/approve`
-- **Description**: Recruiter confirms the AI data is correct.
-- **Action**: Updates status from `PARSED` to `APPROVED`.
+- Changes status from PARSED → ACTIVE.
+- Requires `HR:RecruitmentManage` permission.
+- Returns `{ id, status, message }`.
 
-## 6. Permissions (RBAC)
-- Background jobs require an API secret token.
-- `hr.recruitment.manage`: Required to approve the parsed data.
+### PUT `/api/v1/hr/recruitment/candidates/{id}/reject`
+- Changes status from PARSED → REJECTED.
+- Requires `HR:RecruitmentManage` permission.
+- Returns `{ id, status, message }`.
 
-## 7. Performance Considerations
-- **Token Limits**: A very long CV might exceed the context window. Truncate the raw text to the first 4000 tokens before sending to Groq to ensure stability.
+### DELETE `/api/v1/hr/recruitment/candidates/{id}`
+- Deletes candidate record and associated file from storage.
+- Requires `HR:RecruitmentManage` permission.
+- Returns `{ deleted: true }`.
 
-## 8. Security Considerations
-- The webhook endpoint MUST verify the QStash signature (`@upstash/qstash/nextjs`) to prevent attackers from hitting the endpoint and racking up Groq API costs.
+## 6. Frontend — Split-Screen Review Page
 
-## 9. Error Handling
-- **Zod Parsing Failures**: If Groq returns a hallucinated JSON structure, Zod will throw an error. Catch this, increment a retry counter in QStash, and try again. After 3 failures, mark as `PARSE_FAILED`.
+### Route
+- **Path**: `/hr/recruitment/{id}/review`
+- **Shell**: `app/hr/recruitment/[id]/review/page.tsx`
+
+### Components
+| Component | File | Purpose |
+|-----------|------|---------|
+| `PdfViewerPane` | `components/hr/PdfViewerPane.tsx` | PDF rendering via react-pdf with page navigation, loading/error states |
+| `CandidateReviewForm` | `components/hr/CandidateReviewForm.tsx` | Editable form: Personal Info, Education (add/delete), Experience (add/delete), Skills (tag input) |
+| `SkillsInput` | `components/hr/SkillsInput.tsx` | Tokenized chip input with Enter to add, X to remove |
+| `CandidateReviewTopBar` | `components/hr/CandidateReviewTopBar.tsx` | Header with name, status badge, Approve/Reject buttons with loading states |
+
+### Layout
+- Desktop: 50/50 flex split. Left = PDF viewer (collapsible). Right = editable form.
+- Mobile (< 768px): PDF behind "View Original" modal button. Form takes full width.
+- Each section in form displays `[Extracted]` tag with muted italic styling.
+
+### Integrations
+- Candidate table shows "Review" link for PARSED candidates.
+- Candidate detail page shows "Review & Approve" card in sidebar.
+- Approve/Reject buttons call PUT endpoints via TanStack Query mutations.
+- Mutations invalidate `["candidates"]` and `["candidate", id]` queries on success.
+
+## 7. Parsing Pipeline Flow
+
+```
+Upload CV (POST /candidates)
+        │
+        ▼
+RecruitmentService.CreateCandidateAsync
+  - Saves candidate as DRAFT
+  - Raises CandidateUploaded event
+  - Fires Task.Run (fire-and-forget with IServiceScopeFactory)
+        │
+        ▼
+CvParsingService.ParseCandidateAsync
+  1. Load candidate + navigation properties
+  2. ReadFileAsync from storage
+  3. Extract text (PdfPig / DocumentFormat.OpenXml)
+  4. Save raw_text to candidate
+  5. Check length < 50 chars? → PARSE_FAILED, stop
+  6. PII redact → Truncate to 4000 tokens
+  7. Call Groq API (retry up to 3x on 429/5xx)
+  8. Validate response
+  9. Replace Education/Experience/Skills in DB
+  10. Set status = PARSED
+  11. Audit log CV_PARSED
+        │
+        ▼
+Recruiter reviews at /hr/recruitment/{id}/review
+        │
+        ├─ Approve → PUT /approve → status ACTIVE
+        └─ Reject  → PUT /reject  → status REJECTED
+```
+
+## 8. Error Handling
+
+| Scenario | Behavior |
+|----------|----------|
+| Scanned PDF (< 50 chars text) | Skips Groq, sets PARSE_FAILED immediately |
+| Groq 429 rate limit | Retry with exponential backoff (2^attempt * random seconds). Max 3 retries. |
+| Groq 5xx server error | Same retry logic |
+| Groq returns invalid JSON | Strip code fences, retry parse. If still invalid → PARSE_FAILED. |
+| Groq returns valid JSON missing firstName | Treated as invalid → PARSE_FAILED |
+| File not found in storage | Exception caught → PARSE_FAILED |
+| Any unhandled exception | Logged via ILogger → PARSE_FAILED |
+
+## 9. Security Considerations
+
+- **QStash webhook**: HMAC-SHA256 signature verified via `QStashSignatureFilter`.
+- **Groq API key**: Loaded from `Groq__ApiKey` env var, never stored in DB.
+- **PII redaction**: Email, phone, and address patterns are redacted before text leaves the server.
+- **Permissions**: All recruitment endpoints require `HR:RecruitmentManage` policy.
+- **Tenant isolation**: All queries filter by `TenantId`.
+
+## 10. Performance Considerations
+
+- **Fire-and-forget**: Parsing runs on background thread via `IServiceScopeFactory`, does not block HTTP response.
+- **Token truncation**: Text capped at ~4000 tokens (16000 chars) before Groq call.
+- **Retry backoff**: Exponential backoff prevents hammering Groq during rate limits.
+- **DbContext scope**: Separate DI scope for background task avoids `ObjectDisposedException`.
+
+## 11. Testing
+
+| Layer | Tests | Location |
+|-------|-------|----------|
+| Unit (PII, truncation, scanned doc) | 14 | `tests/unit/hr/hr-5-automatic-cv-parsing.Test/TextExtractorTests.cs` + `GroqApiServiceTests.cs` |
+| Unit (approve, reject, delete) | 10 | `tests/unit/hr/hr-5-automatic-cv-parsing.Test/RecruitmentServiceApprovalTests.cs` |
+| Integration (full parsing pipeline) | TBD | Backend integration tests with mock Groq |
+| E2E (upload → parse → review → approve) | TBD | Playwright E2E tests |
