@@ -106,7 +106,7 @@ CV text:
         }
     }
 
-    internal static string RedactPii(string text)
+    public static string RedactPii(string text)
     {
         var result = EmailRegex().Replace(text, "[EMAIL]");
         result = PhoneRegex().Replace(result, "[PHONE]");
@@ -114,7 +114,7 @@ CV text:
         return result;
     }
 
-    internal static string TruncateToTokens(string text, int maxTokens)
+    public static string TruncateToTokens(string text, int maxTokens)
     {
         if (string.IsNullOrEmpty(text)) return text;
         var approxTokens = text.Length / 4;
