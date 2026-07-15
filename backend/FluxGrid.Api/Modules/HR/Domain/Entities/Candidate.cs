@@ -23,6 +23,7 @@ public class Candidate
     public string? FileType { get; set; }
     public long? FileSizeBytes { get; set; }
     public float[]? Embedding { get; set; }
+    public string? EmbeddingStatus { get; set; }
     public Guid UploadedBy { get; set; }
     public Guid TenantId { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

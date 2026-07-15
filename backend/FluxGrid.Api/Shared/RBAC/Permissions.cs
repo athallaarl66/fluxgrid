@@ -32,6 +32,8 @@ public static class Permissions
     public const string HrEmployeeManage = "HR:EmployeeManage";
     public const string HrPayrollRead = "HR:PayrollRead";
     public const string HrRecruitmentManage = "HR:RecruitmentManage";
+    public const string HrJobRead = "HR:JobRead";
+    public const string HrJobManage = "HR:JobManage";
 
     public const string TaskRead = "Task:Read";
     public const string TaskWrite = "Task:Write";
@@ -42,7 +44,7 @@ public static class Permissions
         FinanceRead, FinanceWrite, FinanceAdmin, FinanceCoaRead, FinanceCoaManage,
         FinanceJournalView, FinanceJournalCreate, FinanceJournalApprove,
         FinancePeriodRead, FinancePeriodAdmin, FinanceBudgetRead, FinanceBudgetManage, FinanceReportRead,
-        HrRead, HrWrite, HrPayrollProcess, HrEmployeeRead, HrEmployeeManage, HrPayrollRead, HrRecruitmentManage,
+        HrRead, HrWrite, HrPayrollProcess, HrEmployeeRead, HrEmployeeManage, HrPayrollRead, HrRecruitmentManage, HrJobRead, HrJobManage,
         TaskRead, TaskWrite
     ];
 }

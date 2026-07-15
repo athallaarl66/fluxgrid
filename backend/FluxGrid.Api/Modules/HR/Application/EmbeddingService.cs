@@ -146,6 +146,49 @@ public partial class EmbeddingService
         return null;
     }
 
+    public async Task<string?> GenerateMatchReasoningAsync(string candidateProfile, string jobDescription, CancellationToken ct = default)
+    {
+        var client = _httpFactory.CreateClient("GroqApi");
+        var model = _config["Groq:Model"] ?? "llama3-70b-8192";
+
+        try
+        {
+            var payload = new
+            {
+                model,
+                messages = new[]
+                {
+                    new { role = "system", content = "You are a recruitment AI assistant. Explain why this candidate matches or doesn't match the job in exactly 2 sentences. Be specific about skills, experience, and requirements." },
+                    new { role = "user", content = $"JOB:\n{jobDescription}\n\nCANDIDATE:\n{candidateProfile}\n\nProvide a 2-sentence match assessment." }
+                },
+                temperature = 0.3,
+                max_tokens = 500
+            };
+
+            var response = await client.PostAsync(
+                "chat/completions",
+                new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json"),
+                ct);
+
+            if (!response.IsSuccessStatusCode) return null;
+
+            var json = await response.Content.ReadFromJsonAsync<JsonElement>(ct);
+            if (json.TryGetProperty("choices", out var choices) && choices.GetArrayLength() > 0)
+            {
+                return choices[0]
+                    .GetProperty("message")
+                    .GetProperty("content")
+                    .GetString();
+            }
+        }
+        catch
+        {
+            return null;
+        }
+
+        return null;
+    }
+
     public static string ComposeCandidateText(Candidate candidate)
     {
         var parts = new List<string>();

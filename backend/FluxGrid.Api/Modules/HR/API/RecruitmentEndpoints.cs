@@ -10,6 +10,7 @@ public static class RecruitmentEndpoints
     public static void MapRecruitmentEndpoints(this WebApplication app)
     {
         var recruitment = app.MapGroup("/api/v1/hr/recruitment");
+        var jobs = app.MapGroup("/api/v1/hr/recruitment/jobs");
 
         recruitment.MapPost("/upload-url", async (
             UploadUrlRequest request,
@@ -147,6 +148,156 @@ public static class RecruitmentEndpoints
             return Results.Ok(new { status = "parsing_initiated" });
         })
         .AddEndpointFilter<QStashSignatureFilter>();
+
+        // ─── Job Posting Endpoints ────────────────────────────────────────
+
+        jobs.MapGet("/", async (
+            [FromQuery] string? search,
+            [FromQuery] string? status,
+            [FromQuery] int page,
+            [FromQuery] int pageSize,
+            JobPostingService service,
+            HttpContext http) =>
+        {
+            var (tenantId, _, _, _) = GetAuditContext(http);
+            var result = await service.GetListAsync(tenantId, search, status, page, pageSize);
+            return Results.Ok(result);
+        })
+        .RequireAuthorization(Permissions.HrJobRead);
+
+        jobs.MapPost("/", async (
+            CreateJobRequest request,
+            JobPostingService service,
+            HttpContext http) =>
+        {
+            var (tenantId, userId, ip, ua) = GetAuditContext(http);
+            try
+            {
+                var job = await service.CreateAsync(request, tenantId, userId, ip, ua);
+                return Results.Created($"/api/v1/hr/recruitment/jobs/{job.Id}", job);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.Problem(ex.Message, statusCode: 400);
+            }
+        })
+        .RequireAuthorization(Permissions.HrJobManage);
+
+        jobs.MapGet("/{id:guid}", async (
+            Guid id,
+            JobPostingService service,
+            HttpContext http) =>
+        {
+            var (tenantId, _, _, _) = GetAuditContext(http);
+            var job = await service.GetByIdAsync(id, tenantId);
+            return job is null ? Results.NotFound() : Results.Ok(job);
+        })
+        .RequireAuthorization(Permissions.HrJobRead);
+
+        jobs.MapPut("/{id:guid}", async (
+            Guid id,
+            UpdateJobRequest request,
+            JobPostingService service,
+            HttpContext http) =>
+        {
+            var (tenantId, userId, ip, ua) = GetAuditContext(http);
+            try
+            {
+                var job = await service.UpdateAsync(id, request, tenantId, userId, ip, ua);
+                return job is null ? Results.NotFound() : Results.Ok(job);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.Problem(ex.Message, statusCode: 400);
+            }
+        })
+        .RequireAuthorization(Permissions.HrJobManage);
+
+        jobs.MapDelete("/{id:guid}", async (
+            Guid id,
+            JobPostingService service,
+            HttpContext http) =>
+        {
+            var (tenantId, userId, ip, ua) = GetAuditContext(http);
+            try
+            {
+                var deleted = await service.DeleteAsync(id, tenantId, userId, ip, ua);
+                return deleted ? Results.Ok(new { deleted = true }) : Results.NotFound();
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.Problem(ex.Message, statusCode: 400);
+            }
+        })
+        .RequireAuthorization(Permissions.HrJobManage);
+
+        jobs.MapPost("/{id:guid}/publish", async (
+            Guid id,
+            JobPostingService service,
+            HttpContext http) =>
+        {
+            var (tenantId, userId, ip, ua) = GetAuditContext(http);
+            try
+            {
+                var result = await service.PublishAsync(id, tenantId, userId, ip, ua);
+                return result.Status == "PUBLISHED" ? Results.Ok(result) : Results.Problem(result.Message, statusCode: 503);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.Problem(ex.Message, statusCode: 400);
+            }
+        })
+        .RequireAuthorization(Permissions.HrJobManage);
+
+        jobs.MapPost("/{id:guid}/close", async (
+            Guid id,
+            JobPostingService service,
+            HttpContext http) =>
+        {
+            var (tenantId, userId, ip, ua) = GetAuditContext(http);
+            try
+            {
+                var result = await service.CloseAsync(id, tenantId, userId, ip, ua);
+                return Results.Ok(result);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.Problem(ex.Message, statusCode: 400);
+            }
+        })
+        .RequireAuthorization(Permissions.HrJobManage);
+
+        jobs.MapGet("/{id:guid}/matches", async (
+            Guid id,
+            [FromQuery] double? minScore,
+            [FromQuery] int? limit,
+            JobPostingService service,
+            HttpContext http) =>
+        {
+            var (tenantId, _, _, _) = GetAuditContext(http);
+            try
+            {
+                var result = await service.GetJobMatchesAsync(id, tenantId, minScore, limit);
+                return Results.Ok(result);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.Problem(ex.Message, statusCode: 400);
+            }
+        })
+        .RequireAuthorization(Permissions.HrJobRead);
+
+        jobs.MapPost("/{jobId:guid}/matches/{candidateId:guid}/reasoning", async (
+            Guid jobId,
+            Guid candidateId,
+            JobPostingService service,
+            HttpContext http) =>
+        {
+            var (tenantId, _, _, _) = GetAuditContext(http);
+            var result = await service.GetMatchReasoningAsync(jobId, candidateId, tenantId);
+            return result is null ? Results.NotFound() : Results.Ok(result);
+        })
+        .RequireAuthorization(Permissions.HrJobRead);
     }
 
     private static (Guid tenantId, Guid userId, string? ip, string? ua) GetAuditContext(HttpContext http)
