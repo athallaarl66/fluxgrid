@@ -53,6 +53,7 @@ const navItems: NavItem[] = [
     children: [
       { label: "Employees", href: "/hr/employees" },
       { label: "Recruitment", href: "/hr/recruitment" },
+      { label: "Job Postings", href: "/hr/recruitment/jobs" },
       { label: "Org Chart", href: "/hr/org-chart" },
       { label: "Payroll", href: "/hr/payroll" },
     ],
