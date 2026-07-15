@@ -184,6 +184,8 @@ builder.Services.AddTransient<QStashSignatureFilter>();
 builder.Services.AddScoped<DocxTextExtractor>();
 builder.Services.AddScoped<GroqApiService>();
 builder.Services.AddScoped<CvParsingService>();
+builder.Services.AddScoped<EmbeddingService>();
+builder.Services.AddScoped<JobPostingService>();
 builder.Services.AddScoped<RecruitmentService>();
 builder.Services.AddScoped(sp =>
 {
