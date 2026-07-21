@@ -8,48 +8,51 @@ public static class HrDataSeeder
 {
     public static async Task SeedAsync(AppDbContext db, Guid tenantId)
     {
-        if (await db.Departments.AnyAsync(d => d.TenantId == tenantId))
-            return;
-
-        var departments = new List<Department>
+        if (!await db.Departments.AnyAsync(d => d.TenantId == tenantId))
         {
-            new() { Id = Guid.NewGuid(), Name = "HR", TenantId = tenantId },
-            new() { Id = Guid.NewGuid(), Name = "IT", TenantId = tenantId },
-            new() { Id = Guid.NewGuid(), Name = "Finance", TenantId = tenantId }
-        };
-        db.Departments.AddRange(departments);
+            db.Departments.AddRange(
+                new Department { Id = Guid.NewGuid(), Name = "HR", TenantId = tenantId },
+                new Department { Id = Guid.NewGuid(), Name = "IT", TenantId = tenantId },
+                new Department { Id = Guid.NewGuid(), Name = "Finance", TenantId = tenantId }
+            );
+        }
 
-        var salaryGrades = new List<SalaryGrade>
+        if (!await db.SalaryGrades.AnyAsync(g => g.TenantId == tenantId))
         {
-            new() { Id = Guid.NewGuid(), Grade = "Junior", MinSalary = 5_000_000m, MaxSalary = 10_000_000m, TenantId = tenantId },
-            new() { Id = Guid.NewGuid(), Grade = "Mid", MinSalary = 10_000_000m, MaxSalary = 20_000_000m, TenantId = tenantId },
-            new() { Id = Guid.NewGuid(), Grade = "Senior", MinSalary = 20_000_000m, MaxSalary = 35_000_000m, TenantId = tenantId },
-            new() { Id = Guid.NewGuid(), Grade = "Lead", MinSalary = 35_000_000m, MaxSalary = 55_000_000m, TenantId = tenantId },
-            new() { Id = Guid.NewGuid(), Grade = "Executive", MinSalary = 55_000_000m, MaxSalary = 100_000_000m, TenantId = tenantId }
-        };
-        db.SalaryGrades.AddRange(salaryGrades);
+            db.SalaryGrades.AddRange(
+                new SalaryGrade { Id = Guid.NewGuid(), Grade = "Junior", MinSalary = 5_000_000m, MaxSalary = 10_000_000m, TenantId = tenantId },
+                new SalaryGrade { Id = Guid.NewGuid(), Grade = "Mid", MinSalary = 10_000_000m, MaxSalary = 20_000_000m, TenantId = tenantId },
+                new SalaryGrade { Id = Guid.NewGuid(), Grade = "Senior", MinSalary = 20_000_000m, MaxSalary = 35_000_000m, TenantId = tenantId },
+                new SalaryGrade { Id = Guid.NewGuid(), Grade = "Lead", MinSalary = 35_000_000m, MaxSalary = 55_000_000m, TenantId = tenantId },
+                new SalaryGrade { Id = Guid.NewGuid(), Grade = "Executive", MinSalary = 55_000_000m, MaxSalary = 100_000_000m, TenantId = tenantId }
+            );
+        }
+
         await db.SaveChangesAsync();
 
+        await EmployeeDataSeeder.SeedAsync(db, tenantId);
+        await PayrollDataSeeder.SeedAsync(db, tenantId);
+        await RecruitmentDataSeeder.SeedAsync(db, tenantId);
+
+        await SyncAdminPassword(db, tenantId);
+    }
+
+    private static async Task SyncAdminPassword(AppDbContext db, Guid tenantId)
+    {
         var adminUser = await db.Users.FirstOrDefaultAsync(u => u.Username == "admin");
-        if (adminUser is not null && !await db.Employees.AnyAsync(e => e.TenantId == tenantId))
+        if (adminUser is null) return;
+
+        var seedPassword = Environment.GetEnvironmentVariable("SEED_ADMIN_PASSWORD");
+        if (!string.IsNullOrEmpty(seedPassword))
         {
-            var hrDept = departments[0];
-            var employee = new Employee
-            {
-                Id = Guid.NewGuid(),
-                UserId = adminUser.Id,
-                EmployeeNo = "EMP-001",
-                FirstName = "System",
-                LastName = "Admin",
-                Email = adminUser.Email,
-                DepartmentId = hrDept.Id,
-                JobTitle = "CEO",
-                Status = "ACTIVE",
-                HireDate = DateTime.UtcNow,
-                TenantId = tenantId
-            };
-            db.Employees.Add(employee);
-            await db.SaveChangesAsync();
+            adminUser.PasswordHash = BCrypt.Net.BCrypt.HashPassword(seedPassword);
+            adminUser.FailedLoginAttempts = 0;
+            adminUser.LockoutEnd = null;
         }
+
+        if (adminUser.TenantId == Guid.Empty)
+            adminUser.TenantId = tenantId;
+
+        await db.SaveChangesAsync();
     }
 }

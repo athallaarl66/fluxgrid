@@ -16,14 +16,14 @@ public static class HrEndpoints
             [FromQuery] string? search,
             [FromQuery] string? status,
             [FromQuery] Guid? departmentId,
-            [FromQuery] int page,
-            [FromQuery] int pageSize,
+            [FromQuery] int? page,
+            [FromQuery] int? pageSize,
             EmployeeService service,
             HttpContext http) =>
         {
             var (tenantId, _, _, _) = GetAuditContext(http);
             var includeSalary = http.User.HasClaim("permissions", Permissions.HrPayrollRead);
-            var result = await service.GetListAsync(tenantId, search, status, departmentId, page, pageSize, includeSalary);
+            var result = await service.GetListAsync(tenantId, search, status, departmentId, page ?? 1, pageSize ?? 20, includeSalary);
             return Results.Ok(result);
         })
         .RequireAuthorization(Permissions.HrRead);

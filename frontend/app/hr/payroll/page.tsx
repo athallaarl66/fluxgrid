@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { DollarSign } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
@@ -25,9 +25,11 @@ export default function PayrollDashboardPage() {
     pageSize,
   });
 
-  if (!authLoading && !user) {
-    router.push("/login?redirect=/hr/payroll");
-  }
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push("/login?redirect=/hr/payroll");
+    }
+  }, [user, authLoading, router]);
 
   if (authLoading) {
     return (

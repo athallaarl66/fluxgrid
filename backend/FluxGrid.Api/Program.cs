@@ -184,7 +184,10 @@ builder.Services.AddTransient<QStashSignatureFilter>();
 builder.Services.AddScoped<DocxTextExtractor>();
 builder.Services.AddScoped<GroqApiService>();
 builder.Services.AddScoped<CvParsingService>();
+builder.Services.AddScoped<EmbeddingService>();
+builder.Services.AddScoped<JobPostingService>();
 builder.Services.AddScoped<RecruitmentService>();
+builder.Services.AddScoped<HrDashboardService>();
 builder.Services.AddScoped(sp =>
 {
     var config = sp.GetRequiredService<IConfiguration>();
@@ -245,6 +248,7 @@ app.MapOutboundEndpoints();
 app.MapHrEndpoints();
 app.MapPayrollEndpoints();
 app.MapRecruitmentEndpoints();
+app.MapHrDashboardEndpoints();
 
 if (storageProvider != "S3")
 {

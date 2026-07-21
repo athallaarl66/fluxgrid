@@ -16,6 +16,7 @@ public class RecruitmentService
     private readonly IFileStorageService _storage;
     private readonly AuditService _audit;
     private readonly DomainEventDispatcher _events;
+    private readonly EmbeddingService _embedding;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly string _bucketName;
 
@@ -32,6 +33,7 @@ public class RecruitmentService
         IFileStorageService storage,
         AuditService audit,
         DomainEventDispatcher events,
+        EmbeddingService embedding,
         IServiceScopeFactory scopeFactory,
         IConfiguration config)
     {
@@ -39,6 +41,7 @@ public class RecruitmentService
         _storage = storage;
         _audit = audit;
         _events = events;
+        _embedding = embedding;
         _scopeFactory = scopeFactory;
         _bucketName = config["Storage:BucketName"] ?? "fluxgrid-cvs";
     }
@@ -168,6 +171,9 @@ public class RecruitmentService
         Guid userId, string? ipAddress = null, string? userAgent = null)
     {
         var candidate = await _db.Candidates
+            .Include(c => c.Education)
+            .Include(c => c.Experience)
+            .Include(c => c.Skills)
             .FirstOrDefaultAsync(c => c.Id == id && c.TenantId == tenantId)
             ?? throw new InvalidOperationException("Candidate not found");
 
@@ -176,13 +182,31 @@ public class RecruitmentService
 
         candidate.Status = CandidateStatus.Active;
         candidate.UpdatedAt = DateTime.UtcNow;
+
+        var text = EmbeddingService.ComposeCandidateText(candidate);
+        var embedding = await _embedding.GenerateEmbeddingAsync(text);
+
+        if (embedding is not null)
+        {
+            candidate.Embedding = embedding;
+        }
+        else
+        {
+            candidate.EmbeddingStatus = "PENDING";
+            QueueRetryEmbedding(candidate.Id, userId, tenantId, ipAddress, userAgent);
+        }
+
         await _db.SaveChangesAsync();
 
         await _audit.LogAsync(userId, tenantId, "APPROVE", "candidates", id, ipAddress, userAgent,
             new { previousStatus = CandidateStatus.Parsed },
-            new { newStatus = CandidateStatus.Active });
+            new { newStatus = CandidateStatus.Active, embeddingGenerated = embedding is not null });
 
-        return new ApproveCandidateResponse(id, CandidateStatus.Active, "Candidate approved successfully");
+        var msg = embedding is not null
+            ? "Candidate approved successfully"
+            : "Candidate approved but embedding generation queued for retry";
+
+        return new ApproveCandidateResponse(id, CandidateStatus.Active, msg);
     }
 
     public async Task<RejectCandidateResponse> RejectCandidateAsync(Guid id, Guid tenantId,
@@ -222,6 +246,42 @@ public class RecruitmentService
         await _audit.LogAsync(userId, tenantId, "DELETE", "candidates", id, ipAddress, userAgent,
             new { deletedCandidate = candidate },
             null);
+    }
+
+    private void QueueRetryEmbedding(Guid candidateId, Guid userId, Guid tenantId,
+        string? ipAddress, string? userAgent)
+    {
+        _ = Task.Run(async () =>
+        {
+            using var scope = _scopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var embedding = scope.ServiceProvider.GetRequiredService<EmbeddingService>();
+
+            for (var attempt = 1; attempt <= 3; attempt++)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(Math.Pow(5, attempt)));
+
+                var candidate = await db.Candidates
+                    .Include(c => c.Education)
+                    .Include(c => c.Experience)
+                    .Include(c => c.Skills)
+                    .FirstOrDefaultAsync(c => c.Id == candidateId);
+
+                if (candidate is null || candidate.Embedding is not null) return;
+
+                var text = EmbeddingService.ComposeCandidateText(candidate);
+                var vector = await embedding.GenerateEmbeddingAsync(text);
+
+                if (vector is not null)
+                {
+                    candidate.Embedding = vector;
+                    candidate.EmbeddingStatus = null;
+                    candidate.UpdatedAt = DateTime.UtcNow;
+                    await db.SaveChangesAsync();
+                    return;
+                }
+            }
+        });
     }
 
     public async Task<CandidateDetailResponse?> GetCandidateDetailAsync(Guid id, Guid tenantId)

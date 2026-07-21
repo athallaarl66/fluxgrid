@@ -246,6 +246,104 @@ export interface RejectCandidateResponse {
   message: string;
 }
 
+export type JobPostingStatus = "DRAFT" | "PUBLISHED" | "CLOSED";
+
+export interface JobPosting {
+  id: string;
+  title: string;
+  description: string;
+  requirements: string | null;
+  requiredSkills: string[];
+  minExperienceYears: number | null;
+  maxExperienceYears: number | null;
+  location: string | null;
+  salaryMin: number | null;
+  salaryMax: number | null;
+  status: JobPostingStatus;
+  tenantId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateJobRequest {
+  title: string;
+  description: string;
+  requirements?: string;
+  requiredSkills?: string[];
+  minExperienceYears?: number;
+  maxExperienceYears?: number;
+  location?: string;
+  salaryMin?: number;
+  salaryMax?: number;
+}
+
+export interface UpdateJobRequest {
+  title?: string;
+  description?: string;
+  requirements?: string;
+  requiredSkills?: string[];
+  minExperienceYears?: number;
+  maxExperienceYears?: number;
+  location?: string;
+  salaryMin?: number;
+  salaryMax?: number;
+}
+
+export interface PublishJobResponse {
+  id: string;
+  status: JobPostingStatus;
+  message: string;
+}
+
+export interface JobMatchItem {
+  candidateId: string;
+  candidateName: string;
+  candidateEmail: string;
+  matchScore: number;
+  semanticSimilarity: number | null;
+  skillMatchScore: number | null;
+  experienceMatchScore: number | null;
+  skills: string | null;
+  calculatedAt: string;
+}
+
+export interface JobMatchResponse {
+  jobId: string;
+  jobTitle: string;
+  matches: JobMatchItem[];
+}
+
+export interface MatchReasoningResponse {
+  candidateId: string;
+  candidateName: string;
+  matchScore: number;
+  reasoning: string;
+}
+
+export interface HrDashboardResponse {
+  totalEmployees: number;
+  activeEmployees: number;
+  totalCandidates: number;
+  candidatePipeline: {
+    active: number;
+    parsed: number;
+    rejected: number;
+  };
+  totalJobs: number;
+  publishedJobs: number;
+  draftJobs: number;
+  payrollMtd: number;
+  payrollCountMtd: number;
+  recentHires: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    jobTitle: string;
+    department: string;
+    hireDate: string;
+  }[];
+}
+
 export interface CreateCandidateRequest {
   name: string;
   email: string;
