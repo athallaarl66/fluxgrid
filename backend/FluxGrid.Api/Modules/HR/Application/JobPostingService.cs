@@ -208,43 +208,35 @@ public class JobPostingService
         if (job.Status == JobPostingStatus.Closed)
             throw new InvalidOperationException("Job is closed");
 
+        if (job.Embedding is null)
+            return new JobMatchResponse(jobId, job.Title, []);
+
+        var candidates = await _db.Candidates
+            .Where(c => c.TenantId == tenantId
+                && c.Status == "ACTIVE"
+                && c.Embedding != null)
+            .Select(c => new { c.Id, c.Name, c.Email, c.Embedding })
+            .ToListAsync();
+
         var take = Math.Clamp(limit ?? 20, 1, 100);
+        var now = DateTime.UtcNow;
 
-        var sql = @"
-            SELECT
-                c.id AS ""CandidateId"",
-                c.name AS ""CandidateName"",
-                c.email AS ""CandidateEmail"",
-                1 - (c.embedding <=> jp.embedding) AS ""MatchScore"",
-                NULL::float8 AS ""SemanticSimilarity"",
-                NULL::float8 AS ""SkillMatchScore"",
-                NULL::float8 AS ""ExperienceMatchScore"",
-                NULL::text AS ""Skills"",
-                NOW() AS ""CalculatedAt""
-            FROM candidates c
-            CROSS JOIN job_postings jp
-            WHERE jp.id = @jobId
-              AND c.tenant_id = @tenantId
-              AND c.status = 'ACTIVE'
-              AND c.embedding IS NOT NULL
-              AND jp.embedding IS NOT NULL";
+        var scored = candidates
+            .Select(c => new
+            {
+                c.Id,
+                c.Name,
+                c.Email,
+                Score = CosineSimilarity(job.Embedding!, c.Embedding!)
+            })
+            .Where(x => !minScore.HasValue || x.Score >= minScore.Value)
+            .OrderByDescending(x => x.Score)
+            .Take(take)
+            .ToList();
 
-        if (minScore.HasValue)
-            sql += "\n            AND 1 - (c.embedding <=> jp.embedding) >= @minScore";
-
-        sql += "\n            ORDER BY \"MatchScore\" DESC\n            LIMIT @take";
-
-        var rows = await _db.Database.SqlQueryRaw<JobMatchRow>(sql,
-            new Npgsql.NpgsqlParameter("@jobId", jobId),
-            new Npgsql.NpgsqlParameter("@tenantId", tenantId),
-            new Npgsql.NpgsqlParameter("@minScore", minScore ?? 0),
-            new Npgsql.NpgsqlParameter("@take", take)
-        ).ToListAsync();
-
-        var items = rows.Select(r => new JobMatchItem(
-            r.CandidateId, r.CandidateName, r.CandidateEmail,
-            r.MatchScore, r.SemanticSimilarity, r.SkillMatchScore,
-            r.ExperienceMatchScore, r.Skills, r.CalculatedAt
+        var items = scored.Select(s => new JobMatchItem(
+            s.Id, s.Name, s.Email,
+            Math.Round(s.Score, 4), null, null, null, null, now
         )).ToList();
 
         return new JobMatchResponse(jobId, job.Title, items);
@@ -271,18 +263,23 @@ public class JobPostingService
 
         double matchScore = 0;
         if (candidate.Embedding is not null && job.Embedding is not null)
-        {
-            var score = await _db.Database.SqlQueryRaw<double>(
-                "SELECT 1 - (c.embedding <=> jp.embedding) FROM candidates c CROSS JOIN job_postings jp WHERE c.id = @candidateId AND jp.id = @jobId",
-                new Npgsql.NpgsqlParameter("@candidateId", candidateId),
-                new Npgsql.NpgsqlParameter("@jobId", jobId)
-            ).FirstOrDefaultAsync();
-            matchScore = Math.Round(score, 4);
-        }
+            matchScore = Math.Round(CosineSimilarity(job.Embedding, candidate.Embedding), 4);
 
         return new MatchReasoningResponse(
             candidateId, candidate.Name, matchScore,
             reasoning ?? "Unable to generate reasoning at this time.");
+    }
+
+    private static double CosineSimilarity(float[] a, float[] b)
+    {
+        double dot = 0, normA = 0, normB = 0;
+        for (var i = 0; i < a.Length; i++)
+        {
+            dot += a[i] * b[i];
+            normA += a[i] * a[i];
+            normB += b[i] * b[i];
+        }
+        return dot / (Math.Sqrt(normA) * Math.Sqrt(normB));
     }
 
     private static JobResponse ToResponse(JobPosting job) => new(
@@ -291,17 +288,4 @@ public class JobPostingService
         job.Location, job.SalaryMin, job.SalaryMax,
         job.Status, job.TenantId, job.CreatedAt, job.UpdatedAt
     );
-
-    private class JobMatchRow
-    {
-        public Guid CandidateId { get; set; }
-        public string CandidateName { get; set; } = string.Empty;
-        public string CandidateEmail { get; set; } = string.Empty;
-        public double MatchScore { get; set; }
-        public double? SemanticSimilarity { get; set; }
-        public double? SkillMatchScore { get; set; }
-        public double? ExperienceMatchScore { get; set; }
-        public string? Skills { get; set; }
-        public DateTime CalculatedAt { get; set; }
-    }
 }

@@ -100,3 +100,31 @@ public sealed record OrgChartNode(
     Guid? DepartmentId,
     Guid? ManagerId
 );
+
+public sealed record HrDashboardResponse(
+    int TotalEmployees,
+    int ActiveEmployees,
+    int TotalCandidates,
+    CandidatePipelineCounts CandidatePipeline,
+    int TotalJobs,
+    int PublishedJobs,
+    int DraftJobs,
+    decimal PayrollMtd,
+    int PayrollCountMtd,
+    List<RecentHireRow> RecentHires
+);
+
+public sealed record CandidatePipelineCounts(
+    int Active,
+    int Parsed,
+    int Rejected
+);
+
+public sealed record RecentHireRow(
+    Guid Id,
+    string FirstName,
+    string LastName,
+    string JobTitle,
+    string Department,
+    DateTime HireDate
+);

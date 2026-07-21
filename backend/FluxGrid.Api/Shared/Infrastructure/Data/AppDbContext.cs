@@ -48,8 +48,6 @@ public class AppDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.HasPostgresExtension("vector");
-
         modelBuilder.Entity<User>(entity =>
         {
             entity.HasKey(e => e.Id);
@@ -505,7 +503,7 @@ public class AppDbContext : DbContext
             entity.Property(e => e.ExpectedSalaryMax).HasColumnType("decimal(18,2)");
             entity.Property(e => e.NoticePeriodDays);
             entity.Property(e => e.Status).HasMaxLength(20).IsRequired().HasDefaultValue("DRAFT");
-            entity.Property(e => e.Embedding).HasColumnType("vector(1536)");
+            entity.Property(e => e.Embedding).HasColumnType("double precision[]");
             entity.Property(e => e.FileUrl).HasMaxLength(1000);
             entity.Property(e => e.FileHash).HasMaxLength(64);
             entity.Property(e => e.OriginalFilename).HasMaxLength(500);
@@ -534,9 +532,6 @@ public class AppDbContext : DbContext
                   .HasForeignKey(e => e.CandidateId)
                   .OnDelete(DeleteBehavior.Cascade);
 
-            entity.HasIndex(e => e.Embedding, "idx_candidates_embedding_hnsw")
-                .HasMethod("hnsw")
-                .HasOperators("vector_cosine_ops");
         });
 
         modelBuilder.Entity<JobPosting>(entity =>
@@ -558,13 +553,9 @@ public class AppDbContext : DbContext
             entity.Property(e => e.SalaryMin).HasColumnType("decimal(18,2)");
             entity.Property(e => e.SalaryMax).HasColumnType("decimal(18,2)");
             entity.Property(e => e.Status).HasMaxLength(20).IsRequired().HasDefaultValue("DRAFT");
-            entity.Property(e => e.Embedding).HasColumnType("vector(1536)");
+            entity.Property(e => e.Embedding).HasColumnType("double precision[]");
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("NOW()");
-
-            entity.HasIndex(e => e.Embedding, "idx_job_postings_embedding_hnsw")
-                .HasMethod("hnsw")
-                .HasOperators("vector_cosine_ops");
         });
 
         modelBuilder.Entity<CandidateEducation>(entity =>

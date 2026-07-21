@@ -320,6 +320,30 @@ export interface MatchReasoningResponse {
   reasoning: string;
 }
 
+export interface HrDashboardResponse {
+  totalEmployees: number;
+  activeEmployees: number;
+  totalCandidates: number;
+  candidatePipeline: {
+    active: number;
+    parsed: number;
+    rejected: number;
+  };
+  totalJobs: number;
+  publishedJobs: number;
+  draftJobs: number;
+  payrollMtd: number;
+  payrollCountMtd: number;
+  recentHires: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    jobTitle: string;
+    department: string;
+    hireDate: string;
+  }[];
+}
+
 export interface CreateCandidateRequest {
   name: string;
   email: string;

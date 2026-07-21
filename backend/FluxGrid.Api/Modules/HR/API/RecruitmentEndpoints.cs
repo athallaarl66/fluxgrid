@@ -53,13 +53,13 @@ public static class RecruitmentEndpoints
         recruitment.MapGet("/candidates", async (
             [FromQuery] string? search,
             [FromQuery] string? status,
-            [FromQuery] int page,
-            [FromQuery] int pageSize,
+            [FromQuery] int? page,
+            [FromQuery] int? pageSize,
             RecruitmentService service,
             HttpContext http) =>
         {
             var (tenantId, _, _, _) = GetAuditContext(http);
-            var result = await service.GetCandidatesAsync(tenantId, search, status, page, pageSize);
+            var result = await service.GetCandidatesAsync(tenantId, search, status, page ?? 1, pageSize ?? 20);
             return Results.Ok(result);
         })
         .RequireAuthorization(Permissions.HrRecruitmentManage);
@@ -154,13 +154,13 @@ public static class RecruitmentEndpoints
         jobs.MapGet("/", async (
             [FromQuery] string? search,
             [FromQuery] string? status,
-            [FromQuery] int page,
-            [FromQuery] int pageSize,
+            [FromQuery] int? page,
+            [FromQuery] int? pageSize,
             JobPostingService service,
             HttpContext http) =>
         {
             var (tenantId, _, _, _) = GetAuditContext(http);
-            var result = await service.GetListAsync(tenantId, search, status, page, pageSize);
+            var result = await service.GetListAsync(tenantId, search, status, page ?? 1, pageSize ?? 20);
             return Results.Ok(result);
         })
         .RequireAuthorization(Permissions.HrJobRead);

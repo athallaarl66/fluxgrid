@@ -58,7 +58,6 @@ const navItems: NavItem[] = [
       { label: "Payroll", href: "/hr/payroll" },
     ],
   },
-  { label: "Projects", href: "/projects", icon: ClipboardList },
 ];
 
 function isChildActive(pathname: string, children?: NavItem["children"]) {
@@ -67,12 +66,16 @@ function isChildActive(pathname: string, children?: NavItem["children"]) {
 
 export function Sidebar() {
   const pathname = usePathname();
-  const [expanded, setExpanded] = useState<string | null>(() =>
-    navItems.find((item) => isChildActive(pathname, item.children))?.href ?? null,
+  const [expanded, setExpanded] = useState<string | null>(
+    () =>
+      navItems.find((item) => isChildActive(pathname, item.children))?.href ??
+      null,
   );
 
   useEffect(() => {
-    const parent = navItems.find((item) => isChildActive(pathname, item.children))?.href ?? null;
+    const parent =
+      navItems.find((item) => isChildActive(pathname, item.children))?.href ??
+      null;
     if (parent) setExpanded(parent);
   }, [pathname]);
 
@@ -149,7 +152,9 @@ export function Sidebar() {
                   <div className="overflow-hidden">
                     <div className="ml-2 mt-0.5 space-y-0.5 border-l border-border pl-2 pb-0.5">
                       {item.children!.map((child) => {
-                        const isChildActive = pathname === child.href || pathname.startsWith(child.href + "/");
+                        const isChildActive =
+                          pathname === child.href ||
+                          pathname.startsWith(child.href + "/");
                         return (
                           <a
                             key={child.href}

@@ -19,7 +19,7 @@ public partial class EmbeddingService
         _config = config;
     }
 
-    public async Task<float[]?> GenerateEmbeddingAsync(string text, CancellationToken ct = default)
+    public virtual async Task<float[]?> GenerateEmbeddingAsync(string text, CancellationToken ct = default)
     {
         var groqResult = await TryGroqEmbeddingAsync(text, ct);
         if (groqResult is not null) return groqResult;
@@ -146,7 +146,7 @@ public partial class EmbeddingService
         return null;
     }
 
-    public async Task<string?> GenerateMatchReasoningAsync(string candidateProfile, string jobDescription, CancellationToken ct = default)
+    public virtual async Task<string?> GenerateMatchReasoningAsync(string candidateProfile, string jobDescription, CancellationToken ct = default)
     {
         var client = _httpFactory.CreateClient("GroqApi");
         var model = _config["Groq:Model"] ?? "llama3-70b-8192";
@@ -201,7 +201,7 @@ public partial class EmbeddingService
             var expTexts = candidate.Experience.Select(e =>
             {
                 var years = e.StartDate.HasValue
-                    ? $"{e.StartDate.Value.Year}-{(e.EndDate?.Year?.ToString() ?? "Present")}"
+                    ? $"{e.StartDate.Value.Year}-{(e.EndDate?.Year.ToString() ?? "Present")}"
                     : "";
                 return $"{years} {e.Role} at {e.Company}. {e.Description}".Trim();
             });

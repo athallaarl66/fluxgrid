@@ -72,28 +72,28 @@ public static class PayrollEndpoints
 
         payroll.MapGet("/runs", async (
             [FromQuery] string? status,
-            [FromQuery] int page,
-            [FromQuery] int pageSize,
+            [FromQuery] int? page,
+            [FromQuery] int? pageSize,
             PayrollService service,
             HttpContext http) =>
         {
             var (tenantId, _, _, _) = GetAuditContext(http);
             var includeSalary = http.User.HasClaim("permissions", Permissions.HrPayrollRead);
-            var result = await service.ListPayrollRunsAsync(tenantId, status, page, pageSize, includeSalary);
+            var result = await service.ListPayrollRunsAsync(tenantId, status, page ?? 1, pageSize ?? 20, includeSalary);
             return Results.Ok(result);
         })
         .RequireAuthorization();
 
         payroll.MapGet("/{id:guid}", async (
             Guid id,
-            [FromQuery] int page,
-            [FromQuery] int pageSize,
+            [FromQuery] int? page,
+            [FromQuery] int? pageSize,
             PayrollService service,
             HttpContext http) =>
         {
             var (tenantId, _, _, _) = GetAuditContext(http);
             var includeSalary = http.User.HasClaim("permissions", Permissions.HrPayrollRead);
-            var result = await service.GetPayrollRunAsync(id, tenantId, page, pageSize, includeSalary);
+            var result = await service.GetPayrollRunAsync(id, tenantId, page ?? 1, pageSize ?? 20, includeSalary);
             return result is null ? Results.NotFound() : Results.Ok(result);
         })
         .RequireAuthorization();
