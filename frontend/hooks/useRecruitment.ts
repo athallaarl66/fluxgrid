@@ -257,3 +257,122 @@ export function useMatchReasoning() {
       }),
   });
 }
+
+// ─── Kanban ──────────────────────────────────────────────────────────────────
+
+export function useKanban() {
+  return useQuery<CandidateListItem[]>({
+    queryKey: ["candidates-kanban"],
+    queryFn: async () => {
+      const all: CandidateListItem[] = [];
+      let page = 1;
+      while (true) {
+        const res = await apiClient<PaginatedResponse<CandidateListItem>>(
+          `/api/v1/hr/recruitment/candidates?page=${page}&pageSize=100`
+        );
+        all.push(...res.items);
+        if (all.length >= res.total) break;
+        page++;
+      }
+      return all;
+    },
+  });
+}
+
+export function useChangeCandidateStatus() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, status }: { id: string; status: string }) =>
+      apiClient<ApproveCandidateResponse>(`/api/v1/hr/recruitment/candidates/${id}/status`, {
+        method: "PUT",
+        body: JSON.stringify({ status }),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["candidates-kanban"] });
+      queryClient.invalidateQueries({ queryKey: ["candidates"] });
+    },
+  });
+}
+
+// ─── Activity Log ────────────────────────────────────────────────────────────
+
+export interface ActivityLogEntry {
+  id: string;
+  action: string;
+  performedBy: string;
+  details: string | null;
+  createdAt: string;
+}
+
+export function useActivityLog(candidateId: string, page = 1, pageSize = 20) {
+  return useQuery<PaginatedResponse<ActivityLogEntry>>({
+    queryKey: ["activity-log", candidateId, page],
+    queryFn: () => apiClient<PaginatedResponse<ActivityLogEntry>>(
+      `/api/v1/hr/recruitment/candidates/${candidateId}/activities?page=${page}&pageSize=${pageSize}`
+    ),
+    enabled: !!candidateId,
+  });
+}
+
+export function useAddNote() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ candidateId, note }: { candidateId: string; note: string }) =>
+      apiClient(`/api/v1/hr/recruitment/candidates/${candidateId}/activities`, {
+        method: "POST",
+        body: JSON.stringify({ note }),
+      }),
+    onSuccess: (_, { candidateId }) => {
+      queryClient.invalidateQueries({ queryKey: ["activity-log", candidateId] });
+    },
+  });
+}
+
+// ─── Manual Role Assignment ──────────────────────────────────────────────────
+
+export interface CandidateJobAssignment {
+  id: string;
+  candidateId: string;
+  jobId: string;
+  jobTitle: string;
+  score: number;
+  isManual: boolean;
+  createdAt: string;
+}
+
+export function useCandidateJobs(candidateId: string) {
+  return useQuery<CandidateJobAssignment[]>({
+    queryKey: ["candidate-jobs", candidateId],
+    queryFn: () => apiClient<CandidateJobAssignment[]>(
+      `/api/v1/hr/recruitment/candidates/${candidateId}/jobs`
+    ),
+    enabled: !!candidateId,
+  });
+}
+
+export function useAssignJob() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ candidateId, jobId }: { candidateId: string; jobId: string }) =>
+      apiClient<CandidateJobAssignment>(`/api/v1/hr/recruitment/candidates/${candidateId}/jobs`, {
+        method: "POST",
+        body: JSON.stringify({ jobId }),
+      }),
+    onSuccess: (_, { candidateId }) => {
+      queryClient.invalidateQueries({ queryKey: ["candidate-jobs", candidateId] });
+    },
+  });
+}
+
+export function useUnassignJob() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ candidateId, jobId }: { candidateId: string; jobId: string }) =>
+      apiClient(`/api/v1/hr/recruitment/candidates/${candidateId}/jobs/${jobId}`, {
+        method: "DELETE",
+      }),
+    onSuccess: (_, { candidateId }) => {
+      queryClient.invalidateQueries({ queryKey: ["candidate-jobs", candidateId] });
+    },
+  });
+}

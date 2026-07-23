@@ -304,6 +304,7 @@ export interface JobMatchItem {
   skillMatchScore: number | null;
   experienceMatchScore: number | null;
   skills: string | null;
+  matchType: string;
   calculatedAt: string;
 }
 

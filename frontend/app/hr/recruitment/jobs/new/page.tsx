@@ -6,7 +6,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useCreateJob } from "@/hooks/useRecruitment";
 import { JobForm } from "@/components/hr/JobForm";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { CreateJobRequest } from "@/lib/hr-types";
+import type { CreateJobRequest, UpdateJobRequest } from "@/lib/hr-types";
 
 export default function NewJobPage() {
   const router = useRouter();
@@ -17,9 +17,9 @@ export default function NewJobPage() {
   if (authLoading) return <div className="p-5"><Skeleton className="h-8 w-48" /></div>;
   if (!user) return null;
 
-  async function handleSubmit(data: CreateJobRequest) {
+  async function handleSubmit(data: CreateJobRequest | UpdateJobRequest) {
     try {
-      const job = await createJob.mutateAsync(data);
+      const job = await createJob.mutateAsync(data as CreateJobRequest);
       router.push(`/hr/recruitment/jobs/${job.id}`);
     } catch {
       /* error handled by form */

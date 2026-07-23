@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useJob, useJobMatches, usePublishJob, useCloseJob } from "@/hooks/useRecruitment";
 import { JobTabs, type JobTab } from "@/components/hr/JobTabs";
 import { MatchRankingTable } from "@/components/hr/MatchRankingTable";
+import { AllApplicantsTable } from "@/components/hr/AllApplicantsTable";
 import { CandidateMatchDetailsModal } from "@/components/hr/CandidateMatchDetailsModal";
 import { MatchScoreBadge } from "@/components/hr/MatchScoreBadge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -39,10 +40,12 @@ export default function JobDetailPage() {
     : undefined;
 
   async function handlePublish() {
+    if (!job) return;
     try { await publishJob.mutateAsync(job.id); } catch { /* alert handled by UI */ }
   }
 
   async function handleClose() {
+    if (!job) return;
     try { await closeJob.mutateAsync(job.id); } catch { /* alert handled by UI */ }
   }
 
@@ -149,9 +152,15 @@ export default function JobDetailPage() {
       )}
 
       {activeTab === "All Applicants" && (
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <p className="text-sm font-medium text-foreground">Applicant tracking coming soon</p>
-          <p className="text-xs text-muted-foreground mt-1">This feature will be available in a future update</p>
+        <div>
+          {matchData ? (
+            <AllApplicantsTable matches={matchData.matches} jobId={job.id} />
+          ) : (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <p className="text-sm font-medium text-foreground">No applicants yet</p>
+              <p className="text-xs text-muted-foreground mt-1">Publish this job and assign candidates to see them here</p>
+            </div>
+          )}
         </div>
       )}
 
