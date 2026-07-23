@@ -3,14 +3,7 @@
 import type { CandidateListItem } from "@/lib/hr-types";
 import { useRouter } from "next/navigation";
 import { CandidateStatusBadge } from "@/components/hr/CandidateStatusBadge";
-
-function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString("id-ID", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
+import { formatDate } from "@/lib/date-utils";
 
 export function CandidateTable({ candidates }: { candidates: CandidateListItem[] }) {
   const router = useRouter();

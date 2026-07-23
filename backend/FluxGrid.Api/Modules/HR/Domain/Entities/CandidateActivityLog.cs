@@ -8,7 +8,7 @@ public class CandidateActivityLog
     public Guid CandidateId { get; set; }
     public string Action { get; set; } = string.Empty;
     public Guid PerformedBy { get; set; }
-    public JsonDocument? Details { get; set; }
+    public string? Details { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public Candidate Candidate { get; set; } = null!;

@@ -3,10 +3,7 @@
 import { GripVertical, FileText } from "lucide-react";
 import { CandidateStatusBadge } from "@/components/hr/CandidateStatusBadge";
 import type { CandidateListItem } from "@/lib/hr-types";
-
-function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString("id-ID", { day: "numeric", month: "short" });
-}
+import { formatDate } from "@/lib/date-utils";
 
 export function KanbanCard({
   candidate,

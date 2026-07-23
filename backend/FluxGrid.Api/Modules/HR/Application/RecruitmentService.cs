@@ -46,7 +46,7 @@ public class RecruitmentService
         _embedding = embedding;
         _scopeFactory = scopeFactory;
         _activityLog = activityLog;
-        _bucketName = config["Storage:BucketName"] ?? "fluxgrid-cvs";
+        _bucketName = config["Storage:BucketName"] ?? "flexmng-cv";
     }
 
     public async Task<UploadUrlResponse> RequestUploadUrlAsync(
@@ -320,6 +320,24 @@ public class RecruitmentService
         Guid id, CandidateUpdateRequest request, Guid tenantId,
         Guid userId, string? ipAddress = null, string? userAgent = null)
     {
+        for (var attempt = 0; attempt < 2; attempt++)
+        {
+            try
+            {
+                return await DoUpdateCandidateAsync(id, request, tenantId, userId, ipAddress, userAgent);
+            }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException) when (attempt == 0)
+            {
+                _db.ChangeTracker.Clear();
+            }
+        }
+        return null;
+    }
+
+    private async Task<CandidateDetailResponse?> DoUpdateCandidateAsync(
+        Guid id, CandidateUpdateRequest request, Guid tenantId,
+        Guid userId, string? ipAddress, string? userAgent)
+    {
         var candidate = await _db.Candidates
             .Include(c => c.Education)
             .Include(c => c.Experience)
@@ -343,10 +361,12 @@ public class RecruitmentService
         if (candidate.ExpectedSalaryMax != request.ExpectedSalaryMax) { changedFields.Add("expectedSalaryMax"); candidate.ExpectedSalaryMax = request.ExpectedSalaryMax; }
         if (candidate.NoticePeriodDays != request.NoticePeriodDays) { changedFields.Add("noticePeriodDays"); candidate.NoticePeriodDays = request.NoticePeriodDays; }
 
+        await _db.SaveChangesAsync();
+
         if (request.Education is not null)
         {
-            _db.CandidateEducations.RemoveRange(candidate.Education);
-            candidate.Education = request.Education.Select(e => new CandidateEducation
+            await _db.CandidateEducations.Where(e => e.CandidateId == id).ExecuteDeleteAsync();
+            _db.CandidateEducations.AddRange(request.Education.Select(e => new CandidateEducation
             {
                 Id = e.Id ?? Guid.NewGuid(),
                 CandidateId = id,
@@ -356,14 +376,14 @@ public class RecruitmentService
                 StartDate = e.StartDate,
                 EndDate = e.EndDate,
                 Gpa = e.Gpa
-            }).ToList();
+            }));
             changedFields.Add("education");
         }
 
         if (request.Experience is not null)
         {
-            _db.CandidateExperiences.RemoveRange(candidate.Experience);
-            candidate.Experience = request.Experience.Select(e => new CandidateExperience
+            await _db.CandidateExperiences.Where(e => e.CandidateId == id).ExecuteDeleteAsync();
+            _db.CandidateExperiences.AddRange(request.Experience.Select(e => new CandidateExperience
             {
                 Id = e.Id ?? Guid.NewGuid(),
                 CandidateId = id,
@@ -374,26 +394,23 @@ public class RecruitmentService
                 IsCurrent = e.IsCurrent,
                 Description = e.Description,
                 Location = e.Location
-            }).ToList();
+            }));
             changedFields.Add("experience");
         }
 
         if (request.Skills is not null)
         {
-            _db.CandidateSkills.RemoveRange(candidate.Skills);
-            candidate.Skills = request.Skills.Select(s => new CandidateSkill
+            await _db.CandidateSkills.Where(s => s.CandidateId == id).ExecuteDeleteAsync();
+            _db.CandidateSkills.AddRange(request.Skills.Select(s => new CandidateSkill
             {
                 CandidateId = id,
                 SkillName = s
-            }).ToList();
+            }));
             changedFields.Add("skills");
         }
 
-        if (changedFields.Count == 0)
-            return await GetCandidateDetailAsync(id, tenantId);
-
-        candidate.UpdatedAt = DateTime.UtcNow;
-        await _db.SaveChangesAsync();
+        if (changedFields.Count > 0)
+            await _db.SaveChangesAsync();
 
         await _audit.LogAsync(userId, tenantId, "UPDATE", "candidates", id, ipAddress, userAgent,
             null,
@@ -475,10 +492,10 @@ public class RecruitmentService
             .Where(m => m.CandidateId == candidateId)
             .Join(_db.JobPostings, m => m.JobId, j => j.Id, (m, j) => new { m, j })
             .Where(x => x.j.TenantId == tenantId)
+            .OrderByDescending(x => x.m.CreatedAt)
             .Select(x => new CandidateJobAssignmentResponse(
                 x.m.Id, x.m.CandidateId, x.m.JobId,
                 x.j.Title, x.m.Score, x.m.IsManual, x.m.CreatedAt))
-            .OrderByDescending(x => x.CreatedAt)
             .ToListAsync();
     }
 

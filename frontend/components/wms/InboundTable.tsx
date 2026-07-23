@@ -2,18 +2,11 @@
 
 import type { PurchaseReceipt } from "@/lib/wms-types";
 import { cn } from "@/lib/utils";
+import { formatDate } from "@/lib/date-utils";
 
 interface InboundTableProps {
   receipts: PurchaseReceipt[];
   onProcessPutaway: (id: string) => void;
-}
-
-function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString("id-ID", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
 }
 
 function statusBadge(status: string) {

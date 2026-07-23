@@ -15,6 +15,7 @@ import {
   type JournalEntry,
   type JournalEntryStatus,
 } from "@/lib/journal-entry-types";
+import { formatDate } from "@/lib/date-utils";
 
 const STATUS_FILTERS: { value: string; label: string }[] = [
   { value: "", label: "All" },
@@ -142,7 +143,7 @@ export function JournalEntryDashboard({ onNew, onEdit, onView, refreshKey }: Pro
                   <tr key={entry.id} className="group border-b border-border transition-colors hover:bg-muted/40">
                     <td className="h-9 px-3 text-sm tabular-nums font-mono text-muted-foreground">{entry.entryNo}</td>
                     <td className="h-9 px-3 text-sm tabular-nums text-foreground">
-                      {new Date(entry.transactionDate).toLocaleDateString("id-ID")}
+                      {formatDate(entry.transactionDate)}
                     </td>
                     <td className="h-9 px-3 text-sm text-foreground truncate max-w-[280px]">{entry.description}</td>
                     <td className="h-9 px-3 text-sm text-right tabular-nums text-foreground font-medium">{formatIDR(entry.totalAmount)}</td>

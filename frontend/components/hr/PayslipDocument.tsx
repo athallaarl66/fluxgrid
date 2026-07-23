@@ -3,6 +3,7 @@
 import { useRef } from "react";
 import { Printer } from "lucide-react";
 import type { PayrollRun, PayrollRecord } from "@/lib/hr-types";
+import { formatDate } from "@/lib/date-utils";
 
 function formatCurrency(value: number | null) {
   if (value === null) return "—";
@@ -39,9 +40,9 @@ export function PayslipDocument({ run, record }: PayslipDocumentProps) {
           <div className="text-center border-b border-border pb-4">
             <h2 className="text-xl font-bold text-foreground">Payslip</h2>
             <p className="text-sm text-muted-foreground mt-1">
-              {run.periodName} — {new Date(run.startDate).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}
+              {run.periodName} — {formatDate(run.startDate, { day: "numeric", month: "long", year: "numeric" })}
               {" – "}
-              {new Date(run.endDate).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}
+              {formatDate(run.endDate, { day: "numeric", month: "long", year: "numeric" })}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
               {record.employeeNo} — {record.employeeName}

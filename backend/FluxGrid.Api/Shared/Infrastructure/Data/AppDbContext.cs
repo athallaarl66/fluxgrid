@@ -616,7 +616,7 @@ public class AppDbContext : DbContext
             entity.HasIndex(e => new { e.CandidateId, e.CreatedAt });
 
             entity.Property(e => e.Action).HasMaxLength(30).IsRequired();
-            entity.Property(e => e.Details).HasColumnType("jsonb");
+            entity.Property(e => e.Details).HasColumnType("text");
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
 
             entity.HasOne(e => e.Candidate)

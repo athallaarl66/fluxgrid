@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Period } from "../../lib/period-types";
 import { cn } from "@/lib/utils";
+import { formatDate } from "@/lib/date-utils";
 
 interface PeriodsTableProps {
   periods: Period[];
@@ -36,8 +37,8 @@ export default function PeriodsTable({ periods, onActionMenu }: PeriodsTableProp
             {paged.map((p) => (
               <tr key={p.id} className="h-9 border-b border-[#e6e2df] hover:bg-[#f7f3f0] transition-colors">
                 <td className="px-3 text-[13px] font-medium text-[#1c1b1a]">{p.name}</td>
-                <td className="px-3 text-[13px] text-[#49473e] tabular-nums">{new Date(p.startDate).toLocaleDateString('en-CA')}</td>
-                <td className="px-3 text-[13px] text-[#49473e] tabular-nums">{new Date(p.endDate).toLocaleDateString('en-CA')}</td>
+                <td className="px-3 text-[13px] text-[#49473e] tabular-nums">{formatDate(p.startDate, { year: 'numeric', month: '2-digit', day: '2-digit' })}</td>
+                <td className="px-3 text-[13px] text-[#49473e] tabular-nums">{formatDate(p.endDate, { year: 'numeric', month: '2-digit', day: '2-digit' })}</td>
                 <td className="px-3">
                   <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide",
                     p.status === "OPEN" ? "bg-[#d4e7ab] text-[#586838]" : "bg-[#e6e2df] text-[#49473e]")}>

@@ -2,6 +2,7 @@
 
 import type { EmployeeDetail } from "@/lib/hr-types";
 import { EmploymentTimeline } from "@/components/hr/EmploymentTimeline";
+import { formatDate } from "@/lib/date-utils";
 
 const MOCK_TIMELINE_EVENTS = [
   {
@@ -41,7 +42,7 @@ export function EmploymentTab({ employee }: { employee: EmployeeDetail }) {
         <div>
           <p className="text-xs text-muted-foreground">Hire Date</p>
           <p className="text-sm text-foreground mt-0.5">
-            {new Date(employee.hireDate).toLocaleDateString("id-ID", {
+            {formatDate(employee.hireDate, {
               day: "numeric",
               month: "long",
               year: "numeric",

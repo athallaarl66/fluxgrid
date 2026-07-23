@@ -258,8 +258,8 @@ if (storageProvider != "S3")
         HttpRequest request,
         LocalFileStorageService storage) =>
     {
-        var key = objectKey.StartsWith("fluxgrid-cvs/") ? objectKey["fluxgrid-cvs/".Length..] : objectKey;
-        var path = storage.GetFilePath("fluxgrid-cvs", key);
+        var key = objectKey.StartsWith("flexmng-cv/") ? objectKey["flexmng-cv/".Length..] : objectKey;
+        var path = storage.GetFilePath("flexmng-cv", key);
         var dir = Path.GetDirectoryName(path);
         if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
         await using var stream = request.Body;
@@ -272,8 +272,8 @@ if (storageProvider != "S3")
         string objectKey,
         LocalFileStorageService storage) =>
     {
-        var key = objectKey.StartsWith("fluxgrid-cvs/") ? objectKey["fluxgrid-cvs/".Length..] : objectKey;
-        var path = storage.GetFilePath("fluxgrid-cvs", key);
+        var key = objectKey.StartsWith("flexmng-cv/") ? objectKey["flexmng-cv/".Length..] : objectKey;
+        var path = storage.GetFilePath("flexmng-cv", key);
         if (!File.Exists(path)) return Results.NotFound();
         var ext = Path.GetExtension(path).ToLower();
         var contentType = ext switch
@@ -284,6 +284,31 @@ if (storageProvider != "S3")
         };
         var stream = File.OpenRead(path);
         return Results.File(stream, contentType);
+    });
+}
+else
+{
+    app.MapGet("/api/v1/hr/storage/{**objectKey}", async (
+        string objectKey,
+        IFileStorageService storage) =>
+    {
+        var key = objectKey.StartsWith("flexmng-cv/") ? objectKey["flexmng-cv/".Length..] : objectKey;
+        try
+        {
+            var bytes = await storage.ReadFileAsync("flexmng-cv", key);
+            var ext = Path.GetExtension(key).ToLower();
+            var contentType = ext switch
+            {
+                ".pdf" => "application/pdf",
+                ".docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                _ => "application/octet-stream"
+            };
+            return Results.Bytes(bytes, contentType);
+        }
+        catch
+        {
+            return Results.NotFound();
+        }
     });
 }
 

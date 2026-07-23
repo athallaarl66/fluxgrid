@@ -2,19 +2,12 @@
 
 import type { StockLedgerEntry } from "@/lib/wms-types";
 import { cn } from "@/lib/utils";
+import { formatDate } from "@/lib/date-utils";
 
 interface StockLedgerMobileListProps {
   entries: StockLedgerEntry[];
   valuationMethod: "fifo" | "average";
   onEntryClick: (transactionId: string) => void;
-}
-
-function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString("id-ID", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
 }
 
 function getTypeBadge(refType: string) {

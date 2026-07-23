@@ -12,10 +12,7 @@ import { CandidateMatchDetailsModal } from "@/components/hr/CandidateMatchDetail
 import { MatchScoreBadge } from "@/components/hr/MatchScoreBadge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-
-function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" });
-}
+import { formatDate } from "@/lib/date-utils";
 
 export default function JobDetailPage() {
   const router = useRouter();

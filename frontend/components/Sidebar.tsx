@@ -155,7 +155,13 @@ export function Sidebar() {
                       {item.children!.map((child) => {
                         const isChildActive =
                           pathname === child.href ||
-                          pathname.startsWith(child.href + "/");
+                          (pathname.startsWith(child.href + "/") &&
+                            !item.children!.some(
+                              (other) =>
+                                other.href !== child.href &&
+                                other.href.startsWith(child.href + "/") &&
+                                pathname.startsWith(other.href),
+                            ));
                         return (
                           <a
                             key={child.href}

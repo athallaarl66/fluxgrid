@@ -30,7 +30,7 @@ public class ActivityLogService
             Action = action,
             PerformedBy = performedBy,
             Details = details is not null
-                ? JsonDocument.Parse(JsonSerializer.Serialize(details, _jsonOptions))
+                ? JsonSerializer.Serialize(details, _jsonOptions)
                 : null,
             CreatedAt = DateTime.UtcNow
         };
@@ -55,7 +55,7 @@ public class ActivityLogService
                 a.Id,
                 a.Action,
                 a.PerformedBy,
-                a.Details != null ? a.Details.RootElement.GetRawText() : null,
+                a.Details,
                 a.CreatedAt))
             .ToListAsync();
 

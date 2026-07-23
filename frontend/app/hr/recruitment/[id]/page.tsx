@@ -8,15 +8,7 @@ import { useCandidate, useDeleteCandidate, useCandidateJobs, useAssignJob, useUn
 import { CandidateStatusBadge } from "@/components/hr/CandidateStatusBadge";
 import { ActivityTimeline } from "@/components/hr/ActivityTimeline";
 import { Skeleton } from "@/components/ui/skeleton";
-
-function formatDate(dateStr: string | null) {
-  if (!dateStr) return "\u2014";
-  return new Date(dateStr).toLocaleDateString("id-ID", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
+import { formatDate } from "@/lib/date-utils";
 
 function formatSalary(min: number | null, max: number | null) {
   const fmt = (v: number) => new Intl.NumberFormat("id-ID").format(v);

@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
+import { formatDate } from "@/lib/date-utils";
 
 function formatCurrency(value: number | null) {
   if (value === null) return "***";
@@ -91,9 +92,9 @@ export default function PayrollRunDetailPage() {
           <div>
             <h1 className="text-2xl font-semibold leading-tight tracking-tight text-foreground">{run.periodName}</h1>
             <p className="mt-0.5 text-sm text-muted-foreground">
-              {new Date(run.startDate).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
+              {formatDate(run.startDate)}
               {" — "}
-              {new Date(run.endDate).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
+              {formatDate(run.endDate)}
             </p>
           </div>
           <div className="flex items-center gap-2">
