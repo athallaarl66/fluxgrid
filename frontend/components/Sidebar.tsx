@@ -53,6 +53,7 @@ const navItems: NavItem[] = [
     children: [
       { label: "Employees", href: "/hr/employees" },
       { label: "Recruitment", href: "/hr/recruitment" },
+      { label: "Pipeline (Kanban)", href: "/hr/recruitment/kanban" },
       { label: "Job Postings", href: "/hr/recruitment/jobs" },
       { label: "Org Chart", href: "/hr/org-chart" },
       { label: "Payroll", href: "/hr/payroll" },
@@ -154,7 +155,13 @@ export function Sidebar() {
                       {item.children!.map((child) => {
                         const isChildActive =
                           pathname === child.href ||
-                          pathname.startsWith(child.href + "/");
+                          (pathname.startsWith(child.href + "/") &&
+                            !item.children!.some(
+                              (other) =>
+                                other.href !== child.href &&
+                                other.href.startsWith(child.href + "/") &&
+                                pathname.startsWith(other.href),
+                            ));
                         return (
                           <a
                             key={child.href}

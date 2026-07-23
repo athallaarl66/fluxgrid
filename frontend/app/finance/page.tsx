@@ -17,6 +17,7 @@ import {
   LineChart,
   FileText,
 } from "lucide-react";
+import { formatDate } from "@/lib/date-utils";
 
 function formatCurrency(value: number) {
   if (value >= 1_000_000_000)
@@ -154,7 +155,7 @@ export default function FinanceDashboardPage() {
                         <tr key={entry.id} className="border-b border-border hover:bg-muted/40">
                           <td className="h-8 px-2 text-xs tabular-nums text-muted-foreground font-mono">{entry.entryNo}</td>
                           <td className="h-8 px-2 text-xs text-muted-foreground">
-                            {new Date(entry.transactionDate).toLocaleDateString("id-ID", { day: "numeric", month: "short" })}
+                            {formatDate(entry.transactionDate, { year: undefined })}
                           </td>
                           <td className="h-8 px-2 text-xs text-foreground max-w-[200px] truncate">{entry.description}</td>
                           <td className="h-8 px-2 text-right text-xs tabular-nums text-foreground">

@@ -196,7 +196,7 @@ public class JobPostingService
     }
 
     public async Task<JobMatchResponse> GetJobMatchesAsync(Guid jobId, Guid tenantId,
-        double? minScore = null, int? limit = null)
+        double? minScore = null, int? limit = null, string? sortBy = null, string? matchType = null)
     {
         var job = await _db.JobPostings
             .FirstOrDefaultAsync(j => j.Id == jobId && j.TenantId == tenantId)
@@ -208,36 +208,62 @@ public class JobPostingService
         if (job.Status == JobPostingStatus.Closed)
             throw new InvalidOperationException("Job is closed");
 
-        if (job.Embedding is null)
-            return new JobMatchResponse(jobId, job.Title, []);
-
-        var candidates = await _db.Candidates
-            .Where(c => c.TenantId == tenantId
-                && c.Status == "ACTIVE"
-                && c.Embedding != null)
-            .Select(c => new { c.Id, c.Name, c.Email, c.Embedding })
-            .ToListAsync();
-
-        var take = Math.Clamp(limit ?? 20, 1, 100);
         var now = DateTime.UtcNow;
+        var items = new List<JobMatchItem>();
 
-        var scored = candidates
-            .Select(c => new
+        if (string.IsNullOrEmpty(matchType) || matchType != "ai")
+        {
+            var manualMatches = await _db.CandidateJobMatches
+                .Where(m => m.JobId == jobId && m.IsManual)
+                .Join(_db.Candidates.Where(c => c.TenantId == tenantId),
+                    m => m.CandidateId, c => c.Id, (m, c) => new { m, c })
+                .Select(x => new JobMatchItem(
+                    x.c.Id, x.c.Name, x.c.Email,
+                    x.m.Score, null, null, null, null,
+                    "MANUAL", x.m.CreatedAt))
+                .ToListAsync();
+
+            items.AddRange(manualMatches);
+        }
+
+        if (string.IsNullOrEmpty(matchType) || matchType != "manual")
+        {
+            if (job.Embedding is not null)
             {
-                c.Id,
-                c.Name,
-                c.Email,
-                Score = CosineSimilarity(job.Embedding!, c.Embedding!)
-            })
-            .Where(x => !minScore.HasValue || x.Score >= minScore.Value)
-            .OrderByDescending(x => x.Score)
-            .Take(take)
-            .ToList();
+                var candidates = await _db.Candidates
+                    .Where(c => c.TenantId == tenantId
+                        && c.Status == "ACTIVE"
+                        && c.Embedding != null)
+                    .Select(c => new { c.Id, c.Name, c.Email, c.Embedding })
+                    .ToListAsync();
 
-        var items = scored.Select(s => new JobMatchItem(
-            s.Id, s.Name, s.Email,
-            Math.Round(s.Score, 4), null, null, null, null, now
-        )).ToList();
+                var aiMatches = candidates
+                    .Select(c => new
+                    {
+                        c.Id, c.Name, c.Email,
+                        Score = CosineSimilarity(job.Embedding!, c.Embedding!)
+                    })
+                    .Where(x => !minScore.HasValue || x.Score >= minScore.Value)
+                    .OrderByDescending(x => x.Score)
+                    .Select(x => new JobMatchItem(
+                        x.Id, x.Name, x.Email,
+                        Math.Round(x.Score, 4), null, null, null, null,
+                        "AI", now))
+                    .ToList();
+
+                items.AddRange(aiMatches);
+            }
+        }
+
+        items = sortBy?.ToLower() switch
+        {
+            "name" => items.OrderBy(x => x.CandidateName).ToList(),
+            "date" => items.OrderByDescending(x => x.CalculatedAt).ToList(),
+            _ => items.OrderByDescending(x => x.MatchScore).ToList()
+        };
+
+        var take = Math.Clamp(limit ?? 50, 1, 100);
+        items = items.Take(take).ToList();
 
         return new JobMatchResponse(jobId, job.Title, items);
     }

@@ -364,6 +364,38 @@ namespace FluxGrid.Api.Migrations
                     b.ToTable("candidates", (string)null);
                 });
 
+            modelBuilder.Entity("FluxGrid.Api.Modules.HR.Domain.Entities.CandidateActivityLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<Guid>("CandidateId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<string>("Details")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("PerformedBy")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CandidateId", "CreatedAt");
+
+                    b.ToTable("candidate_activity_logs", (string)null);
+                });
+
             modelBuilder.Entity("FluxGrid.Api.Modules.HR.Domain.Entities.CandidateDocument", b =>
                 {
                     b.Property<Guid>("Id")
@@ -484,6 +516,43 @@ namespace FluxGrid.Api.Migrations
                     b.HasIndex("CandidateId");
 
                     b.ToTable("candidate_experience", (string)null);
+                });
+
+            modelBuilder.Entity("FluxGrid.Api.Modules.HR.Domain.Entities.CandidateJobMatch", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CandidateId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<bool>("IsManual")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
+                    b.Property<Guid>("JobId")
+                        .HasColumnType("uuid");
+
+                    b.Property<double>("Score")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("double precision")
+                        .HasDefaultValue(1.0);
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("JobId");
+
+                    b.HasIndex("CandidateId", "JobId")
+                        .IsUnique();
+
+                    b.ToTable("candidate_job_matches", (string)null);
                 });
 
             modelBuilder.Entity("FluxGrid.Api.Modules.HR.Domain.Entities.CandidateSkill", b =>
@@ -1565,6 +1634,17 @@ namespace FluxGrid.Api.Migrations
                     b.Navigation("Entry");
                 });
 
+            modelBuilder.Entity("FluxGrid.Api.Modules.HR.Domain.Entities.CandidateActivityLog", b =>
+                {
+                    b.HasOne("FluxGrid.Api.Modules.HR.Domain.Entities.Candidate", "Candidate")
+                        .WithMany()
+                        .HasForeignKey("CandidateId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Candidate");
+                });
+
             modelBuilder.Entity("FluxGrid.Api.Modules.HR.Domain.Entities.CandidateDocument", b =>
                 {
                     b.HasOne("FluxGrid.Api.Modules.HR.Domain.Entities.Candidate", "Candidate")
@@ -1596,6 +1676,25 @@ namespace FluxGrid.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("Candidate");
+                });
+
+            modelBuilder.Entity("FluxGrid.Api.Modules.HR.Domain.Entities.CandidateJobMatch", b =>
+                {
+                    b.HasOne("FluxGrid.Api.Modules.HR.Domain.Entities.Candidate", "Candidate")
+                        .WithMany()
+                        .HasForeignKey("CandidateId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("FluxGrid.Api.Modules.HR.Domain.Entities.JobPosting", "JobPosting")
+                        .WithMany()
+                        .HasForeignKey("JobId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Candidate");
+
+                    b.Navigation("JobPosting");
                 });
 
             modelBuilder.Entity("FluxGrid.Api.Modules.HR.Domain.Entities.CandidateSkill", b =>

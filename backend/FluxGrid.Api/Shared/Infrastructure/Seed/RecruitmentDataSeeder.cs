@@ -7,6 +7,8 @@ namespace FluxGrid.Api.Shared.Infrastructure.Seed;
 
 public static class RecruitmentDataSeeder
 {
+    private static DateTime U(int y, int m, int d) => new(y, m, d, 0, 0, 0, DateTimeKind.Utc);
+
     public static async Task SeedAsync(AppDbContext db, Guid tenantId)
     {
         if (await db.Candidates.AnyAsync(c => c.TenantId == tenantId))
@@ -28,9 +30,9 @@ public static class RecruitmentDataSeeder
                            new CandidateSkill { SkillName = "Node.js", SkillCategory = "Backend", ProficiencyLevel = "Advanced", YearsExperience = 4 },
                            new CandidateSkill { SkillName = "TypeScript", SkillCategory = "Language", ProficiencyLevel = "Intermediate", YearsExperience = 3 },
                            new CandidateSkill { SkillName = "PostgreSQL", SkillCategory = "Database", ProficiencyLevel = "Intermediate", YearsExperience = 3 } },
-                Experience = { new CandidateExperience { Company = "TechCorp", Role = "Full-stack Developer", StartDate = new DateTime(2021, 1, 1), EndDate = null, IsCurrent = true, Description = "Built internal dashboard with React and Node.js" },
-                               new CandidateExperience { Company = "StartupXYZ", Role = "Junior Developer", StartDate = new DateTime(2019, 3, 1), EndDate = new DateTime(2020, 12, 31), Description = "Maintained REST APIs and frontend components" } },
-                Education = { new CandidateEducation { Institution = "Universitas Indonesia", Degree = "S.Kom", FieldOfStudy = "Computer Science", StartDate = new DateTime(2015, 8, 1), EndDate = new DateTime(2019, 6, 1), Gpa = 3.65m } }
+                Experience = { new CandidateExperience { Company = "TechCorp", Role = "Full-stack Developer", StartDate = U(2021, 1, 1), EndDate = null, IsCurrent = true, Description = "Built internal dashboard with React and Node.js" },
+                               new CandidateExperience { Company = "StartupXYZ", Role = "Junior Developer", StartDate = U(2019, 3, 1), EndDate = U(2020, 12, 31), Description = "Maintained REST APIs and frontend components" } },
+                Education = { new CandidateEducation { Institution = "Universitas Indonesia", Degree = "S.Kom", FieldOfStudy = "Computer Science", StartDate = U(2015, 8, 1), EndDate = U(2019, 6, 1), Gpa = 3.65m } }
             },
             new()
             {
@@ -42,9 +44,9 @@ public static class RecruitmentDataSeeder
                            new CandidateSkill { SkillName = "Next.js", SkillCategory = "Frontend", ProficiencyLevel = "Intermediate", YearsExperience = 2 },
                            new CandidateSkill { SkillName = "CSS/Sass", SkillCategory = "Frontend", ProficiencyLevel = "Advanced", YearsExperience = 4 },
                            new CandidateSkill { SkillName = "Figma", SkillCategory = "Design", ProficiencyLevel = "Intermediate", YearsExperience = 2 } },
-                Experience = { new CandidateExperience { Company = "WebStudio", Role = "Frontend Engineer", StartDate = new DateTime(2022, 3, 1), IsCurrent = true, Description = "Developed component library and design system" },
-                               new CandidateExperience { Company = "Digital Agency", Role = "UI Developer", StartDate = new DateTime(2020, 1, 1), EndDate = new DateTime(2022, 2, 28), Description = "Built responsive web apps for clients" } },
-                Education = { new CandidateEducation { Institution = "ITB", Degree = "S.T.", FieldOfStudy = "Informatics", StartDate = new DateTime(2016, 8, 1), EndDate = new DateTime(2020, 6, 1), Gpa = 3.50m } }
+                Experience = { new CandidateExperience { Company = "WebStudio", Role = "Frontend Engineer", StartDate = U(2022, 3, 1), IsCurrent = true, Description = "Developed component library and design system" },
+                               new CandidateExperience { Company = "Digital Agency", Role = "UI Developer", StartDate = U(2020, 1, 1), EndDate = U(2022, 2, 28), Description = "Built responsive web apps for clients" } },
+                Education = { new CandidateEducation { Institution = "ITB", Degree = "S.T.", FieldOfStudy = "Informatics", StartDate = U(2016, 8, 1), EndDate = U(2020, 6, 1), Gpa = 3.50m } }
             },
             new()
             {
@@ -56,10 +58,10 @@ public static class RecruitmentDataSeeder
                            new CandidateSkill { SkillName = ".NET Core", SkillCategory = "Backend", ProficiencyLevel = "Advanced", YearsExperience = 5 },
                            new CandidateSkill { SkillName = "Azure", SkillCategory = "Cloud", ProficiencyLevel = "Intermediate", YearsExperience = 3 },
                            new CandidateSkill { SkillName = "SQL Server", SkillCategory = "Database", ProficiencyLevel = "Advanced", YearsExperience = 5 } },
-                Experience = { new CandidateExperience { Company = "Enterprise Solutions", Role = "Senior Backend Engineer", StartDate = new DateTime(2022, 1, 1), IsCurrent = true, Description = "Architected microservices with .NET 8 and Azure" },
-                               new CandidateExperience { Company = "Software House", Role = "Backend Developer", StartDate = new DateTime(2019, 6, 1), EndDate = new DateTime(2021, 12, 31), Description = "Developed REST APIs and ETL pipelines" },
-                               new CandidateExperience { Company = "Tech Startup", Role = "Junior Developer", StartDate = new DateTime(2018, 1, 1), EndDate = new DateTime(2019, 5, 31), Description = "Built CRUD apps with ASP.NET MVC" } },
-                Education = { new CandidateEducation { Institution = "Universitas Gadjah Mada", Degree = "S.T.", FieldOfStudy = "Computer Engineering", StartDate = new DateTime(2013, 8, 1), EndDate = new DateTime(2017, 6, 1), Gpa = 3.45m } }
+                Experience = { new CandidateExperience { Company = "Enterprise Solutions", Role = "Senior Backend Engineer", StartDate = U(2022, 1, 1), IsCurrent = true, Description = "Architected microservices with .NET 8 and Azure" },
+                               new CandidateExperience { Company = "Software House", Role = "Backend Developer", StartDate = U(2019, 6, 1), EndDate = U(2021, 12, 31), Description = "Developed REST APIs and ETL pipelines" },
+                               new CandidateExperience { Company = "Tech Startup", Role = "Junior Developer", StartDate = U(2018, 1, 1), EndDate = U(2019, 5, 31), Description = "Built CRUD apps with ASP.NET MVC" } },
+                Education = { new CandidateEducation { Institution = "Universitas Gadjah Mada", Degree = "S.T.", FieldOfStudy = "Computer Engineering", StartDate = U(2013, 8, 1), EndDate = U(2017, 6, 1), Gpa = 3.45m } }
             },
             new()
             {
@@ -71,8 +73,8 @@ public static class RecruitmentDataSeeder
                            new CandidateSkill { SkillName = "Kubernetes", SkillCategory = "DevOps", ProficiencyLevel = "Intermediate", YearsExperience = 2 },
                            new CandidateSkill { SkillName = "Terraform", SkillCategory = "DevOps", ProficiencyLevel = "Intermediate", YearsExperience = 2 },
                            new CandidateSkill { SkillName = "AWS", SkillCategory = "Cloud", ProficiencyLevel = "Intermediate", YearsExperience = 3 } },
-                Experience = { new CandidateExperience { Company = "CloudHost", Role = "DevOps Engineer", StartDate = new DateTime(2021, 6, 1), IsCurrent = true, Description = "Managed K8s clusters and CI/CD pipelines" } },
-                Education = { new CandidateEducation { Institution = "ITS Surabaya", Degree = "S.T.", FieldOfStudy = "Electrical Engineering", StartDate = new DateTime(2016, 8, 1), EndDate = new DateTime(2020, 6, 1), Gpa = 3.30m } }
+                Experience = { new CandidateExperience { Company = "CloudHost", Role = "DevOps Engineer", StartDate = U(2021, 6, 1), IsCurrent = true, Description = "Managed K8s clusters and CI/CD pipelines" } },
+                Education = { new CandidateEducation { Institution = "ITS Surabaya", Degree = "S.T.", FieldOfStudy = "Electrical Engineering", StartDate = U(2016, 8, 1), EndDate = U(2020, 6, 1), Gpa = 3.30m } }
             },
             new()
             {
@@ -84,8 +86,8 @@ public static class RecruitmentDataSeeder
                            new CandidateSkill { SkillName = "Python", SkillCategory = "Language", ProficiencyLevel = "Intermediate", YearsExperience = 2 },
                            new CandidateSkill { SkillName = "Tableau", SkillCategory = "BI", ProficiencyLevel = "Intermediate", YearsExperience = 1 },
                            new CandidateSkill { SkillName = "Excel", SkillCategory = "Productivity", ProficiencyLevel = "Advanced", YearsExperience = 3 } },
-                Experience = { new CandidateExperience { Company = "DataWorks", Role = "Data Analyst", StartDate = new DateTime(2022, 6, 1), IsCurrent = true, Description = "Built dashboards and automated reports" } },
-                Education = { new CandidateEducation { Institution = "Universitas Brawijaya", Degree = "S.Si", FieldOfStudy = "Statistics", StartDate = new DateTime(2017, 8, 1), EndDate = new DateTime(2021, 6, 1), Gpa = 3.55m } }
+                Experience = { new CandidateExperience { Company = "DataWorks", Role = "Data Analyst", StartDate = U(2022, 6, 1), IsCurrent = true, Description = "Built dashboards and automated reports" } },
+                Education = { new CandidateEducation { Institution = "Universitas Brawijaya", Degree = "S.Si", FieldOfStudy = "Statistics", StartDate = U(2017, 8, 1), EndDate = U(2021, 6, 1), Gpa = 3.55m } }
             },
             new()
             {
@@ -97,9 +99,9 @@ public static class RecruitmentDataSeeder
                            new CandidateSkill { SkillName = "Cypress", SkillCategory = "Testing", ProficiencyLevel = "Intermediate", YearsExperience = 1 },
                            new CandidateSkill { SkillName = "Postman", SkillCategory = "Testing", ProficiencyLevel = "Advanced", YearsExperience = 3 },
                            new CandidateSkill { SkillName = "JIRA", SkillCategory = "Project Mgmt", ProficiencyLevel = "Intermediate", YearsExperience = 3 } },
-                Experience = { new CandidateExperience { Company = "QualityFirst", Role = "QA Engineer", StartDate = new DateTime(2022, 1, 1), IsCurrent = true, Description = "Automated E2E tests and managed bug tracking" },
-                               new CandidateExperience { Company = "StartupHQ", Role = "Junior QA", StartDate = new DateTime(2021, 3, 1), EndDate = new DateTime(2021, 12, 31), Description = "Manual testing and test documentation" } },
-                Education = { new CandidateEducation { Institution = "Universitas Diponegoro", Degree = "S.Kom", FieldOfStudy = "Information Systems", StartDate = new DateTime(2016, 8, 1), EndDate = new DateTime(2020, 6, 1), Gpa = 3.40m } }
+                Experience = { new CandidateExperience { Company = "QualityFirst", Role = "QA Engineer", StartDate = U(2022, 1, 1), IsCurrent = true, Description = "Automated E2E tests and managed bug tracking" },
+                               new CandidateExperience { Company = "StartupHQ", Role = "Junior QA", StartDate = U(2021, 3, 1), EndDate = U(2021, 12, 31), Description = "Manual testing and test documentation" } },
+                Education = { new CandidateEducation { Institution = "Universitas Diponegoro", Degree = "S.Kom", FieldOfStudy = "Information Systems", StartDate = U(2016, 8, 1), EndDate = U(2020, 6, 1), Gpa = 3.40m } }
             },
             new()
             {
@@ -110,8 +112,8 @@ public static class RecruitmentDataSeeder
                 Skills = { new CandidateSkill { SkillName = "Go", SkillCategory = "Language", ProficiencyLevel = "Intermediate", YearsExperience = 1 },
                            new CandidateSkill { SkillName = "PostgreSQL", SkillCategory = "Database", ProficiencyLevel = "Intermediate", YearsExperience = 1 },
                            new CandidateSkill { SkillName = "Redis", SkillCategory = "Cache", ProficiencyLevel = "Beginner", YearsExperience = 1 } },
-                Experience = { new CandidateExperience { Company = "TechLab", Role = "Backend Developer", StartDate = new DateTime(2023, 1, 1), IsCurrent = true, Description = "Built REST APIs with Go and PostgreSQL" } },
-                Education = { new CandidateEducation { Institution = "Telkom University", Degree = "S.T.", FieldOfStudy = "Software Engineering", StartDate = new DateTime(2018, 8, 1), EndDate = new DateTime(2022, 6, 1), Gpa = 3.25m } }
+                Experience = { new CandidateExperience { Company = "TechLab", Role = "Backend Developer", StartDate = U(2023, 1, 1), IsCurrent = true, Description = "Built REST APIs with Go and PostgreSQL" } },
+                Education = { new CandidateEducation { Institution = "Telkom University", Degree = "S.T.", FieldOfStudy = "Software Engineering", StartDate = U(2018, 8, 1), EndDate = U(2022, 6, 1), Gpa = 3.25m } }
             },
         };
 

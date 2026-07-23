@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useHrDashboard } from "@/hooks/useHrDashboard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Users, GitBranch, DollarSign, FileText, Briefcase, UserCheck, TrendingUp } from "lucide-react";
+import { formatDate } from "@/lib/date-utils";
 
 function formatCurrency(value: number) {
   if (value >= 1_000_000)
@@ -131,7 +132,7 @@ export default function HRDashboardPage() {
                           <td className="h-8 px-2 text-xs text-muted-foreground">{h.jobTitle}</td>
                           <td className="h-8 px-2 text-xs text-muted-foreground">{h.department}</td>
                           <td className="h-8 px-2 text-right text-xs text-muted-foreground tabular-nums">
-                            {new Date(h.hireDate).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
+                            {formatDate(h.hireDate)}
                           </td>
                         </tr>
                       ))}

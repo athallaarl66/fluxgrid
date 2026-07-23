@@ -129,7 +129,7 @@ export function useFileUpload(): UseFileUploadReturn {
         await createCandidate.mutateAsync({
           name: item.name.replace(/\.[^/.]+$/, ""),
           email: `${item.name.replace(/\.[^/.]+$/, "").toLowerCase().replace(/\s+/g, ".")}@pending`,
-          fileUrl: `${baseUrl}/api/v1/hr/storage/fluxgrid-cvs/${urlResp.objectKey}`,
+          fileUrl: `${baseUrl}/api/v1/hr/storage/flexmng-cv/${urlResp.objectKey}`,
           fileHash,
           originalFilename: item.name,
           fileType: contentType,

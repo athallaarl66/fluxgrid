@@ -8,6 +8,7 @@ import { BinSelectionTable } from "@/components/wms/BinSelectionTable";
 import { Skeleton } from "@/components/ui/skeleton";
 import { WmsNav } from "@/components/wms/WmsNav";
 import { useToast } from "@/components/ui/toast";
+import { formatDate } from "@/lib/date-utils";
 
 const STATIC_LOCATIONS: { id: string; code: string; type: string }[] = [
   { id: "00000000-0000-0000-0000-000000000002", code: "WH-MAIN", type: "WAREHOUSE" },
@@ -132,7 +133,7 @@ export default function PutawayPage({ params }: { params: { id: string } }) {
       <div className="rounded-lg border border-border bg-card p-3 flex items-center gap-4 text-xs">
         <div><span className="text-muted-foreground">Status: </span><span className="font-medium text-yellow-700">PENDING_PUTAWAY</span></div>
         <div><span className="text-muted-foreground">Received by: </span><span className="font-medium">{receipt.receivedBy}</span></div>
-        <div><span className="text-muted-foreground">Date: </span><span className="font-medium">{new Date(receipt.createdAt).toLocaleDateString("id-ID")}</span></div>
+        <div><span className="text-muted-foreground">Date: </span><span className="font-medium">{formatDate(receipt.createdAt)}</span></div>
       </div>
 
       <div className="rounded-lg border border-border bg-card p-4 space-y-4">

@@ -22,6 +22,7 @@ export default function EditJobPage() {
   if (!job) return <div className="p-5 text-sm text-destructive">Job not found</div>;
 
   async function handleSubmit(data: UpdateJobRequest) {
+    if (!job) return;
     await updateJob.mutateAsync({ id: job.id, data });
     router.push(`/hr/recruitment/jobs/${job.id}`);
   }

@@ -959,6 +959,89 @@ id: uuid (required)
 
 ---
 
+### HR-8 Pipeline Endpoints
+
+#### PUT /hr/recruitment/candidates/{id}/status
+**Purpose:** Change candidate status with validation
+
+**Request Body:**
+{
+  "status": "ACTIVE"
+}
+
+**Allowed Transitions:**
+- DRAFT → PARSED, PARSE_FAILED
+- PARSED → ACTIVE, REJECTED
+- ACTIVE → INTERVIEW, REJECTED, ARCHIVED
+- INTERVIEW → HIRED, REJECTED, ARCHIVED
+- Any → ARCHIVED
+
+**Required Permission:** HR:RecruitmentManage
+
+---
+
+#### GET /hr/recruitment/candidates/{id}/activities
+**Purpose:** Get activity log for candidate
+
+**Query Parameters:**
+page: integer (optional, default: 1)
+pageSize: integer (optional, default: 20)
+
+**Required Permission:** HR:RecruitmentManage
+
+---
+
+#### POST /hr/recruitment/candidates/{id}/activities
+**Purpose:** Add a note to activity log
+
+**Request Body:**
+{
+  "note": "Called candidate for screening"
+}
+
+**Required Permission:** HR:RecruitmentManage
+
+---
+
+#### POST /hr/recruitment/candidates/{id}/jobs
+**Purpose:** Assign candidate to job (score=1.0, is_manual=true)
+
+**Request Body:**
+{
+  "jobId": "uuid"
+}
+
+**Required Permission:** HR:RecruitmentManage
+
+---
+
+#### DELETE /hr/recruitment/candidates/{id}/jobs/{jobId}
+**Purpose:** Unassign candidate from job
+
+**Required Permission:** HR:RecruitmentManage
+
+---
+
+#### GET /hr/recruitment/candidates/{id}/jobs
+**Purpose:** List jobs assigned to candidate
+
+**Required Permission:** HR:RecruitmentManage
+
+---
+
+#### POST /hr/recruitment/candidates/bulk-assign
+**Purpose:** Bulk assign candidates to a job
+
+**Request Body:**
+{
+  "candidateIds": ["uuid1", "uuid2"],
+  "jobId": "uuid"
+}
+
+**Required Permission:** HR:RecruitmentManage
+
+---
+
 ## 3. Error Handling
 
 ### 3.1 Standard Error Response Format

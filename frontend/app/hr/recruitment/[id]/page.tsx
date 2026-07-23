@@ -1,20 +1,14 @@
 "use client";
 
+import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, ExternalLink, Globe, Mail, MapPin, GraduationCap, Briefcase, Award, FileText, Phone } from "lucide-react";
+import { ArrowLeft, ExternalLink, Globe, Mail, MapPin, GraduationCap, Briefcase, Award, FileText, Phone, X } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
-import { useCandidate, useDeleteCandidate } from "@/hooks/useRecruitment";
+import { useCandidate, useDeleteCandidate, useCandidateJobs, useAssignJob, useUnassignJob, useJobList } from "@/hooks/useRecruitment";
 import { CandidateStatusBadge } from "@/components/hr/CandidateStatusBadge";
+import { ActivityTimeline } from "@/components/hr/ActivityTimeline";
 import { Skeleton } from "@/components/ui/skeleton";
-
-function formatDate(dateStr: string | null) {
-  if (!dateStr) return "\u2014";
-  return new Date(dateStr).toLocaleDateString("id-ID", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
+import { formatDate } from "@/lib/date-utils";
 
 function formatSalary(min: number | null, max: number | null) {
   const fmt = (v: number) => new Intl.NumberFormat("id-ID").format(v);
@@ -229,6 +223,8 @@ export default function CandidateDetailPage() {
         </div>
 
         <div className="space-y-5">
+          <AssignedJobsSection candidateId={candidate.id} />
+
           {candidate.documents.length > 0 && (
             <div className="rounded-xl border border-border bg-card p-5">
               <div className="flex items-center gap-2 mb-4">
@@ -279,8 +275,98 @@ export default function CandidateDetailPage() {
               </button>
             </div>
           )}
+
+          <div className="rounded-xl border border-border bg-card p-5">
+            <h2 className="text-sm font-semibold text-foreground mb-3">Activity</h2>
+            <ActivityTimeline candidateId={candidate.id} />
+          </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function AssignedJobsSection({ candidateId }: { candidateId: string }) {
+  const { data: jobs, isLoading } = useCandidateJobs(candidateId);
+  const assignJob = useAssignJob();
+  const unassignJob = useUnassignJob();
+  const [showDropdown, setShowDropdown] = useState(false);
+
+  if (isLoading) return <div className="h-20 rounded-xl bg-muted animate-pulse" />;
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-5">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Briefcase className="size-4 text-muted-foreground" />
+          <h2 className="text-sm font-semibold text-foreground">Assigned Jobs</h2>
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowDropdown(!showDropdown)}
+          className="text-[11px] text-[#9CAB84] hover:text-[#7A8D6A] cursor-pointer"
+        >
+          {showDropdown ? "Cancel" : "+ Assign"}
+        </button>
+      </div>
+
+      {showDropdown && (
+        <div className="mb-3">
+          <JobSearchDropdown
+            onSelect={async (jobId) => {
+              await assignJob.mutateAsync({ candidateId, jobId });
+              setShowDropdown(false);
+            }}
+          />
+        </div>
+      )}
+
+      {(!jobs || jobs.length === 0) && !showDropdown ? (
+        <p className="text-[11px] text-muted-foreground italic">Not assigned to any job</p>
+      ) : (
+        <div className="space-y-1.5">
+          {jobs?.map((j) => (
+            <div key={j.id} className="flex items-center justify-between rounded-lg border border-border px-2.5 py-1.5">
+              <div className="min-w-0">
+                <p className="text-[11px] font-medium text-foreground truncate">{j.jobTitle}</p>
+                <p className="text-[10px] text-muted-foreground">{j.isManual ? "Manual" : "AI"} • Score: {j.score}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => unassignJob.mutateAsync({ candidateId, jobId: j.jobId })}
+                className="size-5 inline-flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-destructive cursor-pointer"
+              >
+                <X className="size-3" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function JobSearchDropdown({ onSelect }: { onSelect: (jobId: string) => void }) {
+  const { data } = useJobList({ pageSize: 100, status: "PUBLISHED" });
+  const jobs = data?.items ?? [];
+
+  return (
+    <div className="rounded-lg border border-border bg-card max-h-40 overflow-y-auto">
+      {jobs.length === 0 ? (
+        <p className="px-3 py-2 text-[11px] text-muted-foreground italic">No published jobs</p>
+      ) : (
+        jobs.map((j) => (
+          <button
+            key={j.id}
+            type="button"
+            onClick={() => onSelect(j.id)}
+            className="w-full text-left px-3 py-2 text-[11px] hover:bg-muted cursor-pointer border-b border-border last:border-0"
+          >
+            <p className="font-medium text-foreground">{j.title}</p>
+            <p className="text-[10px] text-muted-foreground">{j.location || "Remote"}</p>
+          </button>
+        ))
+      )}
     </div>
   );
 }

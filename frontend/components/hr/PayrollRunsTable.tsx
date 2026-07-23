@@ -4,18 +4,12 @@ import type { PayrollRun } from "@/lib/hr-types";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 
+import { formatDate } from "@/lib/date-utils";
+
 const STATUS_VARIANTS: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
   DRAFT: "outline",
   FINALIZED: "default",
 };
-
-function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString("id-ID", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
 
 function formatCurrency(value: number | null) {
   if (value === null) return "***";

@@ -2,14 +2,7 @@
 
 import type { JobPosting, JobPostingStatus } from "@/lib/hr-types";
 import { useRouter } from "next/navigation";
-
-function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString("id-ID", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
+import { formatDate } from "@/lib/date-utils";
 
 const STATUS_META: Record<JobPostingStatus, { label: string; bg: string; text: string }> = {
   DRAFT: { label: "Draft", bg: "bg-muted", text: "text-muted-foreground" },

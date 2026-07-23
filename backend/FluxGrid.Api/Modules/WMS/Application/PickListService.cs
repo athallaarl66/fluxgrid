@@ -128,6 +128,42 @@ public class PickListService
         );
     }
 
+    public async Task<PickListDetail?> GetPickListByOrderAsync(Guid tenantId, Guid orderId)
+    {
+        var pickList = await _db.PickLists
+            .Include(pl => pl.Items)
+            .ThenInclude(pi => pi.Item)
+            .Include(pl => pl.Items)
+            .ThenInclude(pi => pi.Location)
+            .Include(pl => pl.Order)
+            .FirstOrDefaultAsync(pl => pl.OrderId == orderId && pl.TenantId == tenantId
+                && pl.Status != PickListStatus.CANCELLED);
+
+        if (pickList is null) return null;
+
+        return new PickListDetail(
+            pickList.Id,
+            pickList.OrderId,
+            pickList.Order?.OrderNo,
+            pickList.Status.ToString(),
+            pickList.AssignedTo,
+            pickList.CreatedAt,
+            pickList.Items.Select(pi => new PickItemDetail(
+                pi.Id,
+                pi.OrderLineId,
+                pi.ItemId,
+                pi.Item?.Sku,
+                pi.Item?.Name,
+                pi.LocationId,
+                pi.Location?.Code,
+                pi.QtyExpected,
+                pi.QtyPicked,
+                pi.ShortPickReason
+            )).ToList(),
+            pickList.TenantId
+        );
+    }
+
     public async Task<PickListActionResult> ExecutePickItemsAsync(Guid tenantId, Guid pickListId, List<PickExecutionInput> items, Guid userId, string? ip, string? ua)
     {
         var pickList = await _db.PickLists

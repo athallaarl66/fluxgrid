@@ -1,5 +1,7 @@
 "use client";
 
+import { formatDate } from "@/lib/date-utils";
+
 interface TimelineEvent {
   date: string;
   type: string;
@@ -36,7 +38,7 @@ export function EmploymentTimeline({ events }: { events: TimelineEvent[] }) {
           )}
           <div>
             <p className="text-xs text-muted-foreground">
-              {new Date(event.date).toLocaleDateString("id-ID", {
+              {formatDate(event.date, {
                 day: "numeric",
                 month: "long",
                 year: "numeric",

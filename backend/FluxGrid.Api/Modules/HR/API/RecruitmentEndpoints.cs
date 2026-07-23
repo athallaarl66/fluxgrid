@@ -1,5 +1,6 @@
 using System.Text.Json;
 using FluxGrid.Api.Modules.HR.Application;
+using FluxGrid.Api.Modules.HR.Domain.Enums;
 using FluxGrid.Api.Shared.RBAC;
 using Microsoft.AspNetCore.Mvc;
 
@@ -53,13 +54,14 @@ public static class RecruitmentEndpoints
         recruitment.MapGet("/candidates", async (
             [FromQuery] string? search,
             [FromQuery] string? status,
+            [FromQuery] Guid? jobId,
             [FromQuery] int? page,
             [FromQuery] int? pageSize,
             RecruitmentService service,
             HttpContext http) =>
         {
             var (tenantId, _, _, _) = GetAuditContext(http);
-            var result = await service.GetCandidatesAsync(tenantId, search, status, page ?? 1, pageSize ?? 20);
+            var result = await service.GetCandidatesAsync(tenantId, search, status, jobId, page ?? 1, pageSize ?? 20);
             return Results.Ok(result);
         })
         .RequireAuthorization(Permissions.HrRecruitmentManage);
@@ -72,6 +74,132 @@ public static class RecruitmentEndpoints
             var (tenantId, _, _, _) = GetAuditContext(http);
             var candidate = await service.GetCandidateDetailAsync(id, tenantId);
             return candidate is null ? Results.NotFound() : Results.Ok(candidate);
+        })
+        .RequireAuthorization(Permissions.HrRecruitmentManage);
+
+        recruitment.MapPut("/candidates/{id:guid}", async (
+            Guid id,
+            CandidateUpdateRequest request,
+            RecruitmentService service,
+            HttpContext http) =>
+        {
+            var (tenantId, userId, ip, ua) = GetAuditContext(http);
+            var result = await service.UpdateCandidateAsync(id, request, tenantId, userId, ip, ua);
+            return result is null ? Results.NotFound() : Results.Ok(result);
+        })
+        .RequireAuthorization(Permissions.HrRecruitmentManage);
+
+        recruitment.MapGet("/candidates/{id:guid}/activities", async (
+            Guid id,
+            [FromQuery] int? page,
+            [FromQuery] int? pageSize,
+            ActivityLogService activityLog,
+            HttpContext http) =>
+        {
+            var tenantId = Guid.Empty;
+            var tenantClaim = http.User.FindFirst("tenant_id")?.Value;
+            if (Guid.TryParse(tenantClaim, out var tid)) tenantId = tid;
+
+            var result = await activityLog.GetActivitiesAsync(id, tenantId, page ?? 1, pageSize ?? 20);
+            return Results.Ok(result);
+        })
+        .RequireAuthorization(Permissions.HrRecruitmentManage);
+
+        recruitment.MapPost("/candidates/{id:guid}/activities", async (
+            Guid id,
+            AddNoteRequest request,
+            ActivityLogService activityLog,
+            HttpContext http) =>
+        {
+            var (tenantId, userId, _, _) = GetAuditContext(http);
+            await activityLog.LogAsync(id, ActivityAction.NoteAdded, userId, new { note = request.Note });
+            return Results.Ok(new { success = true });
+        })
+        .RequireAuthorization(Permissions.HrRecruitmentManage);
+
+        recruitment.MapGet("/candidates/{id:guid}/jobs", async (
+            Guid id,
+            RecruitmentService service,
+            HttpContext http) =>
+        {
+            var (tenantId, _, _, _) = GetAuditContext(http);
+            var result = await service.GetCandidateJobsAsync(id, tenantId);
+            return Results.Ok(result);
+        })
+        .RequireAuthorization(Permissions.HrRecruitmentManage);
+
+        recruitment.MapPost("/candidates/{id:guid}/jobs", async (
+            Guid id,
+            AssignJobRequest request,
+            RecruitmentService service,
+            HttpContext http) =>
+        {
+            var (tenantId, userId, ip, ua) = GetAuditContext(http);
+            try
+            {
+                var result = await service.AssignJobAsync(id, request.JobId, tenantId, userId, ip, ua);
+                return Results.Ok(result);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.Problem(ex.Message, statusCode: 400);
+            }
+        })
+        .RequireAuthorization(Permissions.HrRecruitmentManage);
+
+        recruitment.MapDelete("/candidates/{id:guid}/jobs/{jobId:guid}", async (
+            Guid id,
+            Guid jobId,
+            RecruitmentService service,
+            HttpContext http) =>
+        {
+            var (tenantId, userId, ip, ua) = GetAuditContext(http);
+            try
+            {
+                await service.UnassignJobAsync(id, jobId, tenantId, userId, ip, ua);
+                return Results.Ok(new { success = true });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.Problem(ex.Message, statusCode: 400);
+            }
+        })
+        .RequireAuthorization(Permissions.HrRecruitmentManage);
+
+        recruitment.MapPost("/candidates/bulk-assign", async (
+            BulkAssignRequest request,
+            RecruitmentService service,
+            HttpContext http) =>
+        {
+            var (tenantId, userId, ip, ua) = GetAuditContext(http);
+            try
+            {
+                var result = await service.BulkAssignAsync(request.CandidateIds, request.JobId, tenantId, userId, ip, ua);
+                return Results.Ok(result);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.Problem(ex.Message, statusCode: 400);
+            }
+        })
+        .RequireAuthorization(Permissions.HrRecruitmentManage);
+
+        recruitment.MapPut("/candidates/{id:guid}/status", async (
+            Guid id,
+            ChangeStatusRequest request,
+            RecruitmentService service,
+            HttpContext http) =>
+        {
+            var (tenantId, userId, ip, ua) = GetAuditContext(http);
+            try
+            {
+                var result = await service.ChangeStatusAsync(id, request.Status, tenantId, userId, ip, ua);
+                return Results.Ok(result);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.Problem(ex.Message, statusCode: 400);
+            }
         })
         .RequireAuthorization(Permissions.HrRecruitmentManage);
 
@@ -271,13 +399,15 @@ public static class RecruitmentEndpoints
             Guid id,
             [FromQuery] double? minScore,
             [FromQuery] int? limit,
+            [FromQuery] string? sortBy,
+            [FromQuery] string? matchType,
             JobPostingService service,
             HttpContext http) =>
         {
             var (tenantId, _, _, _) = GetAuditContext(http);
             try
             {
-                var result = await service.GetJobMatchesAsync(id, tenantId, minScore, limit);
+                var result = await service.GetJobMatchesAsync(id, tenantId, minScore, limit, sortBy, matchType);
                 return Results.Ok(result);
             }
             catch (InvalidOperationException ex)

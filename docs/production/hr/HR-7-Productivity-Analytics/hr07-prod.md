@@ -1,3 +1,5 @@
+> **Status**: FUTURE SCOPE — Not implemented in current iteration. Dependent on Task App integration.
+
 # Production Requirements: Productivity Analytics (HR-7)
 
 ## 1. Feature Overview
@@ -43,3 +45,4 @@
 
 ## 9. Out of Scope
 - AI-based prescriptive recommendations for firing/promoting (Keep the AI out of direct personnel actions due to ethical/legal risks). The system only provides deterministic data visualization.
+- **Current Iteration**: This feature is deferred to a future release pending Task App data availability.

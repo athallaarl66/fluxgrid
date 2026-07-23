@@ -1,6 +1,7 @@
 "use client";
 
 import type { PurchaseOrder } from "@/lib/wms-types";
+import { formatDate } from "@/lib/date-utils";
 
 interface POSearchFormProps {
   poNumber: string;
@@ -45,7 +46,7 @@ export function POSearchForm({ poNumber, onPoNumberChange, onSearch, loading, po
             <span className="text-xs text-muted-foreground">{po.supplierName}</span>
           </div>
           <p className="text-xs text-muted-foreground">
-            {new Date(po.poDate).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })}
+            {formatDate(po.poDate, { day: "2-digit", month: "short", year: "numeric" })}
             {" — "}
             {po.lines.length} line(s)
           </p>

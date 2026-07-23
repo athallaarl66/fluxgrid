@@ -120,6 +120,7 @@ FLEXMNG/
 | `/finance`        | Yes           | Finance module landing      |
 | `/finance/chart-of-accounts` | Yes    | Chart of Accounts tree view |
 | `/hr`             | Yes           | HR module (scaffold)       |
+| `/hr/recruitment/kanban` | Yes    | Candidate pipeline (Kanban) |
 
 ### API Endpoints
 
@@ -132,6 +133,15 @@ FLEXMNG/
 | POST   | `/api/v1/finance/chart-of-accounts`     | `finance.coa.manage`     | Create account                  |
 | PUT    | `/api/v1/finance/chart-of-accounts/{id}`| `finance.coa.manage`     | Update account                  |
 | DELETE | `/api/v1/finance/chart-of-accounts/{id}`| `finance.coa.manage`     | Deactivate account (soft-delete)|
+| PUT    | `/api/v1/hr/recruitment/candidates/{id}/status` | `HR:RecruitmentManage` | Change candidate status |
+| GET    | `/api/v1/hr/recruitment/candidates/{id}/activities` | `HR:RecruitmentManage` | Get activity log |
+| POST   | `/api/v1/hr/recruitment/candidates/{id}/activities` | `HR:RecruitmentManage` | Add activity note |
+| POST   | `/api/v1/hr/recruitment/candidates/{id}/jobs` | `HR:RecruitmentManage` | Assign to job |
+| DELETE | `/api/v1/hr/recruitment/candidates/{id}/jobs/{jobId}` | `HR:RecruitmentManage` | Unassign from job |
+| GET    | `/api/v1/hr/recruitment/candidates/{id}/jobs` | `HR:RecruitmentManage` | List assigned jobs |
+| POST   | `/api/v1/hr/recruitment/candidates/bulk-assign` | `HR:RecruitmentManage` | Bulk assign to job |
+| PUT    | `/api/v1/hr/recruitment/candidates/{id}` | `HR:RecruitmentManage` | Update candidate data |
+| GET    | `/api/v1/wms/pick-lists/by-order/{orderId}` | `WMS:Read` | Get pick list by order |
 
 ---
 
@@ -150,6 +160,7 @@ FLEXMNG/
 | `Finance`          | `Finance:Read`, `Finance:Write`, `Finance:Admin` |
 | `Finance COA`      | `finance.coa.read`, `finance.coa.manage`        |
 | `HR`               | `HR:Read`, `HR:Write`, `HR:PayrollProcess`       |
+| `HR Recruitment`   | `HR:RecruitmentManage`                           |
 
 ### Future: User & Role Management
 Super Admin akan dapat membuat akun, mengelola role, dan assign permission secara dinamis melalui UI. (Iterasi berikutnya.)

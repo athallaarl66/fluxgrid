@@ -142,6 +142,9 @@ erDiagram
     candidates ||--o{ candidate_skills : "has"
     candidates ||--o{ candidate_job_matches : "matched with"
     job_postings ||--o{ candidate_job_matches : "matches with"
+    candidates ||--o{ candidate_activity_logs : "has activities"
+    candidate_job_matches }o--|| candidates : "links candidate"
+    candidate_job_matches }o--|| job_postings : "links job"
     
     %% Shared Entities
     users ||--o{ audit_logs : "generates"
@@ -149,6 +152,10 @@ erDiagram
     users ||--o{ roles : "assigned"
     tenants ||--o{ users : "contains"
 ```
+
+### 3.2 HR-8 Entities
+- **candidate_activity_logs:** id, candidate_id, action, performed_by, details, created_at
+- **candidate_job_matches:** id, candidate_id, job_id, score, is_manual, created_at
 
 ---
 
@@ -247,6 +254,15 @@ erDiagram
 **POST /api/v1/hr/recruitment/jobs**
 - **Description**: Create job posting
 - **Authentication**: Required (HR:CandidateManage)
+
+**HR-8 Pipeline & Activity Endpoints:**
+- PUT /api/v1/hr/recruitment/candidates/{id}/status
+- GET /api/v1/hr/recruitment/candidates/{id}/activities
+- POST /api/v1/hr/recruitment/candidates/{id}/activities
+- POST /api/v1/hr/recruitment/candidates/{id}/jobs
+- DELETE /api/v1/hr/recruitment/candidates/{id}/jobs/{jobId}
+- GET /api/v1/hr/recruitment/candidates/{id}/jobs
+- POST /api/v1/hr/recruitment/candidates/bulk-assign
 
 ---
 

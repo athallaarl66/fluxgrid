@@ -4,6 +4,7 @@ import { X, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { formatBalance, type ReportRow, type LedgerDetailRow } from "@/lib/report-types";
+import { formatDate } from "@/lib/date-utils";
 
 interface LedgerDrilldownModalProps {
   open: boolean;
@@ -88,7 +89,7 @@ export function LedgerDrilldownModal({
                         {item.entryNo}
                       </td>
                       <td className="h-8 px-3 text-[13px] tabular-nums text-foreground">
-                        {new Date(item.transactionDate).toLocaleDateString("id-ID")}
+                        {formatDate(item.transactionDate)}
                       </td>
                       <td className="h-8 px-3 text-[13px] text-foreground truncate max-w-[200px]">
                         {item.description}
