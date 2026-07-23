@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { useSalesOrder, useExecutePick } from "@/hooks/useOutbound";
+import { getPickListByOrder } from "@/lib/wms-api";
 import { PickItemCard } from "@/components/wms/PickItemCard";
 import { ShortPickDialog } from "@/components/wms/ShortPickDialog";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -25,12 +26,19 @@ export default function PickExecutionPage() {
   const [pickResults, setPickResults] = useState<Record<string, { qty: number; shortPickReason?: string }>>({});
   const [shortPickTarget, setShortPickTarget] = useState<PickListItem | null>(null);
   const [showShortDialog, setShowShortDialog] = useState(false);
+  const [pickListId, setPickListId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
       router.push(`/login?redirect=/wms/outbound/pick/${orderId}`);
     }
   }, [user, authLoading, router, orderId]);
+
+  useEffect(() => {
+    if (orderId) {
+      getPickListByOrder(orderId).then((pl) => setPickListId(pl.id)).catch(() => {});
+    }
+  }, [orderId]);
 
   const handleConfirm = useCallback((itemId: string, qtyPicked: number) => {
     setPickResults((prev) => ({ ...prev, [itemId]: { qty: qtyPicked } }));
@@ -55,7 +63,7 @@ export default function PickExecutionPage() {
   }, [shortPickTarget]);
 
   const handleFinish = useCallback(async () => {
-    if (!order) return;
+    if (!order || !pickListId) return;
     const items = order.lines
       .filter((l) => pickResults[l.id] !== undefined)
       .map((l) => ({
@@ -65,7 +73,7 @@ export default function PickExecutionPage() {
       }));
 
     await executePick.mutateAsync(
-      { id: orderId, data: { items } },
+      { id: pickListId, data: { items } },
       {
         onSuccess: () => {
           toast("Pick execution completed", "success");
@@ -76,7 +84,7 @@ export default function PickExecutionPage() {
         },
       },
     );
-  }, [order, pickResults, executePick, orderId, router, toast]);
+  }, [order, pickListId, pickResults, executePick, router, toast]);
 
   const items = order?.lines ?? [];
   const progress = currentStep > 0 ? Math.min(1, currentStep / items.length) : 0;

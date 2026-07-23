@@ -161,6 +161,10 @@ export function getPickList(id: string) {
   return apiClient<PickList>(`/api/v1/wms/pick-lists/${id}`);
 }
 
+export function getPickListByOrder(orderId: string) {
+  return apiClient<PickList>(`/api/v1/wms/pick-lists/by-order/${orderId}`);
+}
+
 export function executePickItems(id: string, data: { items: { itemId: string; qtyPicked: number; shortPickReason?: string | null }[] }) {
   return apiClient<{ success: boolean; error: string | null }>(`/api/v1/wms/pick-lists/${id}/items`, {
     method: "PUT",

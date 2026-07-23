@@ -97,6 +97,19 @@ public static class OutboundEndpoints
         })
         .RequireAuthorization(Permissions.WmsRead);
 
+        pickLists.MapGet("/by-order/{orderId:guid}", async (
+            Guid orderId,
+            PickListService service,
+            HttpContext http) =>
+        {
+            var (tenantId, _, _, _) = GetAuditContext(http);
+            var result = await service.GetPickListByOrderAsync(tenantId, orderId);
+            if (result is null)
+                return Results.NotFound();
+            return Results.Ok(result);
+        })
+        .RequireAuthorization(Permissions.WmsRead);
+
         pickLists.MapPut("/{id:guid}/items", async (
             Guid id,
             PickExecuteRequest request,

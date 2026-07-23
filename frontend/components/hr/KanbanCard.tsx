@@ -1,5 +1,6 @@
 "use client";
 
+import { useDraggable } from "@dnd-kit/core";
 import { GripVertical, FileText } from "lucide-react";
 import { CandidateStatusBadge } from "@/components/hr/CandidateStatusBadge";
 import type { CandidateListItem } from "@/lib/hr-types";
@@ -12,14 +13,30 @@ export function KanbanCard({
   candidate: CandidateListItem;
   onNavigate: (id: string) => void;
 }) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: candidate.id,
+  });
+
+  const style = transform
+    ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` }
+    : undefined;
+
   return (
     <div
-      className="rounded-lg border border-border bg-card p-3 cursor-pointer hover:border-[#9CAB84] transition-colors group"
-      onClick={() => onNavigate(candidate.id)}
+      ref={setNodeRef}
+      style={style}
+      className={`rounded-lg border bg-card p-3 cursor-grab active:cursor-grabbing transition-colors group ${
+        isDragging ? "opacity-50 border-[#9CAB84] shadow-lg" : "border-border hover:border-[#9CAB84]"
+      }`}
+      {...attributes}
+      {...listeners}
+      onClick={(e) => {
+        if (!isDragging) onNavigate(candidate.id);
+      }}
     >
       <div className="flex items-start justify-between gap-2">
-        <div className="flex items-center gap-1.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
-          <GripVertical className="size-3.5" data-drag-handle />
+        <div className="flex items-center gap-1.5 text-muted-foreground">
+          <GripVertical className="size-3.5" />
         </div>
         <CandidateStatusBadge status={candidate.status} />
       </div>
