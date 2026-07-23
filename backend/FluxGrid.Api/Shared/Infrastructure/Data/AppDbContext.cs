@@ -46,6 +46,7 @@ public class AppDbContext : DbContext
     public DbSet<CandidateSkill> CandidateSkills => Set<CandidateSkill>();
     public DbSet<CandidateDocument> CandidateDocuments => Set<CandidateDocument>();
     public DbSet<CandidateActivityLog> CandidateActivityLogs => Set<CandidateActivityLog>();
+    public DbSet<CandidateJobMatch> CandidateJobMatches => Set<CandidateJobMatch>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -621,6 +622,29 @@ public class AppDbContext : DbContext
             entity.HasOne(e => e.Candidate)
                   .WithMany()
                   .HasForeignKey(e => e.CandidateId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CandidateJobMatch>(entity =>
+        {
+            entity.ToTable("candidate_job_matches");
+
+            entity.HasKey(e => e.Id);
+
+            entity.HasIndex(e => new { e.CandidateId, e.JobId }).IsUnique();
+
+            entity.Property(e => e.Score).HasDefaultValue(1.0);
+            entity.Property(e => e.IsManual).HasDefaultValue(false);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
+
+            entity.HasOne(e => e.Candidate)
+                  .WithMany()
+                  .HasForeignKey(e => e.CandidateId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.JobPosting)
+                  .WithMany()
+                  .HasForeignKey(e => e.JobId)
                   .OnDelete(DeleteBehavior.Cascade);
         });
     }

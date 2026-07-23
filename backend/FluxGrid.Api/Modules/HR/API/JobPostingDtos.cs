@@ -56,6 +56,7 @@ public sealed record JobMatchItem(
     double? SkillMatchScore,
     double? ExperienceMatchScore,
     string? Skills,
+    string MatchType,
     DateTime CalculatedAt
 );
 

@@ -187,3 +187,21 @@ public sealed record ActivityLogResponse(
 );
 
 public sealed record AddNoteRequest(string Note);
+
+public sealed record ChangeStatusRequest(string Status);
+
+public sealed record CandidateJobAssignmentResponse(
+    Guid Id,
+    Guid CandidateId,
+    Guid JobId,
+    string JobTitle,
+    double Score,
+    bool IsManual,
+    DateTime CreatedAt
+);
+
+public sealed record AssignJobRequest(Guid JobId);
+
+public sealed record BulkAssignRequest(Guid[] CandidateIds, Guid JobId);
+
+public sealed record BulkAssignResponse(int Assigned, int Skipped);
