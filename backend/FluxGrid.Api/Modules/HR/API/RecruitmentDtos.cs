@@ -138,3 +138,52 @@ public sealed record PaginatedResponse<T>(
     int Page,
     int PageSize
 );
+
+public sealed record CandidateUpdateRequest(
+    string Name,
+    string Email,
+    string? Phone,
+    string? Location,
+    string? LinkedInUrl,
+    string? GitHubUrl,
+    string? PortfolioUrl,
+    string? Summary,
+    int? TotalExperienceMonths,
+    decimal? ExpectedSalaryMin,
+    decimal? ExpectedSalaryMax,
+    int? NoticePeriodDays,
+    List<UpdateEducationEntry>? Education,
+    List<UpdateExperienceEntry>? Experience,
+    List<string>? Skills
+);
+
+public sealed record UpdateEducationEntry(
+    Guid? Id,
+    string Institution,
+    string Degree,
+    string? FieldOfStudy,
+    DateTime? StartDate,
+    DateTime? EndDate,
+    decimal? Gpa
+);
+
+public sealed record UpdateExperienceEntry(
+    Guid? Id,
+    string Company,
+    string Role,
+    DateTime? StartDate,
+    DateTime? EndDate,
+    bool IsCurrent,
+    string? Description,
+    string? Location
+);
+
+public sealed record ActivityLogResponse(
+    Guid Id,
+    string Action,
+    Guid PerformedBy,
+    string? Details,
+    DateTime CreatedAt
+);
+
+public sealed record AddNoteRequest(string Note);

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Eye, PanelLeftClose, PanelLeft, X } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
-import { useCandidateReview, useApproveCandidate, useRejectCandidate } from "@/hooks/useRecruitment";
+import { useCandidateReview, useApproveCandidate, useRejectCandidate, useUpdateCandidate } from "@/hooks/useRecruitment";
 import { CandidateReviewTopBar } from "@/components/hr/CandidateReviewTopBar";
 import { CandidateReviewForm, type ReviewFormData } from "@/components/hr/CandidateReviewForm";
 import { PdfViewerPane } from "@/components/hr/PdfViewerPane";
@@ -19,6 +19,7 @@ export default function CandidateReviewPage() {
   const { data: candidate, isLoading, error } = useCandidateReview(id);
   const approveMutation = useApproveCandidate();
   const rejectMutation = useRejectCandidate();
+  const updateMutation = useUpdateCandidate();
   const [pdfCollapsed, setPdfCollapsed] = useState(false);
   const [mobilePdfOpen, setMobilePdfOpen] = useState(false);
 
@@ -88,7 +89,39 @@ export default function CandidateReviewPage() {
 
   async function handleApprove() {
     try {
-      await approveMutation.mutateAsync(id);
+      if (formData) {
+        await updateMutation.mutateAsync({
+          id,
+          data: {
+            name: formData.name,
+            email: formData.email,
+            phone: formData.phone || undefined,
+            location: formData.location || undefined,
+            summary: formData.summary || undefined,
+            education: formData.education.map((e) => ({
+              id: e.id,
+              institution: e.institution,
+              degree: e.degree,
+              fieldOfStudy: e.fieldOfStudy || undefined,
+              startDate: e.startDate || undefined,
+              endDate: e.endDate || undefined,
+              gpa: e.gpa ?? undefined,
+            })),
+            experience: formData.experience.map((e) => ({
+              id: e.id,
+              company: e.company,
+              role: e.role,
+              startDate: e.startDate || undefined,
+              endDate: e.endDate || undefined,
+              isCurrent: e.isCurrent,
+              description: e.description || undefined,
+              location: e.location || undefined,
+            })),
+            skills: formData.skills,
+          },
+        });
+      }
+      await approveMutation.mutateAsync({ id });
       router.push("/hr/recruitment/" + id);
     } catch { /* handled by mutation */ }
   }
@@ -107,7 +140,7 @@ export default function CandidateReviewPage() {
         status={candidate.status}
         onApprove={handleApprove}
         onReject={handleReject}
-        isApproving={approveMutation.isPending}
+        isApproving={approveMutation.isPending || updateMutation.isPending}
         isRejecting={rejectMutation.isPending}
       />
 

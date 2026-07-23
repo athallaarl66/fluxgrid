@@ -18,6 +18,7 @@ public class RecruitmentService
     private readonly DomainEventDispatcher _events;
     private readonly EmbeddingService _embedding;
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly ActivityLogService _activityLog;
     private readonly string _bucketName;
 
     private static readonly string[] AllowedFileTypes = ["pdf", "docx"];
@@ -35,6 +36,7 @@ public class RecruitmentService
         DomainEventDispatcher events,
         EmbeddingService embedding,
         IServiceScopeFactory scopeFactory,
+        ActivityLogService activityLog,
         IConfiguration config)
     {
         _db = db;
@@ -43,6 +45,7 @@ public class RecruitmentService
         _events = events;
         _embedding = embedding;
         _scopeFactory = scopeFactory;
+        _activityLog = activityLog;
         _bucketName = config["Storage:BucketName"] ?? "fluxgrid-cvs";
     }
 
@@ -303,5 +306,91 @@ public class RecruitmentService
                 c.Documents.Select(d => new CandidateDocumentResponse(
                     d.Id, d.FileName, d.FileType, d.FileUrl, d.FileSizeBytes, d.IsPrimary, d.UploadedAt)).ToList()))
             .FirstOrDefaultAsync();
+    }
+
+    public async Task<CandidateDetailResponse?> UpdateCandidateAsync(
+        Guid id, CandidateUpdateRequest request, Guid tenantId,
+        Guid userId, string? ipAddress = null, string? userAgent = null)
+    {
+        var candidate = await _db.Candidates
+            .Include(c => c.Education)
+            .Include(c => c.Experience)
+            .Include(c => c.Skills)
+            .FirstOrDefaultAsync(c => c.Id == id && c.TenantId == tenantId);
+
+        if (candidate is null) return null;
+
+        var changedFields = new List<string>();
+
+        if (candidate.Name != request.Name) { changedFields.Add("name"); candidate.Name = request.Name; }
+        if (candidate.Email != request.Email) { changedFields.Add("email"); candidate.Email = request.Email; }
+        if (candidate.Phone != request.Phone) { changedFields.Add("phone"); candidate.Phone = request.Phone; }
+        if (candidate.Location != request.Location) { changedFields.Add("location"); candidate.Location = request.Location; }
+        if (candidate.LinkedInUrl != request.LinkedInUrl) { changedFields.Add("linkedInUrl"); candidate.LinkedInUrl = request.LinkedInUrl; }
+        if (candidate.GitHubUrl != request.GitHubUrl) { changedFields.Add("gitHubUrl"); candidate.GitHubUrl = request.GitHubUrl; }
+        if (candidate.PortfolioUrl != request.PortfolioUrl) { changedFields.Add("portfolioUrl"); candidate.PortfolioUrl = request.PortfolioUrl; }
+        if (candidate.Summary != request.Summary) { changedFields.Add("summary"); candidate.Summary = request.Summary; }
+        if (candidate.TotalExperienceMonths != request.TotalExperienceMonths) { changedFields.Add("totalExperienceMonths"); candidate.TotalExperienceMonths = request.TotalExperienceMonths; }
+        if (candidate.ExpectedSalaryMin != request.ExpectedSalaryMin) { changedFields.Add("expectedSalaryMin"); candidate.ExpectedSalaryMin = request.ExpectedSalaryMin; }
+        if (candidate.ExpectedSalaryMax != request.ExpectedSalaryMax) { changedFields.Add("expectedSalaryMax"); candidate.ExpectedSalaryMax = request.ExpectedSalaryMax; }
+        if (candidate.NoticePeriodDays != request.NoticePeriodDays) { changedFields.Add("noticePeriodDays"); candidate.NoticePeriodDays = request.NoticePeriodDays; }
+
+        if (request.Education is not null)
+        {
+            _db.CandidateEducations.RemoveRange(candidate.Education);
+            candidate.Education = request.Education.Select(e => new CandidateEducation
+            {
+                Id = e.Id ?? Guid.NewGuid(),
+                CandidateId = id,
+                Institution = e.Institution,
+                Degree = e.Degree,
+                FieldOfStudy = e.FieldOfStudy,
+                StartDate = e.StartDate,
+                EndDate = e.EndDate,
+                Gpa = e.Gpa
+            }).ToList();
+            changedFields.Add("education");
+        }
+
+        if (request.Experience is not null)
+        {
+            _db.CandidateExperiences.RemoveRange(candidate.Experience);
+            candidate.Experience = request.Experience.Select(e => new CandidateExperience
+            {
+                Id = e.Id ?? Guid.NewGuid(),
+                CandidateId = id,
+                Company = e.Company,
+                Role = e.Role,
+                StartDate = e.StartDate,
+                EndDate = e.EndDate,
+                IsCurrent = e.IsCurrent,
+                Description = e.Description,
+                Location = e.Location
+            }).ToList();
+            changedFields.Add("experience");
+        }
+
+        if (request.Skills is not null)
+        {
+            _db.CandidateSkills.RemoveRange(candidate.Skills);
+            candidate.Skills = request.Skills.Select(s => new CandidateSkill
+            {
+                CandidateId = id,
+                SkillName = s
+            }).ToList();
+            changedFields.Add("skills");
+        }
+
+        if (changedFields.Count == 0)
+            return await GetCandidateDetailAsync(id, tenantId);
+
+        candidate.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        await _audit.LogAsync(userId, tenantId, "UPDATE", "candidates", id, ipAddress, userAgent,
+            null,
+            new { fields = changedFields });
+
+        return await GetCandidateDetailAsync(id, tenantId);
     }
 }

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using FluxGrid.Api.Modules.HR.Application;
+using FluxGrid.Api.Modules.HR.Domain.Enums;
 using FluxGrid.Api.Shared.RBAC;
 using Microsoft.AspNetCore.Mvc;
 
@@ -72,6 +73,46 @@ public static class RecruitmentEndpoints
             var (tenantId, _, _, _) = GetAuditContext(http);
             var candidate = await service.GetCandidateDetailAsync(id, tenantId);
             return candidate is null ? Results.NotFound() : Results.Ok(candidate);
+        })
+        .RequireAuthorization(Permissions.HrRecruitmentManage);
+
+        recruitment.MapPut("/candidates/{id:guid}", async (
+            Guid id,
+            CandidateUpdateRequest request,
+            RecruitmentService service,
+            HttpContext http) =>
+        {
+            var (tenantId, userId, ip, ua) = GetAuditContext(http);
+            var result = await service.UpdateCandidateAsync(id, request, tenantId, userId, ip, ua);
+            return result is null ? Results.NotFound() : Results.Ok(result);
+        })
+        .RequireAuthorization(Permissions.HrRecruitmentManage);
+
+        recruitment.MapGet("/candidates/{id:guid}/activities", async (
+            Guid id,
+            [FromQuery] int? page,
+            [FromQuery] int? pageSize,
+            ActivityLogService activityLog,
+            HttpContext http) =>
+        {
+            var tenantId = Guid.Empty;
+            var tenantClaim = http.User.FindFirst("tenant_id")?.Value;
+            if (Guid.TryParse(tenantClaim, out var tid)) tenantId = tid;
+
+            var result = await activityLog.GetActivitiesAsync(id, tenantId, page ?? 1, pageSize ?? 20);
+            return Results.Ok(result);
+        })
+        .RequireAuthorization(Permissions.HrRecruitmentManage);
+
+        recruitment.MapPost("/candidates/{id:guid}/activities", async (
+            Guid id,
+            AddNoteRequest request,
+            ActivityLogService activityLog,
+            HttpContext http) =>
+        {
+            var (tenantId, userId, _, _) = GetAuditContext(http);
+            await activityLog.LogAsync(id, ActivityAction.NoteAdded, userId, new { note = request.Note });
+            return Results.Ok(new { success = true });
         })
         .RequireAuthorization(Permissions.HrRecruitmentManage);
 
