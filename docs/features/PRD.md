@@ -336,6 +336,31 @@ Saat ini, operasional perusahaan di industri Mining, Oil & Gas, Logistics, Manuf
 
 **Priority:** Should Have
 
+**User Story HR-8: Candidate Pipeline Kanban**
+**As a** HR Recruiter
+**I want** a visual pipeline board to manage candidate statuses
+**So that** I can see the recruitment workflow at a glance and move candidates through stages
+
+**Acceptance Criteria:**
+- [ ] Kanban board with columns per status (DRAFT, PARSED, ACTIVE, INTERVIEW, HIRED)
+- [ ] Drag-and-drop status transitions with validation
+- [ ] Activity log tracking all status changes and edits
+- [ ] Manual job assignment (assign/unassign candidates to jobs)
+
+**Priority:** Must Have
+
+**User Story HR-9: Manual Role Assignment**
+**As a** HR Recruiter
+**I want** to manually assign candidates to specific job postings
+**So that** I can match candidates to roles regardless of AI matching
+
+**Acceptance Criteria:**
+- [ ] Assign/unassign candidates to jobs from candidate detail
+- [ ] Bulk assign multiple candidates to a job
+- [ ] "All Applicants" tab in job detail showing both AI and manual matches
+- [ ] AI vs Manual badge on match scores
+
+**Priority:** Must Have
 
 
 ### 4.2 Functional Requirements by Module
@@ -625,6 +650,8 @@ Saat ini, operasional perusahaan di industri Mining, Oil & Gas, Logistics, Manuf
 | BR-HR-003 | Payroll posting | Payroll processed | Auto-post journal entries to Finance |
 | BR-HR-004 | Duplicate candidate | Email/phone match existing | Flag as potential duplicate |
 | BR-HR-005 | Minimum match score | Candidate score < 30% | Hide from top results |
+| BR-HR-006 | Status transition validation | Any status change | Validate against allowed transitions before applying |
+| BR-HR-007 | Manual assignment score | Manual job assignment | Set match score to 1.0 and is_manual=true |
 | **Shared Rules** ||||
 | BR-SHARED-001 | Audit logging | Any data change | Log to audit trail |
 | BR-SHARED-002 | RBAC enforcement | API endpoint access | Validate permissions before access |

@@ -21,7 +21,7 @@
 1. **Initiation**: HR Recruiter opens the "Candidates" dashboard and clicks "Upload CV".
 2. **File Selection**: User selects 5 PDF files from their local computer.
 3. **Validation**: System checks that all files are < 5MB and are PDF/DOCX format.
-4. **Upload**: Files are uploaded to secure storage.
+4. **Upload**: Files are uploaded to secure storage. System stores files in MinIO (flexmng-cv bucket) via presigned URL upload.
 5. **Database Entry**: System creates 5 "Candidate" records in `DRAFT` status, attaching the file URLs.
 6. **Trigger AI**: (Handled in HR-5) The system queues these draft records for automatic parsing.
 
@@ -31,10 +31,12 @@
 - [ ] File size validation (max 5MB per file).
 - [ ] Support for bulk upload (multiple files simultaneously).
 - [ ] Secure file storage (not publicly accessible).
+- [ ] MinIO object storage integration (presigned URL upload flow).
 - [ ] Creation of a baseline Candidate record linked to the file.
 
 ## 7. Edge Cases and Constraints
 - **Corrupted Files**: If an uploaded PDF is password-protected or corrupted, the system must flag the candidate record with an "Upload Error" status.
+- **MinIO Unavailable**: If MinIO is down, upload fails with clear error message.
 - **Duplicate Uploads**: If the exact same file (hash check) is uploaded twice, warn the user.
 
 ## 8. Dependencies on Other Modules

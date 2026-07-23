@@ -24,7 +24,7 @@
 3. **AI Parsing**: The raw text is sent to the Groq API with a strict JSON schema prompt.
 4. **Data Mapping**: The JSON response is mapped to the database (Personal Info, Education, Experience, Skills).
 5. **Review**: The Recruiter opens the Candidate list, sees a "Parsed - Needs Review" badge.
-6. **Validation**: The Recruiter views a split-screen UI (Original PDF on the left, extracted data fields on the right). They correct any mistakes (e.g., misidentified graduation year) and click "Approve Data".
+6. **Validation**: The Recruiter views a split-screen UI (Original PDF on the left, extracted data fields on the right). They correct any mistakes (e.g., misidentified graduation year) and click "Approve Data". After review, Recruiter clicks 'Approve Data' which first saves any edits via PUT /candidates/{id} endpoint, then transitions status to ACTIVE.
 
 ## 6. Acceptance Criteria
 - [ ] Background job queue for processing CVs asynchronously.
@@ -33,6 +33,8 @@
 - [ ] Database population for candidate relational tables (Education, Experience, Skills).
 - [ ] Split-screen Review UI for human-in-the-loop validation.
 - [ ] Fallback mechanism if the Groq API fails or rate limits.
+- [ ] PUT /candidates/{id} endpoint for persisting review edits.
+- [ ] Activity log entry created on data edit.
 
 ## 7. Edge Cases and Constraints
 - **Image-based PDFs**: If a PDF is a scanned image, standard text extraction will fail. The system must flag the status as `PARSE_FAILED` and alert the user. OCR is out of scope for this iteration.
