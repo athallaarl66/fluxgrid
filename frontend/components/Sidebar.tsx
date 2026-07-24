@@ -13,8 +13,10 @@ import {
   Plus,
   ChevronDown,
   ScrollText,
+  Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/lib/auth-context";
 
 interface NavItem {
   label: string;
@@ -67,6 +69,8 @@ function isChildActive(pathname: string, children?: NavItem["children"]) {
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { user } = useAuth();
+  const isAdmin = user?.roles.some((r) => r === "Admin") ?? false;
   const [expanded, setExpanded] = useState<string | null>(
     () =>
       navItems.find((item) => isChildActive(pathname, item.children))?.href ??
@@ -185,6 +189,26 @@ export function Sidebar() {
           );
         })}
       </nav>
+
+      {isAdmin && (
+        <div className="px-3 space-y-0.5">
+          <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+            Admin
+          </div>
+          <a
+            href="/admin/users"
+            className={cn(
+              "flex items-center gap-3 rounded px-3 py-2 text-sm font-medium transition-colors duration-200",
+              pathname.startsWith("/admin")
+                ? "bg-accent text-accent-foreground"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground",
+            )}
+          >
+            <Shield className="size-4 shrink-0" />
+            Users & Roles
+          </a>
+        </div>
+      )}
 
       <div className="border-t border-sidebar-border px-3 py-3 space-y-0.5">
         <a

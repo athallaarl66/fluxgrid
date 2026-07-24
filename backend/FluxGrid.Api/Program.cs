@@ -9,6 +9,7 @@ using FluxGrid.Api.Modules.Finance.Application;
 using FluxGrid.Api.Modules.HR.API;
 using FluxGrid.Api.Modules.HR.Application;
 using FluxGrid.Api.Modules.Support.API;
+using FluxGrid.Api.Modules.Admin.API;
 using FluxGrid.Api.Modules.WMS.API;
 using FluxGrid.Api.Modules.WMS.Application;
 using FluxGrid.Api.Shared.Infrastructure.Audit;
@@ -91,6 +92,10 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization(options =>
 {
+    options.AddPolicy("AdminOnly", policy =>
+        policy.RequireAssertion(context =>
+            context.User.IsInRole("Admin")));
+
     foreach (var permission in FluxGrid.Api.Shared.RBAC.Permissions.All)
     {
         options.AddPolicy(permission, policy =>
@@ -252,6 +257,9 @@ app.MapPayrollEndpoints();
 app.MapRecruitmentEndpoints();
 app.MapHrDashboardEndpoints();
 app.MapSupportEndpoints();
+app.MapUsersEndpoints();
+app.MapRolesEndpoints();
+app.MapPermissionsEndpoints();
 
 if (storageProvider != "S3")
 {
