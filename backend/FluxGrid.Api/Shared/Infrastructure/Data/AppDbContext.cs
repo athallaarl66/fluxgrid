@@ -12,6 +12,7 @@ public class AppDbContext : DbContext
 
     public DbSet<User> Users => Set<User>();
     public DbSet<Role> Roles => Set<Role>();
+    public DbSet<UserPreference> UserPreferences => Set<UserPreference>();
     public DbSet<ChartOfAccount> ChartOfAccounts => Set<ChartOfAccount>();
     public DbSet<JournalEntry> JournalEntries => Set<JournalEntry>();
     public DbSet<JournalEntryLine> JournalEntryLines => Set<JournalEntryLine>();
@@ -76,6 +77,16 @@ public class AppDbContext : DbContext
             entity.Property(e => e.Name).HasMaxLength(100).IsRequired();
             entity.Property(e => e.Description).HasMaxLength(500);
             entity.Property(e => e.Permissions).HasColumnType("text[]");
+        });
+
+        modelBuilder.Entity<UserPreference>(entity =>
+        {
+            entity.ToTable("user_preferences");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.UserId, e.Key }).IsUnique();
+            entity.Property(e => e.Key).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.Value).HasMaxLength(500).IsRequired();
+            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("NOW()");
         });
 
         modelBuilder.Entity<ChartOfAccount>(entity =>
