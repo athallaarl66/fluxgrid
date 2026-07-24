@@ -37,7 +37,9 @@ export function Header() {
   const toggleDark = () => {
     const html = document.documentElement;
     html.classList.toggle("dark");
-    setDark(html.classList.contains("dark"));
+    const isDark = html.classList.contains("dark");
+    setDark(isDark);
+    localStorage.setItem("fluxgrid-theme", isDark ? "dark" : "light");
   };
 
   async function handleLogout() {
