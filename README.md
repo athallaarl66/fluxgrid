@@ -53,7 +53,7 @@ docker-compose up --build
 | -------- | -------- | ----- |
 | `admin`  | `admin123` | **Super Admin** — bypasses all permission checks, has every permission |
 
-> **Catatan:** Saat ini hanya 1 akun seed (`admin`). Fitur **User & Role Management** (Super Admin dapat membuat/manage akun dan role) akan hadir di iterasi berikutnya.
+> **Catatan:** Super Admin dapat membuat akun baru dan mengelola role melalui UI di `/admin/users` dan `/admin/roles`.
 
 ---
 
@@ -66,6 +66,13 @@ FLEXMNG/
 │   │   ├── (auth)/login/        # Login page
 │   │   ├── api/auth/            # Auth API routes (login, me)
 │   │   ├── dashboard/           # Dashboard page
+│   │   ├── settings/            # Settings (Profile, Security, Theme)
+│   │   ├── support/             # Support (FAQ, contact)
+│   │   ├── help/                # Help & Documentation
+│   │   ├── projects/            # Projects placeholder
+│   │   ├── admin/users/         # User management (Super Admin)
+│   │   ├── admin/roles/         # Role management (Super Admin)
+│   │   ├── wms/transfers/       # Transfer log
 │   │   └── globals.css          # Industrial Modern design tokens
 │   ├── components/
 │   │   ├── ui/                  # shadcn/ui primitives
@@ -116,11 +123,18 @@ FLEXMNG/
 | ----------------- | ------------- | -------------------------- |
 | `/login`          | No            | Login form                 |
 | `/dashboard`      | Yes           | Dashboard with KPI grid    |
-| `/wms`            | Yes           | WMS module (scaffold)      |
-| `/finance`        | Yes           | Finance module landing      |
-| `/finance/chart-of-accounts` | Yes    | Chart of Accounts tree view |
-| `/hr`             | Yes           | HR module (scaffold)       |
-| `/hr/recruitment/kanban` | Yes    | Candidate pipeline (Kanban) |
+| `/settings`       | Yes           | Profile, Security, Theme   |
+| `/support`        | Yes           | FAQ & support              |
+| `/help`           | Yes           | Help & documentation       |
+| `/projects`       | Yes           | Projects (placeholder)     |
+| `/wms`            | Yes           | WMS module                 |
+| `/wms/transfers`  | Yes           | Warehouse transfer log     |
+| `/finance`        | Yes           | Finance module landing     |
+| `/finance/chart-of-accounts` | Yes | Chart of Accounts tree view |
+| `/hr`             | Yes           | HR module                  |
+| `/hr/recruitment/kanban` | Yes | Candidate pipeline (Kanban) |
+| `/admin/users`    | Super Admin   | User management            |
+| `/admin/roles`    | Super Admin   | Role management            |
 
 ### API Endpoints
 
@@ -129,6 +143,8 @@ FLEXMNG/
 | POST   | `/api/auth/login`                       | Anonymous                | Login → returns JWT             |
 | GET    | `/api/health`                           | Anonymous                | Health check                    |
 | GET    | `/api/dashboard`                        | `Dashboard:Read`         | Module metadata + KPIs          |
+| GET    | `/api/auth/profile`                     | Authenticated            | Get current user profile        |
+| PUT    | `/api/auth/profile`                     | Authenticated            | Update user profile             |
 | GET    | `/api/v1/finance/chart-of-accounts`     | `finance.coa.read`       | Get COA tree (flat? query)      |
 | POST   | `/api/v1/finance/chart-of-accounts`     | `finance.coa.manage`     | Create account                  |
 | PUT    | `/api/v1/finance/chart-of-accounts/{id}`| `finance.coa.manage`     | Update account                  |
@@ -142,6 +158,20 @@ FLEXMNG/
 | POST   | `/api/v1/hr/recruitment/candidates/bulk-assign` | `HR:RecruitmentManage` | Bulk assign to job |
 | PUT    | `/api/v1/hr/recruitment/candidates/{id}` | `HR:RecruitmentManage` | Update candidate data |
 | GET    | `/api/v1/wms/pick-lists/by-order/{orderId}` | `WMS:Read` | Get pick list by order |
+| GET    | `/api/v1/wms/stock-ledger/transfers`    | `WMS:Read`               | Warehouse transfer log          |
+| GET    | `/api/admin/users`                      | Super Admin              | List users                      |
+| POST   | `/api/admin/users`                      | Super Admin              | Create user                     |
+| PUT    | `/api/admin/users/{id}`                 | Super Admin              | Update user                     |
+| DELETE | `/api/admin/users/{id}`                 | Super Admin              | Deactivate user                 |
+| GET    | `/api/admin/roles`                      | Super Admin              | List roles                      |
+| POST   | `/api/admin/roles`                      | Super Admin              | Create role                     |
+| PUT    | `/api/admin/roles/{id}`                 | Super Admin              | Update role                     |
+| DELETE | `/api/admin/roles/{id}`                 | Super Admin              | Delete role                     |
+| GET    | `/api/admin/permissions`                | Super Admin              | List all permissions            |
+| GET    | `/api/notifications/unread`             | Authenticated            | Unread notifications            |
+| PUT    | `/api/notifications/{id}/read`          | Authenticated            | Mark notification read          |
+| PUT    | `/api/notifications/read-all`           | Authenticated            | Mark all read                   |
+| POST   | `/api/support/contact`                  | Authenticated            | Submit support message          |
 
 ---
 
@@ -160,10 +190,12 @@ FLEXMNG/
 | `Finance`          | `Finance:Read`, `Finance:Write`, `Finance:Admin` |
 | `Finance COA`      | `finance.coa.read`, `finance.coa.manage`        |
 | `HR`               | `HR:Read`, `HR:Write`, `HR:PayrollProcess`       |
-| `HR Recruitment`   | `HR:RecruitmentManage`                           |
+| `HR Recruitment`   | `HR:RecruitmentManage`, `HR:CVRead`, `HR:CVWrite`, `HR:CandidateManage` |
+| `Admin`            | `Admin:Manage` (Super Admin only)                |
+| `Notification`     | `Notification:Read`, `Notification:Manage`       |
 
-### Future: User & Role Management
-Super Admin akan dapat membuat akun, mengelola role, dan assign permission secara dinamis melalui UI. (Iterasi berikutnya.)
+### User & Role Management
+Super Admin dapat membuat akun, mengelola role, dan assign permission secara dinamis melalui UI di `/admin/users` dan `/admin/roles`.
 
 ---
 

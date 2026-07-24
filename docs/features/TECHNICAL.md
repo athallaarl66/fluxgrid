@@ -1,12 +1,12 @@
 # Technical Design Document (TDD)
 
 ## Document Information
-- **Document Version**: 3.0
+- **Document Version**: 3.1
 - **Created Date**: 2026-06-29
-- **Last Updated**: 2026-07-08
+- **Last Updated**: 2026-07-24
 - **Author**: AI Engineer
 - **Project**: FluxGrid ERP
-- **Scope**: Complete ERP System (WMS, Finance, HR)
+- **Scope**: Complete ERP System (WMS, Finance, HR, Admin, Notifications)
 
 ---
 
@@ -46,6 +46,8 @@ Technical design document untuk FluxGrid ERP - sistem Modular Monolith untuk ind
 - Audit Trail immutable
 - Row-Level Security (RLS)
 - AI Service Layer abstraction (Groq API) — HR only
+- **Notification System** (polling-based, DB-persisted)
+- **Admin Area** (User & Role Management, Super Admin only)
 
 ### 1.3 References
 - PRD: docs/features/PRD.md
@@ -156,6 +158,17 @@ erDiagram
 ### 3.2 HR-8 Entities
 - **candidate_activity_logs:** id, candidate_id, action, performed_by, details, created_at
 - **candidate_job_matches:** id, candidate_id, job_id, score, is_manual, created_at
+
+### 3.3 Notification System
+- **notifications:** id, user_id, type, title, body, is_read, created_at
+- Index on (user_id, is_read) for fast unread queries
+- Polling strategy: Frontend polls GET /api/notifications/unread every 30 seconds
+- Badge count derived from unread count response
+
+### 3.4 Admin Area
+- No new tables — uses existing users, roles, permissions tables
+- Admin endpoints (/api/admin/*) are role-gated to "Admin" (Super Admin)
+- Super Admin bypass already implemented in Program.cs via RequireAssertion
 
 ---
 
@@ -279,6 +292,84 @@ erDiagram
 **GET /api/v1/audit-logs**
 - **Description**: Get audit logs
 - **Authentication**: Required (Audit:Read)
+
+**GET /api/auth/profile**
+- **Description**: Get current user profile
+- **Authentication**: Required
+
+**PUT /api/auth/profile**
+- **Description**: Update current user profile (name, email)
+- **Authentication**: Required
+
+**GET /api/v1/wms/stock-ledger/transfers**
+- **Description**: Get warehouse transfer entries (filtered from stock_ledger)
+- **Query Params**: from_location_id, to_location_id, item_id, date_from, date_to, page, page_size
+- **Authentication**: Required (WMS:Read)
+
+---
+
+#### Admin Endpoints (Super Admin only)
+
+**GET /api/admin/users**
+- **Description**: List all users
+- **Authentication**: Required (Role = "Admin")
+
+**POST /api/admin/users**
+- **Description**: Create a new user
+- **Authentication**: Required (Role = "Admin")
+
+**PUT /api/admin/users/{id}**
+- **Description**: Update user details
+- **Authentication**: Required (Role = "Admin")
+
+**DELETE /api/admin/users/{id}**
+- **Description**: Deactivate user
+- **Authentication**: Required (Role = "Admin")
+
+**GET /api/admin/roles**
+- **Description**: List all roles with permissions
+- **Authentication**: Required (Role = "Admin")
+
+**POST /api/admin/roles**
+- **Description**: Create a new role
+- **Authentication**: Required (Role = "Admin")
+
+**PUT /api/admin/roles/{id}**
+- **Description**: Update role and permissions
+- **Authentication**: Required (Role = "Admin")
+
+**DELETE /api/admin/roles/{id}**
+- **Description**: Delete role
+- **Authentication**: Required (Role = "Admin")
+
+**GET /api/admin/permissions**
+- **Description**: List all available permissions from enum
+- **Authentication**: Required (Role = "Admin")
+
+---
+
+#### Notification Endpoints
+
+**GET /api/notifications/unread**
+- **Description**: Get unread notifications count + list (max 20)
+- **Authentication**: Required
+- **Polling**: Frontend polls every 30 seconds
+
+**PUT /api/notifications/{id}/read**
+- **Description**: Mark notification as read
+- **Authentication**: Required
+
+**PUT /api/notifications/read-all**
+- **Description**: Mark all notifications as read
+- **Authentication**: Required
+
+---
+
+#### Support Endpoint (Optional)
+
+**POST /api/support/contact**
+- **Description**: Submit support/contact message
+- **Authentication**: Required
 
 ### 4.2 API Versioning Strategy
 URL-based versioning: `/api/v1/`. Future versions will be `/api/v2/` with backward compatibility maintained for at least 6 months.
@@ -413,46 +504,51 @@ Error response format:
 ```
 fluxgrid-frontend/
 ├── app/
-│   ├── (dashboard)/
-│   │   └── page.tsx           # Main dashboard
+│   ├── (auth)/login/        # Login page
+│   ├── dashboard/           # Dashboard page
+│   ├── settings/            # Settings page (Profile, Security, Theme)
+│   ├── support/             # Support page (FAQ, contact)
+│   ├── help/                # Help & Documentation
+│   ├── projects/            # Projects placeholder
+│   ├── admin/
+│   │   ├── users/           # User management (Super Admin)
+│   │   └── roles/           # Role management (Super Admin)
 │   ├── wms/
-│   │   ├── stock-ledger/page.tsx
-│   │   ├── inbound/page.tsx
-│   │   ├── outbound/page.tsx
-│   │   └── dashboard/page.tsx
+│   │   ├── stock-ledger/
+│   │   ├── inbound/
+│   │   ├── outbound/
+│   │   └── transfers/       # Transfer log
 │   ├── finance/
-│   │   ├── chart-of-accounts/page.tsx
-│   │   ├── journal-entries/page.tsx
-│   │   ├── reports/page.tsx
-│   │   └── dashboard/page.tsx
+│   │   ├── chart-of-accounts/
+│   │   ├── journal-entries/
+│   │   ├── reports/
+│   │   └── dashboard/
 │   ├── hr/
-│   │   ├── employees/page.tsx
-│   │   ├── payroll/page.tsx
+│   │   ├── employees/
+│   │   ├── payroll/
 │   │   ├── recruitment/
-│   │   │   ├── candidates/page.tsx
-│   │   │   ├── jobs/page.tsx
-│   │   │   └── upload/page.tsx
-│   │   └── dashboard/page.tsx
-│   └── auth/
-│       └── login/page.tsx
+│   │   └── dashboard/
+│   └── api/auth/            # Auth API routes
 ├── components/
-│   ├── shared/
-│   │   ├── DataTable.tsx
-│   │   ├── FormDialog.tsx
-│   │   └── StatusBadge.tsx
-│   ├── wms/
-│   │   ├── StockLedgerTable.tsx
-│   │   └── PickListCard.tsx
-│   ├── finance/
-│   │   ├── JournalEntryForm.tsx
-│   │   └── ReportViewer.tsx
-│   ├── hr/
-│   │   ├── EmployeeCard.tsx
-│   │   └── CVUploader.tsx
-└── hooks/
-    ├── useWMS.ts
-    ├── useFinance.ts
-    └── useHR.ts
+│   ├── ui/                  # shadcn/ui primitives
+│   ├── Sidebar.tsx          # Fixed sidebar with nav
+│   ├── Header.tsx           # Top bar with nav, search, bell, user menu
+│   ├── Footer.tsx           # Copyright footer
+│   ├── settings/            # ProfileTab, SecurityTab, ThemeTab
+│   ├── admin/               # UserTable, UserFormModal, RoleFormModal, PermissionPicker
+│   ├── notifications/       # NotificationDropdown, NotificationItem
+│   ├── wms/                 # TransferTable, TransferFilters
+│   └── support/             # FaqAccordion, ContactForm
+├── hooks/
+│   ├── useDashboard.ts      # Dashboard data
+│   ├── useProfile.ts        # Profile API (TanStack Query)
+│   ├── useAdmin.ts          # Admin API (users, roles, permissions)
+│   ├── useNotifications.ts  # Notifications (polling 30s)
+│   └── useTransfers.ts      # Transfer log data
+└── lib/
+    ├── api-client.ts        # Fetch wrapper + JWT cookie
+    ├── auth-context.tsx     # Auth provider
+    └── providers.tsx        # QueryClient provider
 ```
 
 ### 5.2 State Management
@@ -465,9 +561,16 @@ fluxgrid-frontend/
 | Route | Component | Access Control |
 |-------|-----------|----------------|
 | /dashboard | Main Dashboard | Any authenticated user |
+| /settings | Settings (Profile, Security, Theme) | Any authenticated user |
+| /support | Support (FAQ, contact) | Any authenticated user |
+| /help | Help & Documentation | Any authenticated user |
+| /projects | Projects placeholder | Any authenticated user |
+| /admin/users | User Management | Super Admin only |
+| /admin/roles | Role Management | Super Admin only |
 | /wms/stock-ledger | Stock Ledger | WMS:Read |
 | /wms/inbound | Inbound Processing | WMS:Write |
 | /wms/outbound | Outbound Processing | WMS:Write |
+| /wms/transfers | Transfer Log | WMS:Read |
 | /wms/dashboard | WMS Dashboard | WMS:Read |
 | /finance/chart-of-accounts | Chart of Accounts (tree CRUD) | finance.coa.read |
 | /finance/journal-entries | Journal Entries | Finance:Read/Write |
@@ -507,7 +610,9 @@ fluxgrid-frontend/
 - **Granular Permissions**:
   - **WMS:** WMS:Read, WMS:Write, WMS:Admin
   - **Finance:** Finance:Read, Finance:Write, Finance:Admin, Finance:Audit, finance.coa.read, finance.coa.manage
-   - **HR:** HR:Read, HR:Write, HR:PayrollProcess, HR:CVRead, HR:CVWrite, HR:CandidateManage
+   - **HR:** HR:Read, HR:Write, HR:PayrollProcess, HR:CVRead, HR:CVWrite, HR:CandidateManage, HR:RecruitmentManage
+   - **Admin:** Admin:Manage (Super Admin only — user/role CRUD)
+   - **Notification:** Notification:Read, Notification:Manage
    - **Shared:** Audit:Read, Audit:Write
 
 ### 6.2 Data Encryption
@@ -751,3 +856,4 @@ fluxgrid-frontend/
 |---------|------|--------|----------------------|
 | 1.0 | 2026-06-29 | AI Engineer | Initial version - Complete FluxGrid ERP TDD covering all 4 modules (WMS, Finance, HR, TaskProject) |
 | 2.0 | 2026-07-08 | AI Engineer | Remove TaskProject module — extracted to standalone Go + Next.js app. See TASK-APP.md |
+| 3.0 | 2026-07-24 | AI Engineer | Add Notification System, Admin Area, Transfer Log, Settings, Support. Update architecture, frontend structure, routing, permissions. |

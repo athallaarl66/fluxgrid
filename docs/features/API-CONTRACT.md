@@ -1,12 +1,12 @@
 # API Contract & Security Specification
 
 ## Document Information
-- **Document Version**: 3.0
+- **Document Version**: 3.1
 - **Created Date**: 2026-06-29
-- **Last Updated**: 2026-07-08
+- **Last Updated**: 2026-07-24
 - **Author**: AI Engineer
 - **Project**: FluxGrid ERP
-- **Scope**: Complete ERP System (WMS, Finance, HR)
+- **Scope**: Complete ERP System (WMS, Finance, HR, Admin, Notifications)
 
 ---
 
@@ -559,6 +559,290 @@ page_size: integer (optional, default: 20)
 **Required Permission:** Audit:Read
 
 ---
+
+### 2.6 Settings Endpoints
+
+#### GET /auth/profile
+**Purpose:** Get current user profile
+
+**Request Headers:**
+```
+Authorization: Bearer {jwt_token}
+```
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "uuid",
+    "name": "Admin User",
+    "email": "admin@fluxgrid.com",
+    "roles": ["Admin"]
+  }
+}
+```
+
+**Required Permission:** Any authenticated user
+
+---
+
+#### PUT /auth/profile
+**Purpose:** Update current user profile
+
+**Request Headers:**
+```
+Authorization: Bearer {jwt_token}
+Content-Type: application/json
+```
+
+**Request Body:**
+```json
+{
+  "name": "New Name",
+  "email": "new@email.com"
+}
+```
+
+**Validation Rules:**
+- name: required, max 100 chars
+- email: required, valid email format, unique per tenant
+
+**Required Permission:** Any authenticated user
+
+---
+
+### 2.7 Admin Endpoints
+
+#### GET /admin/users
+**Purpose:** List all users
+
+**Query Parameters:**
+```
+search: string (optional)
+role: string (optional)
+page: integer (optional, default: 1)
+page_size: integer (optional, default: 20)
+```
+
+**Required Permission:** Role = "Admin" (Super Admin)
+
+---
+
+#### POST /admin/users
+**Purpose:** Create a new user
+
+**Request Body:**
+```json
+{
+  "name": "New User",
+  "email": "user@fluxgrid.com",
+  "password": "securePassword123",
+  "role": "User"
+}
+```
+
+**Required Permission:** Role = "Admin" (Super Admin)
+
+---
+
+#### PUT /admin/users/{id}
+**Purpose:** Update user details
+
+**Path Parameters:**
+```
+id: uuid (required)
+```
+
+**Request Body:**
+```json
+{
+  "name": "Updated Name",
+  "email": "updated@fluxgrid.com",
+  "role": "Manager"
+}
+```
+
+**Required Permission:** Role = "Admin" (Super Admin)
+
+---
+
+#### DELETE /admin/users/{id}
+**Purpose:** Deactivate user (soft-delete)
+
+**Path Parameters:**
+```
+id: uuid (required)
+```
+
+**Required Permission:** Role = "Admin" (Super Admin)
+
+---
+
+#### GET /admin/roles
+**Purpose:** List all roles with permissions
+
+**Required Permission:** Role = "Admin" (Super Admin)
+
+---
+
+#### POST /admin/roles
+**Purpose:** Create a new role
+
+**Request Body:**
+```json
+{
+  "name": "Warehouse Manager",
+  "permissions": ["WMS:Read", "WMS:Write"]
+}
+```
+
+**Required Permission:** Role = "Admin" (Super Admin)
+
+---
+
+#### PUT /admin/roles/{id}
+**Purpose:** Update role and permissions
+
+**Path Parameters:**
+```
+id: uuid (required)
+```
+
+**Request Body:**
+```json
+{
+  "name": "Warehouse Manager",
+  "permissions": ["WMS:Read", "WMS:Write", "WMS:Admin"]
+}
+```
+
+**Required Permission:** Role = "Admin" (Super Admin)
+
+---
+
+#### DELETE /admin/roles/{id}
+**Purpose:** Delete role (only if not assigned to users)
+
+**Path Parameters:**
+```
+id: uuid (required)
+```
+
+**Required Permission:** Role = "Admin" (Super Admin)
+
+---
+
+#### GET /admin/permissions
+**Purpose:** List all available permissions (from backend enum)
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "data": [
+    { "permission": "WMS:Read", "module": "WMS", "description": "View warehouse data" },
+    { "permission": "WMS:Write", "module": "WMS", "description": "Modify warehouse data" },
+    { "permission": "Finance:Read", "module": "Finance", "description": "View financial data" },
+    { "permission": "HR:Read", "module": "HR", "description": "View HR data" }
+  ]
+}
+```
+
+**Required Permission:** Role = "Admin" (Super Admin)
+
+---
+
+### 2.8 Notification Endpoints
+
+#### GET /notifications/unread
+**Purpose:** Get unread notifications count + list
+
+**Query Parameters:**
+```
+limit: integer (optional, default: 20, max: 50)
+```
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "count": 5,
+    "notifications": [
+      {
+        "id": "uuid",
+        "type": "info",
+        "title": "New transfer request",
+        "body": "Transfer #TR-001 awaiting approval",
+        "isRead": false,
+        "createdAt": "2026-07-24T10:00:00Z"
+      }
+    ]
+  }
+}
+```
+
+**Required Permission:** Any authenticated user
+
+---
+
+#### PUT /notifications/{id}/read
+**Purpose:** Mark a notification as read
+
+**Path Parameters:**
+```
+id: uuid (required)
+```
+
+**Required Permission:** Any authenticated user
+
+---
+
+#### PUT /notifications/read-all
+**Purpose:** Mark all notifications as read
+
+**Required Permission:** Any authenticated user
+
+---
+
+### 2.9 Transfer Log Endpoint
+
+#### GET /wms/stock-ledger/transfers
+**Purpose:** Get warehouse transfer entries filtered from stock_ledger
+
+**Query Parameters:**
+```
+from_location_id: uuid (optional)
+to_location_id: uuid (optional)
+item_id: uuid (optional)
+date_from: date (optional)
+date_to: date (optional)
+user_id: uuid (optional)
+page: integer (optional, default: 1)
+page_size: integer (optional, default: 20)
+```
+
+**Required Permission:** WMS:Read
+
+---
+
+### 2.10 Support Endpoint (Optional)
+
+#### POST /support/contact
+**Purpose:** Submit a support/contact message
+
+**Request Body:**
+```json
+{
+  "name": "User Name",
+  "email": "user@email.com",
+  "subject": "Issue with inbound processing",
+  "message": "Description of the issue..."
+}
+```
+
+**Required Permission:** Any authenticated user
 
 ## 3. Error Handling
 
@@ -1130,8 +1414,12 @@ pageSize: integer (optional, default: 20)
 | HR:CVRead | View candidate data | GET /candidates, GET /candidates/{id}, GET /jobs/{id}/matches, POST /candidates/{id}/generate |
 | HR:CVWrite | Upload and edit CV | POST /candidates/upload |
 | HR:CandidateManage | Manage hiring workflow | POST /jobs, PUT /candidates/{id}/status |
+| HR:RecruitmentManage | Manage recruitment pipeline | PUT /candidates/{id}/status, GET/POST /candidates/{id}/activities, POST/DELETE /candidates/{id}/jobs |
+| Admin:Manage | User & role management (Super Admin only) | GET/POST/PUT/DELETE /admin/users, GET/POST/PUT/DELETE /admin/roles, GET /admin/notifications |
+| Notification:Read | View notifications | GET /notifications/unread |
+| Notification:Manage | Mark notifications read | PUT /notifications/{id}/read, PUT /notifications/read-all |
 
-> **Catatan:** Role `Admin` bersifat **super admin** — semua permission check di-skip.
+> **Catatan:** Role `Admin` bersifat **super admin** — semua permission check di-skip. Admin endpoints specifically require role = "Admin".
 
 ---
 
@@ -1463,3 +1751,4 @@ async function handleApiCall<T>(
 |---------|------|--------|----------------------|
 | 1.0 | 2026-06-29 | AI Engineer | Initial version - API Contract & Security Specification |
 | 2.0 | 2026-07-08 | AI Engineer | Remove TaskProject endpoints — extracted to standalone Go + Next.js app. See TASK-APP.md |
+| 3.0 | 2026-07-24 | AI Engineer | Add Admin, Settings, Notifications, Transfer Log, Support endpoints. Update permission table. |

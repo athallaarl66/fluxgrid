@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Bell, LayoutGrid, User, Moon, Sun, LogOut } from "lucide-react";
+import { Search, Bell, LayoutGrid, User, Moon, Sun, LogOut, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -101,6 +101,14 @@ export function Header() {
             <>
               <div className="fixed inset-0 z-10" onClick={() => setUserMenuOpen(false)} />
               <div className="absolute right-0 z-20 mt-1 w-36 rounded-lg border border-border bg-popover py-1 shadow-lg">
+                <a
+                  href="/settings"
+                  onClick={() => setUserMenuOpen(false)}
+                  className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors hover:bg-muted"
+                >
+                  <Settings className="size-3.5 text-muted-foreground" />
+                  Settings
+                </a>
                 <button
                   type="button"
                   onClick={handleLogout}
