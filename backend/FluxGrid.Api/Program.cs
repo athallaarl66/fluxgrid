@@ -10,6 +10,8 @@ using FluxGrid.Api.Modules.HR.API;
 using FluxGrid.Api.Modules.HR.Application;
 using FluxGrid.Api.Modules.Support.API;
 using FluxGrid.Api.Modules.Admin.API;
+using FluxGrid.Api.Modules.Notifications.API;
+using FluxGrid.Api.Modules.Notifications.Domain;
 using FluxGrid.Api.Modules.WMS.API;
 using FluxGrid.Api.Modules.WMS.Application;
 using FluxGrid.Api.Shared.Infrastructure.Audit;
@@ -204,6 +206,7 @@ builder.Services.AddScoped(sp =>
     return client;
 });
 builder.Services.AddScoped<AuditService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -260,6 +263,7 @@ app.MapSupportEndpoints();
 app.MapUsersEndpoints();
 app.MapRolesEndpoints();
 app.MapPermissionsEndpoints();
+app.MapNotificationsEndpoints();
 
 if (storageProvider != "S3")
 {

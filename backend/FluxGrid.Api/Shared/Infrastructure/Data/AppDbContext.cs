@@ -1,5 +1,6 @@
 using FluxGrid.Api.Modules.Finance.Domain.Entities;
 using FluxGrid.Api.Modules.HR.Domain.Entities;
+using FluxGrid.Api.Modules.Notifications.Domain;
 using FluxGrid.Api.Modules.Support.Domain;
 using FluxGrid.Api.Modules.WMS.Domain.Entities;
 using FluxGrid.Api.Shared.Domain.Entities;
@@ -51,6 +52,8 @@ public class AppDbContext : DbContext
     public DbSet<CandidateJobMatch> CandidateJobMatches => Set<CandidateJobMatch>();
 
     public DbSet<SupportTicket> SupportTickets => Set<SupportTicket>();
+
+    public DbSet<Notification> Notifications => Set<Notification>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -673,6 +676,18 @@ public class AppDbContext : DbContext
             entity.Property(e => e.Status).HasMaxLength(20).IsRequired().HasDefaultValue("OPEN");
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
             entity.HasIndex(e => e.UserId);
+        });
+
+        modelBuilder.Entity<Notification>(entity =>
+        {
+            entity.ToTable("notifications");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Type).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.Title).HasMaxLength(200).IsRequired();
+            entity.Property(e => e.Body).HasMaxLength(1000).IsRequired();
+            entity.Property(e => e.IsRead).HasDefaultValue(false);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
+            entity.HasIndex(e => new { e.UserId, e.IsRead });
         });
     }
 }
