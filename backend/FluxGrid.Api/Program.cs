@@ -8,6 +8,7 @@ using FluxGrid.Api.Modules.Finance.API;
 using FluxGrid.Api.Modules.Finance.Application;
 using FluxGrid.Api.Modules.HR.API;
 using FluxGrid.Api.Modules.HR.Application;
+using FluxGrid.Api.Modules.Support.API;
 using FluxGrid.Api.Modules.WMS.API;
 using FluxGrid.Api.Modules.WMS.Application;
 using FluxGrid.Api.Shared.Infrastructure.Audit;
@@ -250,6 +251,7 @@ app.MapHrEndpoints();
 app.MapPayrollEndpoints();
 app.MapRecruitmentEndpoints();
 app.MapHrDashboardEndpoints();
+app.MapSupportEndpoints();
 
 if (storageProvider != "S3")
 {

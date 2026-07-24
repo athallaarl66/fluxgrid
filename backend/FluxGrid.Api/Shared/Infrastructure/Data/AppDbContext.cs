@@ -1,5 +1,6 @@
 using FluxGrid.Api.Modules.Finance.Domain.Entities;
 using FluxGrid.Api.Modules.HR.Domain.Entities;
+using FluxGrid.Api.Modules.Support.Domain;
 using FluxGrid.Api.Modules.WMS.Domain.Entities;
 using FluxGrid.Api.Shared.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -48,6 +49,8 @@ public class AppDbContext : DbContext
     public DbSet<CandidateDocument> CandidateDocuments => Set<CandidateDocument>();
     public DbSet<CandidateActivityLog> CandidateActivityLogs => Set<CandidateActivityLog>();
     public DbSet<CandidateJobMatch> CandidateJobMatches => Set<CandidateJobMatch>();
+
+    public DbSet<SupportTicket> SupportTickets => Set<SupportTicket>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -657,6 +660,19 @@ public class AppDbContext : DbContext
                   .WithMany()
                   .HasForeignKey(e => e.JobId)
                   .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<SupportTicket>(entity =>
+        {
+            entity.ToTable("support_tickets");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Name).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.Email).HasMaxLength(255).IsRequired();
+            entity.Property(e => e.Subject).HasMaxLength(200).IsRequired();
+            entity.Property(e => e.Message).HasMaxLength(2000).IsRequired();
+            entity.Property(e => e.Status).HasMaxLength(20).IsRequired().HasDefaultValue("OPEN");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
+            entity.HasIndex(e => e.UserId);
         });
     }
 }
