@@ -2,6 +2,7 @@ using FluxGrid.Api.Modules.HR.API;
 using FluxGrid.Api.Modules.HR.Domain.Entities;
 using FluxGrid.Api.Modules.HR.Domain.Enums;
 using FluxGrid.Api.Modules.HR.Domain.Events;
+using FluxGrid.Api.Modules.Notifications.Domain;
 using FluxGrid.Api.Shared.Infrastructure.Audit;
 using FluxGrid.Api.Shared.Infrastructure.Data;
 using FluxGrid.Api.Shared.Infrastructure.Events;
@@ -19,6 +20,7 @@ public class RecruitmentService
     private readonly EmbeddingService _embedding;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ActivityLogService _activityLog;
+    private readonly INotificationService _notif;
     private readonly string _bucketName;
 
     private static readonly string[] AllowedFileTypes = ["pdf", "docx"];
@@ -37,6 +39,7 @@ public class RecruitmentService
         EmbeddingService embedding,
         IServiceScopeFactory scopeFactory,
         ActivityLogService activityLog,
+        INotificationService notif,
         IConfiguration config)
     {
         _db = db;
@@ -46,6 +49,7 @@ public class RecruitmentService
         _embedding = embedding;
         _scopeFactory = scopeFactory;
         _activityLog = activityLog;
+        _notif = notif;
         _bucketName = config["Storage:BucketName"] ?? "flexmng-cv";
     }
 
@@ -482,6 +486,12 @@ public class RecruitmentService
         await _activityLog.LogAsync(id, ActivityAction.StatusChanged, userId,
             new { from = oldStatus, to = newStatus });
 
+        var performerName = await _db.Users
+            .Where(u => u.Id == userId)
+            .Select(u => u.Username)
+            .FirstOrDefaultAsync() ?? "Unknown";
+        await NotifyRecruitersAsync($"{performerName} changed candidate \"{candidate.Name}\" from {oldStatus} to {newStatus}");
+
         var msg = $"Candidate status changed from {oldStatus} to {newStatus}";
         return new ApproveCandidateResponse(id, newStatus, msg);
     }
@@ -585,5 +595,16 @@ public class RecruitmentService
 
         await _db.SaveChangesAsync();
         return new BulkAssignResponse(toAssign.Count, skipped);
+    }
+
+    private async Task NotifyRecruitersAsync(string message)
+    {
+        var hrIds = await _db.Users
+            .Where(u => u.IsActive && u.Roles.Any(r =>
+                r.Name == "Admin" || r.Permissions.Contains("HR:RecruitmentManage")))
+            .Select(u => u.Id)
+            .ToListAsync();
+        foreach (var uid in hrIds)
+            await _notif.CreateAsync(uid, "info", "Recruitment Update", message);
     }
 }

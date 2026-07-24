@@ -2,6 +2,7 @@ using System.Net.Http.Json;
 using FluxGrid.Api.Modules.HR.API;
 using FluxGrid.Api.Modules.HR.Domain.Entities;
 using FluxGrid.Api.Modules.HR.Domain.Events;
+using FluxGrid.Api.Modules.Notifications.Domain;
 using FluxGrid.Api.Shared.Infrastructure.Audit;
 using FluxGrid.Api.Shared.Infrastructure.Data;
 using FluxGrid.Api.Shared.Infrastructure.Events;
@@ -15,13 +16,15 @@ public class PayrollService
     private readonly AuditService _audit;
     private readonly DomainEventDispatcher _events;
     private readonly HttpClient _httpClient;
+    private readonly INotificationService _notif;
 
-    public PayrollService(AppDbContext db, AuditService audit, DomainEventDispatcher events, HttpClient httpClient)
+    public PayrollService(AppDbContext db, AuditService audit, DomainEventDispatcher events, HttpClient httpClient, INotificationService notif)
     {
         _db = db;
         _audit = audit;
         _events = events;
         _httpClient = httpClient;
+        _notif = notif;
     }
 
     public async Task<PayrollRunResponse> CalculatePayrollAsync(
@@ -141,6 +144,8 @@ public class PayrollService
             run.Id, run.TotalGross,
             Math.Round(run.TotalGross * 0.05m, 2),
             run.TotalNet, run.PeriodName, run.TenantId, DateTime.UtcNow));
+
+        await NotifyFinanceAsync($"Payroll for {run.PeriodName} has been finalized. Total net: {run.TotalNet:N0}");
 
         return MapRunToResponse(run);
     }
@@ -356,6 +361,17 @@ public class PayrollService
             includeSalary ? r.TotalNet : null,
             r.ProcessedBy,
             r.TenantId, r.CreatedAt);
+
+    private async Task NotifyFinanceAsync(string message)
+    {
+        var financeIds = await _db.Users
+            .Where(u => u.IsActive && u.Roles.Any(r =>
+                r.Name == "Admin" || r.Permissions.Contains("Finance:Read")))
+            .Select(u => u.Id)
+            .ToListAsync();
+        foreach (var uid in financeIds)
+            await _notif.CreateAsync(uid, "info", "Payroll Finalized", message);
+    }
 }
 
 public sealed record AttendanceSummary(

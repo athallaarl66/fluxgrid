@@ -1,6 +1,7 @@
 using FluxGrid.Api.Modules.HR.API;
 using FluxGrid.Api.Modules.HR.Domain.Entities;
 using FluxGrid.Api.Modules.HR.Domain.Events;
+using FluxGrid.Api.Modules.Notifications.Domain;
 using FluxGrid.Api.Shared.Domain.Entities;
 using FluxGrid.Api.Shared.Infrastructure.Audit;
 using FluxGrid.Api.Shared.Infrastructure.Data;
@@ -14,12 +15,14 @@ public class EmployeeService
     private readonly AppDbContext _db;
     private readonly AuditService _audit;
     private readonly DomainEventDispatcher _events;
+    private readonly INotificationService _notif;
 
-    public EmployeeService(AppDbContext db, AuditService audit, DomainEventDispatcher events)
+    public EmployeeService(AppDbContext db, AuditService audit, DomainEventDispatcher events, INotificationService notif)
     {
         _db = db;
         _audit = audit;
         _events = events;
+        _notif = notif;
     }
 
     public async Task<ListResult<EmployeeResponse>> GetListAsync(
@@ -143,6 +146,8 @@ public class EmployeeService
         _events.Raise(new EmployeeHired(
             employee.Id, employee.EmployeeNo, employee.FirstName, employee.LastName,
             employee.DepartmentId, employee.ManagerId, employee.JobTitle, userId, tenantId));
+
+        await NotifyAdminsAsync($"{employee.FirstName} {employee.LastName} has been hired as {employee.JobTitle ?? "employee"}");
 
         return MapToDetail(employee);
     }
@@ -271,6 +276,16 @@ public class EmployeeService
             e.BaseSalary, e.BankName, e.BankAccount, e.TaxId,
             e.Status, e.HireDate, e.TerminationDate, e.TenantId,
             e.CreatedAt, e.UpdatedAt);
+    }
+
+    private async Task NotifyAdminsAsync(string message)
+    {
+        var adminIds = await _db.Users
+            .Where(u => u.IsActive && u.Roles.Any(r => r.Name == "Admin"))
+            .Select(u => u.Id)
+            .ToListAsync();
+        foreach (var adminId in adminIds)
+            await _notif.CreateAsync(adminId, "info", "New Employee", message);
     }
 }
 
