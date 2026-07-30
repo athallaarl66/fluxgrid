@@ -1,0 +1,30 @@
+[
+  {
+    "question": "What is FluxGrid ERP?",
+    "answer": "FluxGrid ERP is a modular monolith ERP system designed for heavy industries including Mining, Oil & Gas, Logistics, and Manufacturing. It provides integrated Warehouse Management, Finance (General Ledger), and HR & Payroll modules."
+  },
+  {
+    "question": "What modules are available?",
+    "answer": "FluxGrid ERP currently includes three core modules: WMS (Warehouse Management) for inventory tracking and inbound/outbound processing, Finance for double-entry ledger, chart of accounts, and financial reporting, and HR & Payroll for employee management, payroll processing, and AI-powered recruitment."
+  },
+  {
+    "question": "How do I log in?",
+    "answer": "Navigate to the login page and enter your credentials. Contact your administrator if you need an account created. Super Admins can create new users via the Admin panel at /admin/users."
+  },
+  {
+    "question": "How do I change my password?",
+    "answer": "Go to Settings (click your user icon in the top-right corner → Settings) and navigate to the Security tab. Enter your current password and your new password, then click Change Password."
+  },
+  {
+    "question": "Can I switch between dark and light mode?",
+    "answer": "Yes. Use the sun/moon icon in the header to toggle between dark and light mode, or go to Settings → Theme to choose between Light, Dark, or System (follows your OS preference). Your selection persists across sessions."
+  },
+  {
+    "question": "What is the tech stack?",
+    "answer": "Backend: .NET 8 (C# Minimal API) with Entity Framework Core and PostgreSQL. Frontend: Next.js 16 (TypeScript) with shadcn/ui and TanStack Query. Authentication: JWT with RBAC. Deployment: Docker on Koyeb."
+  },
+  {
+    "question": "How do I report a bug or request a feature?",
+    "answer": "Use the contact form below to send us a message. Include as much detail as possible — steps to reproduce, expected behavior, and actual behavior for bugs. For feature requests, describe the use case and why it would be valuable."
+  }
+]

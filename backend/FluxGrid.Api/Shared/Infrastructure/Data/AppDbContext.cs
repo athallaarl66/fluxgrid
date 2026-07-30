@@ -1,5 +1,7 @@
 using FluxGrid.Api.Modules.Finance.Domain.Entities;
 using FluxGrid.Api.Modules.HR.Domain.Entities;
+using FluxGrid.Api.Modules.Notifications.Domain;
+using FluxGrid.Api.Modules.Support.Domain;
 using FluxGrid.Api.Modules.WMS.Domain.Entities;
 using FluxGrid.Api.Shared.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -12,6 +14,7 @@ public class AppDbContext : DbContext
 
     public DbSet<User> Users => Set<User>();
     public DbSet<Role> Roles => Set<Role>();
+    public DbSet<UserPreference> UserPreferences => Set<UserPreference>();
     public DbSet<ChartOfAccount> ChartOfAccounts => Set<ChartOfAccount>();
     public DbSet<JournalEntry> JournalEntries => Set<JournalEntry>();
     public DbSet<JournalEntryLine> JournalEntryLines => Set<JournalEntryLine>();
@@ -48,6 +51,10 @@ public class AppDbContext : DbContext
     public DbSet<CandidateActivityLog> CandidateActivityLogs => Set<CandidateActivityLog>();
     public DbSet<CandidateJobMatch> CandidateJobMatches => Set<CandidateJobMatch>();
 
+    public DbSet<SupportTicket> SupportTickets => Set<SupportTicket>();
+
+    public DbSet<Notification> Notifications => Set<Notification>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<User>(entity =>
@@ -76,6 +83,16 @@ public class AppDbContext : DbContext
             entity.Property(e => e.Name).HasMaxLength(100).IsRequired();
             entity.Property(e => e.Description).HasMaxLength(500);
             entity.Property(e => e.Permissions).HasColumnType("text[]");
+        });
+
+        modelBuilder.Entity<UserPreference>(entity =>
+        {
+            entity.ToTable("user_preferences");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.UserId, e.Key }).IsUnique();
+            entity.Property(e => e.Key).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.Value).HasMaxLength(500).IsRequired();
+            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("NOW()");
         });
 
         modelBuilder.Entity<ChartOfAccount>(entity =>
@@ -646,6 +663,31 @@ public class AppDbContext : DbContext
                   .WithMany()
                   .HasForeignKey(e => e.JobId)
                   .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<SupportTicket>(entity =>
+        {
+            entity.ToTable("support_tickets");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Name).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.Email).HasMaxLength(255).IsRequired();
+            entity.Property(e => e.Subject).HasMaxLength(200).IsRequired();
+            entity.Property(e => e.Message).HasMaxLength(2000).IsRequired();
+            entity.Property(e => e.Status).HasMaxLength(20).IsRequired().HasDefaultValue("OPEN");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
+            entity.HasIndex(e => e.UserId);
+        });
+
+        modelBuilder.Entity<Notification>(entity =>
+        {
+            entity.ToTable("notifications");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Type).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.Title).HasMaxLength(200).IsRequired();
+            entity.Property(e => e.Body).HasMaxLength(1000).IsRequired();
+            entity.Property(e => e.IsRead).HasDefaultValue(false);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
+            entity.HasIndex(e => new { e.UserId, e.IsRead });
         });
     }
 }

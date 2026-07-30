@@ -29,6 +29,66 @@ public static class StockLedgerEndpoints
         })
         .RequireAuthorization(Permissions.WmsRead);
 
+        group.MapGet("/transfers", async (
+            [FromQuery] Guid? fromLocationId,
+            [FromQuery] Guid? toLocationId,
+            [FromQuery] Guid? itemId,
+            [FromQuery] DateTime? dateFrom,
+            [FromQuery] DateTime? dateTo,
+            [FromQuery] int page,
+            [FromQuery] int pageSize,
+            AppDbContext db,
+            HttpContext http) =>
+        {
+            var tenantId = Guid.Empty;
+            var tenantClaim = http.User.FindFirst("tenant_id")?.Value;
+            if (Guid.TryParse(tenantClaim, out var tid)) tenantId = tid;
+
+            var query = db.StockLedgerEntries
+                .Where(e => e.TenantId == tenantId && e.ReferenceType == "Transfer");
+
+            if (itemId.HasValue)
+                query = query.Where(e => e.ItemId == itemId.Value);
+            if (fromLocationId.HasValue)
+                query = query.Where(e => e.LocationId == fromLocationId.Value && e.Quantity < 0);
+            if (toLocationId.HasValue)
+                query = query.Where(e => e.LocationId == toLocationId.Value && e.Quantity > 0);
+            if (dateFrom.HasValue)
+                query = query.Where(e => e.CreatedAt >= dateFrom.Value);
+            if (dateTo.HasValue)
+                query = query.Where(e => e.CreatedAt <= dateTo.Value.AddDays(1));
+
+            var entries = await query
+                .OrderByDescending(e => e.CreatedAt)
+                .ToListAsync();
+
+            var transfers = entries
+                .GroupBy(e => e.TransactionId)
+                .Select(g =>
+                {
+                    var outEntry = g.FirstOrDefault(e => e.Quantity < 0);
+                    var inEntry = g.FirstOrDefault(e => e.Quantity > 0);
+                    return new
+                    {
+                        transactionId = g.Key.ToString(),
+                        itemId = g.First().ItemId,
+                        fromLocationId = outEntry?.LocationId.ToString(),
+                        toLocationId = inEntry?.LocationId.ToString(),
+                        quantity = Math.Abs(outEntry?.Quantity ?? inEntry?.Quantity ?? 0),
+                        unitCost = outEntry?.UnitCost ?? inEntry?.UnitCost ?? 0,
+                        totalValue = Math.Abs(outEntry?.Quantity ?? 0) * (outEntry?.UnitCost ?? 0),
+                        createdAt = g.First().CreatedAt
+                    };
+                })
+                .ToList();
+
+            var total = transfers.Count;
+            var paged = transfers.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+
+            return Results.Ok(new { transfers = paged, total, page, pageSize });
+        })
+        .RequireAuthorization(Permissions.WmsRead);
+
         group.MapPost("/", async (
             CreateMovementRequest request,
             StockLedgerService service,

@@ -1,3 +1,4 @@
+using FluxGrid.Api.Modules.Notifications.Domain;
 using FluxGrid.Api.Modules.WMS.Domain.Entities;
 using FluxGrid.Api.Modules.WMS.Domain.Events;
 using FluxGrid.Api.Shared.Infrastructure.Audit;
@@ -14,13 +15,15 @@ public class StockLedgerService
     private readonly AuditService _audit;
     private readonly DomainEventDispatcher _dispatcher;
     private readonly ICacheService _cache;
+    private readonly INotificationService _notif;
 
-    public StockLedgerService(AppDbContext db, AuditService audit, DomainEventDispatcher dispatcher, ICacheService cache)
+    public StockLedgerService(AppDbContext db, AuditService audit, DomainEventDispatcher dispatcher, ICacheService cache, INotificationService notif)
     {
         _db = db;
         _audit = audit;
         _dispatcher = dispatcher;
         _cache = cache;
+        _notif = notif;
     }
 
     public async Task<LedgerResult> GetLedgerAsync(Guid tenantId, string? sku, Guid? locationId, string? locationCode, DateTime? startDate, DateTime? endDate, int page, int pageSize)
@@ -154,6 +157,15 @@ public class StockLedgerService
                     ReferenceType = entry.ReferenceType,
                     OccurredOn = now
                 });
+
+                if (entry.ReferenceType == "Transfer")
+                {
+                    var itemName = await _db.InventoryItems
+                        .Where(i => i.Id == entry.ItemId)
+                        .Select(i => i.Name)
+                        .FirstOrDefaultAsync() ?? "Unknown";
+                    await NotifyWarehouseAsync($"Transfer: {Math.Abs(entry.Quantity)}x {itemName} moved between locations");
+                }
             }
 
             await tx.CommitAsync();
@@ -199,6 +211,17 @@ public class StockLedgerService
         var averageCost = totalQty > 0 ? totalValue / totalQty : 0;
 
         return new AverageCostResult(averageCost, totalQty, totalValue);
+    }
+
+    private async Task NotifyWarehouseAsync(string message)
+    {
+        var wmsIds = await _db.Users
+            .Where(u => u.IsActive && u.Roles.Any(r =>
+                r.Name == "Admin" || r.Permissions.Contains("WMS:Read")))
+            .Select(u => u.Id)
+            .ToListAsync();
+        foreach (var uid in wmsIds)
+            await _notif.CreateAsync(uid, "info", "Warehouse Transfer", message);
     }
 }
 

@@ -1,12 +1,12 @@
 # Product Requirements Document (PRD)
 
 ## Document Information
-- **Document Version**: 3.0
+- **Document Version**: 3.1
 - **Created Date**: 2026-06-29
-- **Last Updated**: 2026-07-08
+- **Last Updated**: 2026-07-24
 - **Author**: AI Engineer
 - **Project**: FluxGrid ERP
-- **Scope**: Complete ERP System (WMS, Finance, HR)
+- **Scope**: Complete ERP System (WMS, Finance, HR, Admin)
 
 ---
 
@@ -51,12 +51,33 @@ FluxGrid ERP adalah sistem Modular Monolith untuk industri berat (Mining, Oil & 
 - Row-Level Security (RLS) di PostgreSQL
 - AI Service Layer abstraction (Groq API) — hanya untuk HR
 
-**Future — User & Role Management:**
-Super Admin akan dapat membuat akun, mengelola role, dan assign permission secara dinamis melalui UI. Fitur ini mencakup:
-- CRUD user
-- CRUD role dengan permission picker
+**4. Settings & Profile**
+- Profile editing (name, email)
+- Change password
+- Theme persistence (dark/light)
+
+**5. Support & Help**
+- FAQ accordion with common questions
+- App information and version details
+- Contact support form (optional)
+
+**6. User & Role Management (Admin)**
+- CRUD users (list, create, edit, deactivate)
+- CRUD roles dengan permission picker
 - Assign/unassign role ke user
-- Audit log untuk semua perubahan RBAC
+- Permissions endpoint (list all from enum)
+- Admin-only access (Super Admin)
+
+**7. Notification System**
+- In-app notifications (DB-persisted)
+- Unread badge count di bell icon
+- Mark read / mark all read
+- Polling-based (30s interval)
+
+**8. Transfer Log**
+- Dedicated view untuk warehouse transfer mutations
+- Filter: origin, destination, item, date range
+- Data existing di stock_ledger (ReferenceType=Transfer)
 
 **Excluded:**
 - Video interview integration
@@ -362,6 +383,92 @@ Saat ini, operasional perusahaan di industri Mining, Oil & Gas, Logistics, Manuf
 
 **Priority:** Must Have
 
+---
+
+#### Settings, Support & Admin
+
+**User Story USER-001: Profile Settings**
+**As a** User
+**I want** to view and edit my profile (name, email) and change my password
+**So that** I can keep my account information up-to-date
+
+**Acceptance Criteria:**
+- [ ] View current profile (name, email)
+- [ ] Update name and email
+- [ ] Change password (requires current password)
+- [ ] Theme preference persistence (dark/light)
+
+**Priority:** Must Have
+
+**User Story USER-002: Support & FAQ**
+**As a** User
+**I want** to access FAQ and contact support
+**So that** I can find answers to common questions and get help when needed
+
+**Acceptance Criteria:**
+- [ ] FAQ accordion with common questions
+- [ ] App version and tech stack information
+- [ ] Contact form (optional — stores to DB)
+
+**Priority:** Should Have
+
+**User Story USER-003: User Management (Admin)**
+**As a** Super Admin
+**I want** to manage users and roles via UI
+**So that** I can create accounts and assign permissions without database access
+
+**Acceptance Criteria:**
+- [ ] User list with search, filter, pagination
+- [ ] Create new user (name, email, password, role)
+- [ ] Edit user (update name, email, role)
+- [ ] Deactivate user (soft-delete)
+- [ ] Role list with permission display
+- [ ] Create/edit role with permission picker (grouped checkboxes)
+
+**Priority:** Must Have
+
+**User Story USER-004: Role & Permission Management (Admin)**
+**As a** Super Admin
+**I want** to create roles and assign granular permissions
+**So that** I can implement least-privilege access control
+
+**Acceptance Criteria:**
+- [ ] List all permissions from backend enum
+- [ ] Create role with name and permission set
+- [ ] Edit role permissions
+- [ ] Delete role (if not assigned to users)
+- [ ] Permission picker grouped by module
+
+**Priority:** Must Have
+
+**User Story USER-005: In-App Notifications**
+**As a** User
+**I want** to see notifications in the header
+**So that** I'm informed about important events without leaving the current page
+
+**Acceptance Criteria:**
+- [ ] Bell icon shows unread count badge
+- [ ] Click bell → dropdown with notification list
+- [ ] Mark individual notification as read
+- [ ] Mark all as read
+- [ ] Notifications persist across sessions (DB-backed)
+- [ ] Polling refresh every 30 seconds
+
+**Priority:** Should Have
+
+**User Story USER-006: Warehouse Transfer Log**
+**As a** Warehouse Manager
+**I want** to view a dedicated list of all warehouse transfers
+**So that** I can track inventory movements between locations
+
+**Acceptance Criteria:**
+- [ ] Table showing transfer entries (from stock_ledger with ReferenceType=Transfer)
+- [ ] Filter by origin location, destination location, item, date range, user
+- [ ] Pagination
+- [ ] Display: item name, quantity, from/to location, date, user
+
+**Priority:** Must Have
+
 
 ### 4.2 Functional Requirements by Module
 
@@ -394,6 +501,25 @@ Saat ini, operasional perusahaan di industri Mining, Oil & Gas, Logistics, Manuf
 - **FR-HR-7:** System harus parse CV menggunakan Groq API
 - **FR-HR-8:** System harus match candidates dengan job descriptions
 - **FR-HR-9:** System harus correlate attendance (dari Task App) dengan task completion untuk productivity
+
+#### Settings & Profile
+- **FR-SET-1:** System harus provide GET /api/auth/profile untuk read profile
+- **FR-SET-2:** System harus provide PUT /api/auth/profile untuk update name/email
+- **FR-SET-3:** System harus support theme preference persistence di frontend (localStorage)
+
+#### User & Role Management (Admin)
+- **FR-ADM-1:** System harus provide CRUD endpoints untuk users (/api/admin/users)
+- **FR-ADM-2:** System harus provide CRUD endpoints untuk roles (/api/admin/roles)
+- **FR-ADM-3:** System harus expose permissions list dari enum (/api/admin/permissions)
+- **FR-ADM-4:** System harus enforce admin-only access (role="Admin") di semua admin endpoints
+
+#### Notification System
+- **FR-NOT-1:** System harus provide endpoint unread notifications (/api/notifications/unread)
+- **FR-NOT-2:** System harus provide mark-read endpoints
+- **FR-NOT-3:** System harus persist notifications ke database (table: notifications)
+
+#### Transfer Log
+- **FR-WMS-7:** System harus provide filtered endpoint untuk transfer entries (/api/v1/wms/stock-ledger/transfers)
 
 #### Shared Kernel
 - **FR-SHARED-1:** System harus enforce RBAC dengan granular permissions
@@ -478,6 +604,18 @@ Saat ini, operasional perusahaan di industri Mining, Oil & Gas, Logistics, Manuf
 - **Recruitment Pages:** Candidate list, candidate detail, CV upload, job management, job matching
 - **Dashboard Page:** HR overview, productivity analytics, recruitment pipeline
 
+**Settings & Support Pages:**
+- **Settings Page:** Tabs — Profile, Security (change password), Theme (dark/light toggle)
+- **Support Page:** FAQ accordion, app info, contact form
+- **Help Page:** Documentation and guides placeholder
+
+**Admin Pages (Super Admin only):**
+- **User Management:** User table with create/edit modal, role assignment
+- **Role Management:** Role table with permission picker (grouped checkboxes)
+
+**WMS Transfer Log:**
+- **Transfer Log Page:** Table of warehouse transfers with filters (origin, destination, item, date range)
+
 ### 6.2 User Experience Guidelines
 - Consistent UI patterns across all modules (shadcn/ui components)
 - Minimal clicks untuk common actions
@@ -532,6 +670,7 @@ Saat ini, operasional perusahaan di industri Mining, Oil & Gas, Logistics, Manuf
 - **permissions:** Granular permissions
 - **audit_logs:** Immutable audit trail
 - **tenants:** Tenant data untuk multi-tenancy
+- **notifications:** In-app notifications (Id, UserId, Type, Title, Body, IsRead, CreatedAt)
 
 ### 7.2 Data Flow
 
@@ -627,6 +766,22 @@ Saat ini, operasional perusahaan di industri Mining, Oil & Gas, Logistics, Manuf
 - GET /api/v1/auth/me
 - POST /api/v1/auth/logout
 - GET /api/v1/audit-logs
+- GET /api/auth/profile
+- PUT /api/auth/profile
+- GET /api/admin/users
+- POST /api/admin/users
+- PUT /api/admin/users/{id}
+- DELETE /api/admin/users/{id}
+- GET /api/admin/roles
+- POST /api/admin/roles
+- PUT /api/admin/roles/{id}
+- DELETE /api/admin/roles/{id}
+- GET /api/admin/permissions
+- GET /api/notifications/unread
+- PUT /api/notifications/{id}/read
+- PUT /api/notifications/read-all
+- GET /api/v1/wms/stock-ledger/transfers
+- POST /api/support/contact
 
 ---
 
@@ -745,3 +900,4 @@ Saat ini, operasional perusahaan di industri Mining, Oil & Gas, Logistics, Manuf
 |---------|------|--------|----------------------|
 | 1.0 | 2026-06-29 | AI Engineer | Initial version - Complete FluxGrid ERP PRD covering all 4 modules (WMS, Finance, HR, TaskProject) |
 | 2.0 | 2026-07-08 | AI Engineer | Remove TaskProject module — extracted to standalone Go + Next.js app. See TASK-APP.md |
+| 3.0 | 2026-07-08 | AI Engineer | Add User & Role Management, Notifications, Transfer Log, Settings, Support. Move User & Role Management from Future to Included. |
