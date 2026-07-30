@@ -26,7 +26,7 @@ public static class PayrollEndpoints
             catch (InvalidOperationException ex)
             {
                 var code = ex.Message.Contains("already exists") ? "DUPLICATE_PERIOD" : null;
-                return Results.Problem(detail: ex.Message, statusCode: code is not null ? 409 : 400, extensions: code is not null ? new Dictionary<string, object?> { ["code"] = code } : null);
+                return Results.Problem(statusCode: code is not null ? 409 : 400, extensions: code is not null ? new Dictionary<string, object?> { ["code"] = code } : null);
             }
         })
         .RequireAuthorization(Permissions.HrPayrollProcess);
@@ -46,7 +46,7 @@ public static class PayrollEndpoints
             {
                 var m = ex.Message;
                 var code = m.Contains("can be finalized") ? "ALREADY_FINALIZED" : m.Contains("OPEN finance") ? "PERIOD_CLOSED" : null;
-                return Results.Problem(detail: m, statusCode: code is not null ? 409 : 400, extensions: code is not null ? new Dictionary<string, object?> { ["code"] = code } : null);
+                return Results.Problem(statusCode: code is not null ? 409 : 400, extensions: code is not null ? new Dictionary<string, object?> { ["code"] = code } : null);
             }
         })
         .RequireAuthorization(Permissions.HrPayrollProcess);
@@ -65,7 +65,7 @@ public static class PayrollEndpoints
             catch (InvalidOperationException ex)
             {
                 var code = ex.Message.Contains("can be recalculated") ? "ALREADY_FINALIZED" : null;
-                return Results.Problem(detail: ex.Message, statusCode: code is not null ? 409 : 400, extensions: code is not null ? new Dictionary<string, object?> { ["code"] = code } : null);
+                return Results.Problem(statusCode: code is not null ? 409 : 400, extensions: code is not null ? new Dictionary<string, object?> { ["code"] = code } : null);
             }
         })
         .RequireAuthorization(Permissions.HrPayrollProcess);
@@ -110,7 +110,7 @@ public static class PayrollEndpoints
             }
             catch (InvalidOperationException ex)
             {
-                return Results.Problem(ex.Message, statusCode: 400);
+                return Results.Problem(statusCode: 400);
             }
         })
         .RequireAuthorization();

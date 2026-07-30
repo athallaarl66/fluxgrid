@@ -28,7 +28,7 @@ public static class RecruitmentEndpoints
             {
                 var statusCode = ex.Message.StartsWith("A candidate with this file")
                     ? 409 : 400;
-                return Results.Problem(ex.Message, statusCode: statusCode);
+                return Results.Problem(statusCode: statusCode);
             }
         })
         .RequireAuthorization(Permissions.HrRecruitmentManage);
@@ -46,7 +46,7 @@ public static class RecruitmentEndpoints
             }
             catch (InvalidOperationException ex)
             {
-                return Results.Problem(ex.Message, statusCode: 400);
+                return Results.Problem(statusCode: 400);
             }
         })
         .RequireAuthorization(Permissions.HrRecruitmentManage);
@@ -142,7 +142,7 @@ public static class RecruitmentEndpoints
             }
             catch (InvalidOperationException ex)
             {
-                return Results.Problem(ex.Message, statusCode: 400);
+                return Results.Problem(statusCode: 400);
             }
         })
         .RequireAuthorization(Permissions.HrRecruitmentManage);
@@ -161,7 +161,7 @@ public static class RecruitmentEndpoints
             }
             catch (InvalidOperationException ex)
             {
-                return Results.Problem(ex.Message, statusCode: 400);
+                return Results.Problem(statusCode: 400);
             }
         })
         .RequireAuthorization(Permissions.HrRecruitmentManage);
@@ -179,7 +179,7 @@ public static class RecruitmentEndpoints
             }
             catch (InvalidOperationException ex)
             {
-                return Results.Problem(ex.Message, statusCode: 400);
+                return Results.Problem(statusCode: 400);
             }
         })
         .RequireAuthorization(Permissions.HrRecruitmentManage);
@@ -198,7 +198,7 @@ public static class RecruitmentEndpoints
             }
             catch (InvalidOperationException ex)
             {
-                return Results.Problem(ex.Message, statusCode: 400);
+                return Results.Problem(statusCode: 400);
             }
         })
         .RequireAuthorization(Permissions.HrRecruitmentManage);
@@ -216,7 +216,7 @@ public static class RecruitmentEndpoints
             }
             catch (InvalidOperationException ex)
             {
-                return Results.Problem(ex.Message, statusCode: 400);
+                return Results.Problem(statusCode: 400);
             }
         })
         .RequireAuthorization(Permissions.HrRecruitmentManage);
@@ -234,7 +234,7 @@ public static class RecruitmentEndpoints
             }
             catch (InvalidOperationException ex)
             {
-                return Results.Problem(ex.Message, statusCode: 400);
+                return Results.Problem(statusCode: 400);
             }
         })
         .RequireAuthorization(Permissions.HrRecruitmentManage);
@@ -252,7 +252,7 @@ public static class RecruitmentEndpoints
             }
             catch (InvalidOperationException ex)
             {
-                return Results.Problem(ex.Message, statusCode: 404);
+                return Results.Problem(statusCode: 404);
             }
         })
         .RequireAuthorization(Permissions.HrRecruitmentManage);
@@ -306,7 +306,7 @@ public static class RecruitmentEndpoints
             }
             catch (InvalidOperationException ex)
             {
-                return Results.Problem(ex.Message, statusCode: 400);
+                return Results.Problem(statusCode: 400);
             }
         })
         .RequireAuthorization(Permissions.HrJobManage);
@@ -336,7 +336,7 @@ public static class RecruitmentEndpoints
             }
             catch (InvalidOperationException ex)
             {
-                return Results.Problem(ex.Message, statusCode: 400);
+                return Results.Problem(statusCode: 400);
             }
         })
         .RequireAuthorization(Permissions.HrJobManage);
@@ -354,7 +354,7 @@ public static class RecruitmentEndpoints
             }
             catch (InvalidOperationException ex)
             {
-                return Results.Problem(ex.Message, statusCode: 400);
+                return Results.Problem(statusCode: 400);
             }
         })
         .RequireAuthorization(Permissions.HrJobManage);
@@ -372,7 +372,7 @@ public static class RecruitmentEndpoints
             }
             catch (InvalidOperationException ex)
             {
-                return Results.Problem(ex.Message, statusCode: 400);
+                return Results.Problem(statusCode: 400);
             }
         })
         .RequireAuthorization(Permissions.HrJobManage);
@@ -390,7 +390,7 @@ public static class RecruitmentEndpoints
             }
             catch (InvalidOperationException ex)
             {
-                return Results.Problem(ex.Message, statusCode: 400);
+                return Results.Problem(statusCode: 400);
             }
         })
         .RequireAuthorization(Permissions.HrJobManage);
@@ -412,7 +412,7 @@ public static class RecruitmentEndpoints
             }
             catch (InvalidOperationException ex)
             {
-                return Results.Problem(ex.Message, statusCode: 400);
+                return Results.Problem(statusCode: 400);
             }
         })
         .RequireAuthorization(Permissions.HrJobRead);

@@ -38,7 +38,7 @@ public static class BudgetEndpoints
             catch (InvalidOperationException ex)
             {
                 var statusCode = ex.Message.Contains("already exists") ? 409 : 400;
-                return Results.Problem(ex.Message, statusCode: statusCode);
+                return Results.Problem(statusCode: statusCode);
             }
         })
         .RequireAuthorization(Permissions.FinanceBudgetManage);
@@ -57,7 +57,7 @@ public static class BudgetEndpoints
             }
             catch (InvalidOperationException ex)
             {
-                return Results.Problem(ex.Message, statusCode: 400);
+                return Results.Problem(statusCode: 400);
             }
         })
         .RequireAuthorization(Permissions.FinanceBudgetManage);
@@ -75,7 +75,7 @@ public static class BudgetEndpoints
             }
             catch (InvalidOperationException ex)
             {
-                return Results.Problem(ex.Message, statusCode: 404);
+                return Results.Problem(statusCode: 404);
             }
         })
         .RequireAuthorization(Permissions.FinanceBudgetManage);

@@ -46,6 +46,7 @@ public static class DataSeeder
             Id = Guid.NewGuid(),
             Name = "Admin",
             Description = "Full system access",
+            TenantId = DefaultTenantId,
             Permissions = Permissions.All.ToList()
         };
 
@@ -54,6 +55,7 @@ public static class DataSeeder
             Id = Guid.NewGuid(),
             Name = "Manager",
             Description = "Department-level access",
+            TenantId = DefaultTenantId,
             Permissions = [
                 Permissions.DashboardRead,
                 Permissions.WmsRead, Permissions.WmsWrite,
@@ -68,6 +70,7 @@ public static class DataSeeder
             Id = Guid.NewGuid(),
             Name = "Staff",
             Description = "Basic operational access",
+            TenantId = DefaultTenantId,
             Permissions = [
                 Permissions.DashboardRead,
                 Permissions.WmsRead,

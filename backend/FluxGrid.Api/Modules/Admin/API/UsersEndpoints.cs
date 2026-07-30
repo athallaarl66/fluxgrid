@@ -7,15 +7,29 @@ namespace FluxGrid.Api.Modules.Admin.API;
 
 public static class UsersEndpoints
 {
+    private static async Task<Guid> GetTenantIdAsync(HttpContext httpContext, AppDbContext db)
+    {
+        var userIdStr = httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userIdStr is null || !Guid.TryParse(userIdStr, out var userId))
+            return Guid.Empty;
+        var currentUser = await db.Users.AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Id == userId);
+        return currentUser?.TenantId ?? Guid.Empty;
+    }
+
     public static void MapUsersEndpoints(this WebApplication app)
     {
         var group = app.MapGroup("/api/admin/users")
             .RequireAuthorization()
             .RequireAuthorization("AdminOnly");
 
-        group.MapGet("/", async (AppDbContext db, string? search, string? role, int page = 1, int pageSize = 20) =>
+        group.MapGet("/", async (HttpContext httpContext, AppDbContext db, string? search, string? role, int page = 1, int pageSize = 20) =>
         {
-            var query = db.Users.Include(u => u.Roles).AsQueryable();
+            var tenantId = await GetTenantIdAsync(httpContext, db);
+            if (tenantId == Guid.Empty)
+                return Results.NotFound(new { message = "User not found." });
+
+            var query = db.Users.Include(u => u.Roles).Where(u => u.TenantId == tenantId);
 
             if (!string.IsNullOrWhiteSpace(search))
             {
@@ -49,11 +63,15 @@ public static class UsersEndpoints
             return Results.Ok(new { users, total, page, pageSize });
         });
 
-        group.MapGet("/{id:guid}", async (Guid id, AppDbContext db) =>
+        group.MapGet("/{id:guid}", async (HttpContext httpContext, Guid id, AppDbContext db) =>
         {
+            var tenantId = await GetTenantIdAsync(httpContext, db);
+            if (tenantId == Guid.Empty)
+                return Results.NotFound(new { message = "User not found." });
+
             var user = await db.Users
                 .Include(u => u.Roles)
-                .Where(u => u.Id == id)
+                .Where(u => u.Id == id && u.TenantId == tenantId)
                 .Select(u => new UserDto
                 {
                     Id = u.Id,
@@ -71,8 +89,12 @@ public static class UsersEndpoints
             return Results.Ok(user);
         });
 
-        group.MapPost("/", async (CreateUserRequest request, AppDbContext db) =>
+        group.MapPost("/", async (HttpContext httpContext, CreateUserRequest request, AppDbContext db) =>
         {
+            var tenantId = await GetTenantIdAsync(httpContext, db);
+            if (tenantId == Guid.Empty)
+                return Results.NotFound(new { message = "User not found." });
+
             if (string.IsNullOrWhiteSpace(request.Name) || request.Name.Length > 100)
                 return Results.Json(new { message = "Name is required (max 100 chars)." }, statusCode: 400);
 
@@ -88,17 +110,25 @@ public static class UsersEndpoints
             if (await db.Users.AnyAsync(u => u.Username == request.Name))
                 return Results.Json(new { message = "Username already exists." }, statusCode: 409);
 
+            if (!string.IsNullOrWhiteSpace(request.Role))
+            {
+                var role = await db.Roles.FirstOrDefaultAsync(r => r.Name == request.Role && r.TenantId == tenantId);
+                if (role is null)
+                    return Results.Json(new { message = "Role not found in your organization." }, statusCode: 400);
+            }
+
             var user = new User
             {
                 Username = request.Name,
                 Email = request.Email,
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
-                IsActive = true
+                IsActive = true,
+                TenantId = tenantId
             };
 
             if (!string.IsNullOrWhiteSpace(request.Role))
             {
-                var role = await db.Roles.FirstOrDefaultAsync(r => r.Name == request.Role);
+                var role = await db.Roles.FirstOrDefaultAsync(r => r.Name == request.Role && r.TenantId == tenantId);
                 if (role is not null)
                     user.Roles.Add(role);
             }
@@ -115,9 +145,14 @@ public static class UsersEndpoints
             });
         });
 
-        group.MapPut("/{id:guid}", async (Guid id, UpdateUserRequest request, AppDbContext db) =>
+        group.MapPut("/{id:guid}", async (HttpContext httpContext, Guid id, UpdateUserRequest request, AppDbContext db) =>
         {
-            var user = await db.Users.Include(u => u.Roles).FirstOrDefaultAsync(u => u.Id == id);
+            var tenantId = await GetTenantIdAsync(httpContext, db);
+            if (tenantId == Guid.Empty)
+                return Results.NotFound(new { message = "User not found." });
+
+            var user = await db.Users.Include(u => u.Roles)
+                .FirstOrDefaultAsync(u => u.Id == id && u.TenantId == tenantId);
             if (user is null)
                 return Results.NotFound(new { message = "User not found." });
 
@@ -129,6 +164,13 @@ public static class UsersEndpoints
 
             if (await db.Users.AnyAsync(u => u.Email == request.Email && u.Id != id))
                 return Results.Json(new { message = "Email already exists." }, statusCode: 409);
+
+            if (!string.IsNullOrWhiteSpace(request.Role))
+            {
+                var roleExists = await db.Roles.AnyAsync(r => r.Name == request.Role && r.TenantId == tenantId);
+                if (!roleExists)
+                    return Results.Json(new { message = "Role not found in your organization." }, statusCode: 400);
+            }
 
             user.Username = request.Name;
             user.Email = request.Email;
@@ -143,7 +185,7 @@ public static class UsersEndpoints
             user.Roles.Clear();
             if (!string.IsNullOrWhiteSpace(request.Role))
             {
-                var role = await db.Roles.FirstOrDefaultAsync(r => r.Name == request.Role);
+                var role = await db.Roles.FirstOrDefaultAsync(r => r.Name == request.Role && r.TenantId == tenantId);
                 if (role is not null)
                     user.Roles.Add(role);
             }
@@ -159,9 +201,13 @@ public static class UsersEndpoints
             });
         });
 
-        group.MapDelete("/{id:guid}", async (Guid id, AppDbContext db) =>
+        group.MapDelete("/{id:guid}", async (HttpContext httpContext, Guid id, AppDbContext db) =>
         {
-            var user = await db.Users.FindAsync(id);
+            var tenantId = await GetTenantIdAsync(httpContext, db);
+            if (tenantId == Guid.Empty)
+                return Results.NotFound(new { message = "User not found." });
+
+            var user = await db.Users.FirstOrDefaultAsync(u => u.Id == id && u.TenantId == tenantId);
             if (user is null)
                 return Results.NotFound(new { message = "User not found." });
 

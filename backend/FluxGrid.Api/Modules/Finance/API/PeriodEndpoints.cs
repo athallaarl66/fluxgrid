@@ -33,7 +33,7 @@ public static class PeriodEndpoints
             }
             catch (InvalidOperationException ex)
             {
-                return Results.Problem(ex.Message, statusCode: 400);
+                return Results.Problem(statusCode: 400);
             }
         })
         .RequireAuthorization(Permissions.FinancePeriodRead);
@@ -50,7 +50,7 @@ public static class PeriodEndpoints
             }
             catch (InvalidOperationException ex)
             {
-                return Results.Problem(ex.Message, statusCode: 400);
+                return Results.Problem(statusCode: 400);
             }
         })
         .RequireAuthorization(Permissions.FinancePeriodAdmin);
@@ -69,7 +69,7 @@ public static class PeriodEndpoints
             }
             catch (InvalidOperationException ex)
             {
-                return Results.Problem(ex.Message, statusCode: 400);
+                return Results.Problem(statusCode: 400);
             }
         })
         .RequireAuthorization(Permissions.FinancePeriodAdmin);
@@ -88,7 +88,7 @@ public static class PeriodEndpoints
             }
             catch (InvalidOperationException ex)
             {
-                return Results.Problem(ex.Message, statusCode: 400);
+                return Results.Problem(statusCode: 400);
             }
         })
         .RequireAuthorization(Permissions.FinancePeriodAdmin);

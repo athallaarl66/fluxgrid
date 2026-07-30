@@ -14,6 +14,7 @@ using FluxGrid.Api.Modules.Notifications.API;
 using FluxGrid.Api.Modules.Notifications.Domain;
 using FluxGrid.Api.Modules.WMS.API;
 using FluxGrid.Api.Modules.WMS.Application;
+using FluxGrid.Api.Shared.Infrastructure;
 using FluxGrid.Api.Shared.Infrastructure.Audit;
 using FluxGrid.Api.Shared.Infrastructure.Caching;
 using FluxGrid.Api.Shared.Infrastructure.Data;
@@ -61,6 +62,8 @@ else
         sp.GetRequiredService<LocalFileStorageService>());
 }
 
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
 
@@ -233,6 +236,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseExceptionHandler();
 app.UseForwardedHeaders();
 app.UseCors("Frontend");
 app.UseIpRateLimiting();
@@ -273,6 +277,9 @@ if (storageProvider != "S3")
         LocalFileStorageService storage) =>
     {
         var key = objectKey.StartsWith("flexmng-cv/") ? objectKey["flexmng-cv/".Length..] : objectKey;
+        key = SanitizeObjectKey(key, Path.Combine(storage.BasePath, "flexmng-cv"));
+        if (request.ContentLength > 10L * 1024 * 1024)
+            return Results.Json(new { message = "File size exceeds 10MB limit." }, statusCode: 400);
         var path = storage.GetFilePath("flexmng-cv", key);
         var dir = Path.GetDirectoryName(path);
         if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
@@ -280,13 +287,14 @@ if (storageProvider != "S3")
         await using var fileStream = File.Create(path);
         await stream.CopyToAsync(fileStream);
         return Results.Ok();
-    });
+    }).RequireAuthorization("HrWrite");
 
     app.MapGet("/api/v1/hr/storage/{**objectKey}", (
         string objectKey,
         LocalFileStorageService storage) =>
     {
         var key = objectKey.StartsWith("flexmng-cv/") ? objectKey["flexmng-cv/".Length..] : objectKey;
+        key = SanitizeObjectKey(key, Path.Combine(storage.BasePath, "flexmng-cv"));
         var path = storage.GetFilePath("flexmng-cv", key);
         if (!File.Exists(path)) return Results.NotFound();
         var ext = Path.GetExtension(path).ToLower();
@@ -298,7 +306,7 @@ if (storageProvider != "S3")
         };
         var stream = File.OpenRead(path);
         return Results.File(stream, contentType);
-    });
+    }).RequireAuthorization("HrRead");
 }
 else
 {
@@ -307,6 +315,7 @@ else
         IFileStorageService storage) =>
     {
         var key = objectKey.StartsWith("flexmng-cv/") ? objectKey["flexmng-cv/".Length..] : objectKey;
+        key = SanitizeObjectKey(key, key);
         try
         {
             var bytes = await storage.ReadFileAsync("flexmng-cv", key);
@@ -323,7 +332,38 @@ else
         {
             return Results.NotFound();
         }
-    });
+    }).RequireAuthorization("HrRead");
+}
+
+/// <summary>
+/// Validates that an objectKey does not contain path traversal sequences
+/// and resolves to a path within the given basePath.
+/// Returns the sanitized (URL-decoded) key or throws InvalidOperationException.
+/// </summary>
+static string SanitizeObjectKey(string objectKey, string basePath)
+{
+    if (string.IsNullOrWhiteSpace(objectKey))
+        throw new InvalidOperationException("Object key is required.");
+
+    // URL-decode first to catch encoded traversal sequences
+    var decoded = Uri.UnescapeDataString(objectKey);
+
+    // Reject null bytes
+    if (decoded.Contains('\0'))
+        throw new InvalidOperationException("Invalid object key.");
+
+    // Reject any path segment containing ".."
+    var segments = decoded.Split('/', StringSplitOptions.RemoveEmptyEntries);
+    if (segments.Any(s => s == ".."))
+        throw new InvalidOperationException("Invalid object key.");
+
+    // Verify resolved path stays under basePath
+    var combined = Path.GetFullPath(Path.Combine(basePath, decoded));
+    var baseFull = Path.GetFullPath(basePath);
+    if (!combined.StartsWith(baseFull, StringComparison.OrdinalIgnoreCase))
+        throw new InvalidOperationException("Invalid object key.");
+
+    return decoded;
 }
 
 app.Run();
