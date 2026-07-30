@@ -121,7 +121,7 @@ public static class UsersEndpoints
             {
                 Username = request.Name,
                 Email = request.Email,
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password, workFactor: 12),
                 IsActive = true,
                 TenantId = tenantId
             };
@@ -179,7 +179,7 @@ public static class UsersEndpoints
             {
                 if (request.Password.Length < 8)
                     return Results.Json(new { message = "Password must be at least 8 characters." }, statusCode: 400);
-                user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
+                user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password, workFactor: 12);
             }
 
             user.Roles.Clear();

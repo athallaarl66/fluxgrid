@@ -27,8 +27,13 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
-var envPath = Path.Combine(Directory.GetCurrentDirectory(), "..", "..", ".env");
-if (File.Exists(envPath))
+var envPaths = new[]
+{
+    Path.Combine(Directory.GetCurrentDirectory(), "..", "..", ".env"),
+    Path.Combine(Directory.GetCurrentDirectory(), ".env"),
+};
+var envPath = envPaths.FirstOrDefault(File.Exists);
+if (envPath is not null)
     DotNetEnv.Env.Load(envPath);
 
 var builder = WebApplication.CreateBuilder(args);
@@ -143,6 +148,12 @@ builder.Services.Configure<IpRateLimitOptions>(options =>
         {
             Endpoint = "POST:/api/auth/login",
             Limit = 5,
+            Period = "1m"
+        },
+        new RateLimitRule
+        {
+            Endpoint = "POST:/api/auth/change-password",
+            Limit = 3,
             Period = "1m"
         },
         new RateLimitRule

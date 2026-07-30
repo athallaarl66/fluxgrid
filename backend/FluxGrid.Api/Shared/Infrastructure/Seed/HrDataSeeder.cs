@@ -45,7 +45,7 @@ public static class HrDataSeeder
         var seedPassword = Environment.GetEnvironmentVariable("SEED_ADMIN_PASSWORD");
         if (!string.IsNullOrEmpty(seedPassword))
         {
-            adminUser.PasswordHash = BCrypt.Net.BCrypt.HashPassword(seedPassword);
+            adminUser.PasswordHash = BCrypt.Net.BCrypt.HashPassword(seedPassword, workFactor: 12);
             adminUser.FailedLoginAttempts = 0;
             adminUser.LockoutEnd = null;
         }
