@@ -2,10 +2,11 @@ using FluxGrid.Api.Modules.HR.API;
 using FluxGrid.Api.Modules.HR.Domain.Entities;
 using FluxGrid.Api.Modules.HR.Domain.Events;
 using FluxGrid.Api.Modules.Notifications.Domain;
+using System.Security.Cryptography;
 using FluxGrid.Api.Shared.Domain.Entities;
-using FluxGrid.Api.Shared.Infrastructure.Audit;
 using FluxGrid.Api.Shared.Infrastructure.Data;
 using FluxGrid.Api.Shared.Infrastructure.Events;
+using FluxGrid.Api.Shared.Infrastructure.Audit;
 using Microsoft.EntityFrameworkCore;
 
 namespace FluxGrid.Api.Modules.HR.Application;
@@ -123,13 +124,13 @@ public class EmployeeService
         await _db.SaveChangesAsync();
 
         var defaultRole = await _db.Roles.FirstOrDefaultAsync(r => r.Name == "Staff");
-        var tempPassword = $"Emp{employee.EmployeeNo}!{(new Random().Next(100000, 999999))}";
+        var tempPassword = GenerateTempPassword();
         var user = new User
         {
             Id = Guid.NewGuid(),
             Username = employee.Email,
             Email = employee.Email,
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(tempPassword),
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(tempPassword, workFactor: 12),
             IsActive = true,
             MustChangePassword = true,
             TenantId = tenantId,
@@ -276,6 +277,17 @@ public class EmployeeService
             e.BaseSalary, e.BankName, e.BankAccount, e.TaxId,
             e.Status, e.HireDate, e.TerminationDate, e.TenantId,
             e.CreatedAt, e.UpdatedAt);
+    }
+
+    private static string GenerateTempPassword()
+    {
+        var chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()-_=+";
+        var data = new byte[16];
+        RandomNumberGenerator.Fill(data);
+        var password = new char[16];
+        for (var i = 0; i < 16; i++)
+            password[i] = chars[data[i] % chars.Length];
+        return new string(password);
     }
 
     private async Task NotifyAdminsAsync(string message)

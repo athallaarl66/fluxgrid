@@ -4,6 +4,7 @@
 .opencode
 .devin
 openspec/
+.hermes/
 
 # ============ ENVIRONMENT VARIABLES (SECRETS!) ============
 .env

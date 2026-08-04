@@ -120,11 +120,15 @@ public static class AuthEndpoints
         })
         .RequireAuthorization();
 
-        app.MapPost("/api/auth/change-password", async (ChangePasswordRequest request, IConfiguration config, AppDbContext db) =>
+        app.MapPost("/api/auth/change-password", async (HttpContext http, ChangePasswordRequest request, IConfiguration config, AppDbContext db) =>
         {
+            var userIdStr = http.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (userIdStr is null || !Guid.TryParse(userIdStr, out var userId))
+                return Results.Unauthorized();
+
             var user = await db.Users
                 .Include(u => u.Roles)
-                .FirstOrDefaultAsync(u => u.Username == request.Username && u.IsActive);
+                .FirstOrDefaultAsync(u => u.Id == userId && u.IsActive);
 
             if (user is null)
                 return Results.Json(new { message = "User not found." }, statusCode: 404);
@@ -139,7 +143,7 @@ public static class AuthEndpoints
             if (strengthError is not null)
                 return Results.Json(new { message = strengthError }, statusCode: 400);
 
-            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword, workFactor: 12);
             user.MustChangePassword = false;
             user.FailedLoginAttempts = 0;
             user.LockoutEnd = null;
@@ -185,7 +189,7 @@ public static class AuthEndpoints
                 expiresAt = token.ValidTo
             });
         })
-        .AllowAnonymous();
+        .RequireAuthorization();
     }
 
     private static string? ValidatePasswordStrength(string password)
@@ -210,4 +214,4 @@ public static class AuthEndpoints
 }
 
 public record LoginRequest(string Username, string Password);
-public record ChangePasswordRequest(string Username, string OldPassword, string NewPassword, string ConfirmNewPassword);
+public record ChangePasswordRequest(string OldPassword, string NewPassword, string ConfirmNewPassword);

@@ -3,23 +3,29 @@ import { NextRequest, NextResponse } from "next/server";
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5020";
 
 export async function POST(request: NextRequest) {
-  try {
-    const { username, password } = await request.json();
+  const token = request.cookies.get("token")?.value;
+  if (!token) {
+    return NextResponse.json({ message: "Not authenticated" }, { status: 401 });
+  }
 
-    const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+  try {
+    const { oldPassword, newPassword, confirmNewPassword } =
+      await request.json();
+
+    const response = await fetch(`${API_BASE_URL}/api/auth/change-password`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password }),
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ oldPassword, newPassword, confirmNewPassword }),
       signal: AbortSignal.timeout(5000),
     });
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
       return NextResponse.json(
-        {
-          code: error.code || "INVALID_CREDENTIALS",
-          message: error.message || "Invalid credentials",
-        },
+        { message: error.message || "Password change failed" },
         { status: response.status },
       );
     }
@@ -27,6 +33,7 @@ export async function POST(request: NextRequest) {
     const data = await response.json();
     const res = NextResponse.json({ success: true });
 
+    // Set new token as httpOnly cookie after password change
     res.cookies.set("token", data.token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
@@ -41,7 +48,6 @@ export async function POST(request: NextRequest) {
       err instanceof TypeError
         ? "Cannot connect to server. Make sure the backend is running on port 5020."
         : "An unexpected error occurred.";
-
-    return NextResponse.json({ code: "SERVER_ERROR", message }, { status: 503 });
+    return NextResponse.json({ message }, { status: 503 });
   }
 }

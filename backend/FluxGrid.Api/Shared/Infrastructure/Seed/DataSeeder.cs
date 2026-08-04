@@ -20,7 +20,7 @@ public static class DataSeeder
             {
                 if (!string.IsNullOrEmpty(seedPassword))
                 {
-                    existingAdmin.PasswordHash = BCrypt.Net.BCrypt.HashPassword(seedPassword);
+                    existingAdmin.PasswordHash = BCrypt.Net.BCrypt.HashPassword(seedPassword, workFactor: 12);
                     existingAdmin.FailedLoginAttempts = 0;
                     existingAdmin.LockoutEnd = null;
                     Console.WriteLine("Admin password synced from SEED_ADMIN_PASSWORD.");
@@ -46,6 +46,7 @@ public static class DataSeeder
             Id = Guid.NewGuid(),
             Name = "Admin",
             Description = "Full system access",
+            TenantId = DefaultTenantId,
             Permissions = Permissions.All.ToList()
         };
 
@@ -54,6 +55,7 @@ public static class DataSeeder
             Id = Guid.NewGuid(),
             Name = "Manager",
             Description = "Department-level access",
+            TenantId = DefaultTenantId,
             Permissions = [
                 Permissions.DashboardRead,
                 Permissions.WmsRead, Permissions.WmsWrite,
@@ -68,6 +70,7 @@ public static class DataSeeder
             Id = Guid.NewGuid(),
             Name = "Staff",
             Description = "Basic operational access",
+            TenantId = DefaultTenantId,
             Permissions = [
                 Permissions.DashboardRead,
                 Permissions.WmsRead,
@@ -85,7 +88,7 @@ public static class DataSeeder
             {
                 Id = Guid.NewGuid(),
                 Username = "admin",
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword(seedPassword),
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(seedPassword, workFactor: 12),
                 Email = "admin@fluxgrid.com",
                 IsActive = true,
                 MustChangePassword = false,

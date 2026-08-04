@@ -8,7 +8,6 @@ import { Eye, EyeOff } from "lucide-react";
 
 export default function ChangePasswordPage() {
   const router = useRouter();
-  const [username, setUsername] = useState("");
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
@@ -27,24 +26,19 @@ export default function ChangePasswordPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          username,
           oldPassword,
           newPassword,
           confirmNewPassword,
         }),
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
         setError(data.message || "Password change failed");
         return;
       }
 
-      if (data.token) {
-        document.cookie = `token=${data.token}; path=/; max-age=${60 * 60 * 24}; SameSite=Lax`;
-      }
-
+      // New token is set as httpOnly cookie by the API route.
       router.push("/dashboard");
     } catch {
       setError("Connection error. Please try again.");
@@ -73,19 +67,6 @@ export default function ChangePasswordPage() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-1.5">
-              <label htmlFor="username" className="text-[11px] font-semibold leading-none text-muted-foreground">
-                Username
-              </label>
-              <Input
-                id="username"
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="Enter your username"
-                required
-              />
-            </div>
             <div className="space-y-1.5">
               <label htmlFor="oldPassword" className="text-[11px] font-semibold leading-none text-muted-foreground">
                 Current Password

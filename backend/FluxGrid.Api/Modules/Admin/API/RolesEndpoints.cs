@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using FluxGrid.Api.Shared.Domain.Entities;
 using FluxGrid.Api.Shared.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -6,15 +7,30 @@ namespace FluxGrid.Api.Modules.Admin.API;
 
 public static class RolesEndpoints
 {
+    private static async Task<Guid> GetTenantIdAsync(HttpContext httpContext, AppDbContext db)
+    {
+        var userIdStr = httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userIdStr is null || !Guid.TryParse(userIdStr, out var userId))
+            return Guid.Empty;
+        var currentUser = await db.Users.AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Id == userId);
+        return currentUser?.TenantId ?? Guid.Empty;
+    }
+
     public static void MapRolesEndpoints(this WebApplication app)
     {
         var group = app.MapGroup("/api/admin/roles")
             .RequireAuthorization()
             .RequireAuthorization("AdminOnly");
 
-        group.MapGet("/", async (AppDbContext db) =>
+        group.MapGet("/", async (HttpContext httpContext, AppDbContext db) =>
         {
+            var tenantId = await GetTenantIdAsync(httpContext, db);
+            if (tenantId == Guid.Empty)
+                return Results.NotFound(new { message = "Role not found." });
+
             var roles = await db.Roles
+                .Where(r => r.TenantId == tenantId)
                 .Select(r => new RoleDto
                 {
                     Id = r.Id,
@@ -28,10 +44,14 @@ public static class RolesEndpoints
             return Results.Ok(roles);
         });
 
-        group.MapGet("/{id:guid}", async (Guid id, AppDbContext db) =>
+        group.MapGet("/{id:guid}", async (HttpContext httpContext, Guid id, AppDbContext db) =>
         {
+            var tenantId = await GetTenantIdAsync(httpContext, db);
+            if (tenantId == Guid.Empty)
+                return Results.NotFound(new { message = "Role not found." });
+
             var role = await db.Roles
-                .Where(r => r.Id == id)
+                .Where(r => r.Id == id && r.TenantId == tenantId)
                 .Select(r => new RoleDto
                 {
                     Id = r.Id,
@@ -48,19 +68,24 @@ public static class RolesEndpoints
             return Results.Ok(role);
         });
 
-        group.MapPost("/", async (CreateRoleRequest request, AppDbContext db) =>
+        group.MapPost("/", async (HttpContext httpContext, CreateRoleRequest request, AppDbContext db) =>
         {
+            var tenantId = await GetTenantIdAsync(httpContext, db);
+            if (tenantId == Guid.Empty)
+                return Results.NotFound(new { message = "Role not found." });
+
             if (string.IsNullOrWhiteSpace(request.Name) || request.Name.Length > 100)
                 return Results.Json(new { message = "Name is required (max 100 chars)." }, statusCode: 400);
 
-            if (await db.Roles.AnyAsync(r => r.Name == request.Name))
+            if (await db.Roles.AnyAsync(r => r.Name == request.Name && r.TenantId == tenantId))
                 return Results.Json(new { message = "Role name already exists." }, statusCode: 409);
 
             var role = new Role
             {
                 Name = request.Name,
                 Description = request.Description,
-                Permissions = request.Permissions ?? []
+                Permissions = request.Permissions ?? [],
+                TenantId = tenantId
             };
 
             db.Roles.Add(role);
@@ -74,16 +99,20 @@ public static class RolesEndpoints
             });
         });
 
-        group.MapPut("/{id:guid}", async (Guid id, UpdateRoleRequest request, AppDbContext db) =>
+        group.MapPut("/{id:guid}", async (HttpContext httpContext, Guid id, UpdateRoleRequest request, AppDbContext db) =>
         {
-            var role = await db.Roles.FirstOrDefaultAsync(r => r.Id == id);
+            var tenantId = await GetTenantIdAsync(httpContext, db);
+            if (tenantId == Guid.Empty)
+                return Results.NotFound(new { message = "Role not found." });
+
+            var role = await db.Roles.FirstOrDefaultAsync(r => r.Id == id && r.TenantId == tenantId);
             if (role is null)
                 return Results.NotFound(new { message = "Role not found." });
 
             if (string.IsNullOrWhiteSpace(request.Name) || request.Name.Length > 100)
                 return Results.Json(new { message = "Name is required (max 100 chars)." }, statusCode: 400);
 
-            if (await db.Roles.AnyAsync(r => r.Name == request.Name && r.Id != id))
+            if (await db.Roles.AnyAsync(r => r.Name == request.Name && r.TenantId == tenantId && r.Id != id))
                 return Results.Json(new { message = "Role name already exists." }, statusCode: 409);
 
             role.Name = request.Name;
@@ -100,9 +129,14 @@ public static class RolesEndpoints
             });
         });
 
-        group.MapDelete("/{id:guid}", async (Guid id, AppDbContext db) =>
+        group.MapDelete("/{id:guid}", async (HttpContext httpContext, Guid id, AppDbContext db) =>
         {
-            var role = await db.Roles.Include(r => r.Users).FirstOrDefaultAsync(r => r.Id == id);
+            var tenantId = await GetTenantIdAsync(httpContext, db);
+            if (tenantId == Guid.Empty)
+                return Results.NotFound(new { message = "Role not found." });
+
+            var role = await db.Roles.Include(r => r.Users)
+                .FirstOrDefaultAsync(r => r.Id == id && r.TenantId == tenantId);
             if (role is null)
                 return Results.NotFound(new { message = "Role not found." });
 

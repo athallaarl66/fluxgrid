@@ -24,11 +24,14 @@ public class QStashSignatureFilter : IEndpointFilter
         var body = await new StreamReader(ctx.HttpContext.Request.Body).ReadToEndAsync();
         ctx.HttpContext.Request.Body.Position = 0;
 
-        var expected = Convert.ToBase64String(HMACSHA256.HashData(
+        var expectedHash = HMACSHA256.HashData(
             Encoding.UTF8.GetBytes(_signingKey),
-            Encoding.UTF8.GetBytes(body)));
+            Encoding.UTF8.GetBytes(body));
+        var expected = Convert.ToBase64String(expectedHash);
 
-        if (!string.Equals(signature, expected, StringComparison.OrdinalIgnoreCase))
+        if (!CryptographicOperations.FixedTimeEquals(
+            Encoding.UTF8.GetBytes(signature!),
+            Encoding.UTF8.GetBytes(expected)))
             return Results.Problem("Invalid QStash signature", statusCode: 401);
 
         return await next(ctx);
