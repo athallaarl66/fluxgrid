@@ -29,8 +29,7 @@ function LoginForm() {
     setLoading(true);
 
     try {
-      const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5020";
-      const response = await fetch(`${API}/api/auth/login`, {
+      const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
@@ -42,12 +41,10 @@ function LoginForm() {
         return;
       }
 
-      const data = await response.json();
-      document.cookie = `token=${data.token}; path=/; maxAge=${60 * 60}; SameSite=Lax`;
-      localStorage.setItem("token", data.token);
-
+      // Token is set as httpOnly cookie by the API route — no client-side storage needed.
       const redirect = searchParams.get("redirect") || "/dashboard";
-      router.push(redirect);
+      const safeRedirect = redirect.startsWith("/") && !redirect.includes("://") ? redirect : "/dashboard";
+      router.push(safeRedirect);
     } catch {
       setError("Connection error. Please try again.");
     } finally {
