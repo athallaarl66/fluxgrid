@@ -1,0 +1,49 @@
+﻿name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: 1
+  DOTNET_NOLOGO: 1
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+      - name: Restore
+        run: dotnet restore backend/FluxGrid.Api/FluxGrid.Api.csproj
+      - name: Build
+        run: dotnet build backend/FluxGrid.Api/FluxGrid.Api.csproj --configuration Release --no-restore
+      - name: Test
+        run: |
+          shopt -s globstar nullglob
+          for proj in tests/unit/**/*.csproj; do
+            echo "=== $proj ==="
+            dotnet test "$proj" --configuration Release --no-build
+          done
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install
+        run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Build
+        run: npm run build
