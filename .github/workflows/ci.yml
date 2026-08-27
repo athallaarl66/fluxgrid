@@ -22,12 +22,7 @@ jobs:
       - name: Build
         run: dotnet build backend/FluxGrid.Api/FluxGrid.Api.csproj --configuration Release --no-restore
       - name: Test
-        run: |
-          shopt -s globstar nullglob
-          for proj in tests/unit/**/*.csproj; do
-            echo "=== $proj ==="
-            dotnet test "$proj" --configuration Release --no-build
-          done
+        run: dotnet test tests/unit/**/*.csproj --configuration Release --no-restore
 
   frontend:
     runs-on: ubuntu-latest
