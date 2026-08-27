@@ -79,7 +79,7 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Role>(entity =>
         {
             entity.HasKey(e => e.Id);
-            entity.HasIndex(e => e.Name).IsUnique();
+            entity.HasIndex(e => new { e.TenantId, e.Name }).IsUnique();
             entity.Property(e => e.Name).HasMaxLength(100).IsRequired();
             entity.Property(e => e.Description).HasMaxLength(500);
             entity.Property(e => e.Permissions).HasColumnType("text[]");
@@ -133,7 +133,7 @@ public class AppDbContext : DbContext
         {
             entity.ToTable("journal_entries");
             entity.HasKey(e => e.Id);
-            entity.HasIndex(e => e.EntryNo).IsUnique();
+            entity.HasIndex(e => new { e.TenantId, e.EntryNo }).IsUnique();
             entity.Property(e => e.EntryNo).HasMaxLength(50).IsRequired();
             entity.Property(e => e.TransactionDate).IsRequired();
             entity.Property(e => e.Description).IsRequired();
@@ -266,7 +266,7 @@ public class AppDbContext : DbContext
         {
             entity.ToTable("purchase_receipts");
             entity.HasKey(e => e.Id);
-            entity.HasIndex(e => e.ReceiptNo).IsUnique();
+            entity.HasIndex(e => new { e.TenantId, e.ReceiptNo }).IsUnique();
             entity.Property(e => e.ReceiptNo).HasMaxLength(50).IsRequired();
             entity.Property(e => e.PoReference).HasMaxLength(50).IsRequired();
             entity.Property(e => e.Status).HasConversion<string>().HasMaxLength(20).IsRequired();
@@ -375,7 +375,7 @@ public class AppDbContext : DbContext
         {
             entity.ToTable("shipments");
             entity.HasKey(e => e.Id);
-            entity.HasIndex(e => e.ShipmentNo).IsUnique();
+            entity.HasIndex(e => new { e.TenantId, e.ShipmentNo }).IsUnique();
             entity.Property(e => e.ShipmentNo).HasMaxLength(50).IsRequired();
             entity.Property(e => e.Status).HasConversion<string>().HasMaxLength(20).IsRequired();
             entity.HasIndex(e => e.TenantId);
@@ -392,7 +392,7 @@ public class AppDbContext : DbContext
 
             entity.HasKey(e => e.Id);
 
-            entity.HasIndex(e => e.EmployeeNo).IsUnique();
+            entity.HasIndex(e => new { e.TenantId, e.EmployeeNo }).IsUnique();
             entity.HasIndex(e => e.Email);
             entity.HasIndex(e => e.TenantId);
 

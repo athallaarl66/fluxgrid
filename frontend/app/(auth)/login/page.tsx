@@ -52,6 +52,15 @@ function LoginForm() {
     }
   };
 
+  const handleDemoLogin = () => {
+    setUsername("demo");
+    setPassword("Demo@12345");
+    // Submit on next tick so state is set before the form submits.
+    requestAnimationFrame(() => {
+      document.querySelector<HTMLFormElement>("form")?.requestSubmit();
+    });
+  };
+
   return (
     <div className="flex min-h-screen bg-background">
       <div className="flex w-full items-center justify-center px-6">
@@ -136,6 +145,24 @@ function LoginForm() {
               </button>
             </div>
           </form>
+
+          <div className="relative my-4">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-border" />
+            </div>
+            <div className="relative flex justify-center text-[11px] uppercase tracking-wide">
+              <span className="bg-background px-2 text-muted-foreground">or</span>
+            </div>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full h-9 font-semibold cursor-pointer"
+            onClick={handleDemoLogin}
+            disabled={loading}
+          >
+            Login as Demo
+          </Button>
 
         </div>
       </div>

@@ -239,6 +239,7 @@ using (var scope = app.Services.CreateScope())
     else
         await db.Database.EnsureCreatedAsync();
     await DataSeeder.SeedAsync(db);
+    await DemoSeeder.SeedAsync(db);
 }
 
 if (app.Environment.IsDevelopment())

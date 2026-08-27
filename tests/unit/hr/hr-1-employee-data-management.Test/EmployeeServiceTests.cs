@@ -2,6 +2,7 @@ using FluxGrid.Api.Modules.HR.API;
 using FluxGrid.Api.Modules.HR.Application;
 using FluxGrid.Api.Modules.HR.Domain.Entities;
 using FluxGrid.Api.Modules.HR.Domain.Events;
+using FluxGrid.Api.Modules.Notifications.Domain;
 using FluxGrid.Api.Shared.Domain.Entities;
 using FluxGrid.Api.Shared.Infrastructure.Audit;
 using FluxGrid.Api.Shared.Infrastructure.Data;
@@ -27,7 +28,7 @@ public class EmployeeServiceTests : IDisposable
         _db = new AppDbContext(options);
         _audit = new AuditService(_db);
         _dispatcher = new DomainEventDispatcher();
-        _service = new EmployeeService(_db, _audit, _dispatcher);
+        _service = new EmployeeService(_db, _audit, _dispatcher, Mock.Of<INotificationService>());
     }
 
     public void Dispose()

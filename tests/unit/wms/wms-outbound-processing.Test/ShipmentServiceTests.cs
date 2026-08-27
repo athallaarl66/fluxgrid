@@ -1,6 +1,7 @@
 using FluxGrid.Api.Modules.WMS.Application;
 using FluxGrid.Api.Modules.WMS.Domain.Entities;
 using FluxGrid.Api.Modules.WMS.Domain.Enums;
+using FluxGrid.Api.Modules.Notifications.Domain;
 using FluxGrid.Api.Shared.Infrastructure.Audit;
 using FluxGrid.Api.Shared.Infrastructure.Caching;
 using FluxGrid.Api.Shared.Infrastructure.Data;
@@ -32,7 +33,8 @@ public class ShipmentServiceTests : IDisposable
         _auditMock = new Mock<AuditService>(_db) { CallBase = true };
         _dispatcherMock = new Mock<DomainEventDispatcher>() { CallBase = true };
         _cacheMock = new Mock<ICacheService>();
-        _ledgerService = new StockLedgerService(_db, _auditMock.Object, _dispatcherMock.Object, _cacheMock.Object);
+        _ledgerService = new StockLedgerService(_db, _auditMock.Object, _dispatcherMock.Object, _cacheMock.Object,
+            Mock.Of<INotificationService>());
         _service = new ShipmentService(_db, _auditMock.Object, _dispatcherMock.Object, _ledgerService);
     }
 

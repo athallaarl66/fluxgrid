@@ -213,7 +213,7 @@ namespace FluxGrid.Api.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("EntryNo")
+                    b.HasIndex("TenantId", "EntryNo")
                         .IsUnique();
 
                     b.ToTable("journal_entries", (string)null);
@@ -722,12 +722,12 @@ namespace FluxGrid.Api.Migrations
 
                     b.HasIndex("Email");
 
-                    b.HasIndex("EmployeeNo")
-                        .IsUnique();
-
                     b.HasIndex("ManagerId");
 
                     b.HasIndex("TenantId");
+
+                    b.HasIndex("TenantId", "EmployeeNo")
+                        .IsUnique();
 
                     b.ToTable("employees", (string)null);
                 });
@@ -1310,10 +1310,10 @@ namespace FluxGrid.Api.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ReceiptNo")
-                        .IsUnique();
-
                     b.HasIndex("TenantId");
+
+                    b.HasIndex("TenantId", "ReceiptNo")
+                        .IsUnique();
 
                     b.ToTable("purchase_receipts", (string)null);
                 });
@@ -1470,10 +1470,10 @@ namespace FluxGrid.Api.Migrations
 
                     b.HasIndex("OrderId");
 
-                    b.HasIndex("ShipmentNo")
-                        .IsUnique();
-
                     b.HasIndex("TenantId");
+
+                    b.HasIndex("TenantId", "ShipmentNo")
+                        .IsUnique();
 
                     b.ToTable("shipments", (string)null);
                 });
@@ -1601,7 +1601,7 @@ namespace FluxGrid.Api.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Name")
+                    b.HasIndex("TenantId", "Name")
                         .IsUnique();
 
                     b.ToTable("Roles");

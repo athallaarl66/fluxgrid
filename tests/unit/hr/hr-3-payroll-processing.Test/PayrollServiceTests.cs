@@ -3,6 +3,7 @@ using FluxGrid.Api.Modules.HR.API;
 using FluxGrid.Api.Modules.HR.Application;
 using FluxGrid.Api.Modules.HR.Domain.Entities;
 using FluxGrid.Api.Modules.HR.Domain.Events;
+using FluxGrid.Api.Modules.Notifications.Domain;
 using FluxGrid.Api.Shared.Infrastructure.Audit;
 using FluxGrid.Api.Shared.Infrastructure.Data;
 using FluxGrid.Api.Shared.Infrastructure.Events;
@@ -30,7 +31,7 @@ public class PayrollServiceTests : IDisposable
         _audit = new AuditService(_db);
         _dispatcher = new DomainEventDispatcher();
         _httpClientMock = new Mock<HttpClient>();
-        _service = new PayrollService(_db, _audit, _dispatcher, _httpClientMock.Object);
+        _service = new PayrollService(_db, _audit, _dispatcher, _httpClientMock.Object, Mock.Of<INotificationService>());
     }
 
     public void Dispose()

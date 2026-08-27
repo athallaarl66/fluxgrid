@@ -6,6 +6,7 @@ using FluxGrid.Api.Shared.Infrastructure.Audit;
 using FluxGrid.Api.Shared.Infrastructure.Data;
 using FluxGrid.Api.Shared.Infrastructure.Events;
 using FluxGrid.Api.Shared.Infrastructure.Storage;
+using FluxGrid.Api.Modules.Notifications.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -36,7 +37,12 @@ public class RecruitmentServiceApprovalTests : IDisposable
         configMock.Setup(c => c["Storage:BucketName"]).Returns("test-bucket");
 
         var scopeFactoryMock = new Mock<IServiceScopeFactory>();
-        _service = new RecruitmentService(_db, _storageMock.Object, audit, dispatcher, scopeFactoryMock.Object, configMock.Object);
+        var embeddingMock = new Mock<EmbeddingService>(
+            Mock.Of<IHttpClientFactory>(), Mock.Of<IConfiguration>());
+        _service = new RecruitmentService(
+            _db, _storageMock.Object, audit, dispatcher,
+            embeddingMock.Object, scopeFactoryMock.Object,
+            new ActivityLogService(_db), Mock.Of<INotificationService>(), configMock.Object);
     }
 
     public void Dispose() => _db.Dispose();

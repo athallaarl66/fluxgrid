@@ -12,7 +12,7 @@ interface CoaToolbarProps {
 
 export function CoaToolbar({ onSearch, onNewAccount }: CoaToolbarProps) {
   const [value, setValue] = useState("");
-  const timeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined as any);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);

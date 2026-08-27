@@ -30,43 +30,46 @@ public class DashboardService
     public async Task<List<MonthlyData>> GetJournalTrendAsync(Guid tenantId, int months = 6)
     {
         var startDate = DateTime.UtcNow.AddMonths(-months);
-        return await _db.JournalEntries
+        var rows = await _db.JournalEntries
             .Where(e => e.TenantId == tenantId && e.CreatedAt >= startDate)
             .GroupBy(e => new { e.CreatedAt.Year, e.CreatedAt.Month })
-            .Select(g => new MonthlyData(
-                $"{g.Key.Month:D2}/{g.Key.Year % 100:D2}",
-                g.Count()
-            ))
-            .OrderBy(d => d.Label)
+            .Select(g => new { g.Key.Year, g.Key.Month, Count = g.Count() })
+            .OrderBy(x => x.Year).ThenBy(x => x.Month)
             .ToListAsync();
+
+        return rows
+            .Select(g => new MonthlyData($"{g.Month:D2}/{g.Year % 100:D2}", g.Count))
+            .ToList();
     }
 
     public async Task<List<MonthlyData>> GetInboundTrendAsync(Guid tenantId, int months = 6)
     {
         var startDate = DateTime.UtcNow.AddMonths(-months);
-        return await _db.StockLedgerEntries
+        var rows = await _db.StockLedgerEntries
             .Where(e => e.TenantId == tenantId && e.Quantity > 0 && e.CreatedAt >= startDate)
             .GroupBy(e => new { e.CreatedAt.Year, e.CreatedAt.Month })
-            .Select(g => new MonthlyData(
-                $"{g.Key.Month:D2}/{g.Key.Year % 100:D2}",
-                (int)g.Sum(e => e.Quantity)
-            ))
-            .OrderBy(d => d.Label)
+            .Select(g => new { g.Key.Year, g.Key.Month, Total = g.Sum(e => e.Quantity) })
+            .OrderBy(x => x.Year).ThenBy(x => x.Month)
             .ToListAsync();
+
+        return rows
+            .Select(g => new MonthlyData($"{g.Month:D2}/{g.Year % 100:D2}", (int)g.Total))
+            .ToList();
     }
 
     public async Task<List<MonthlyData>> GetOutboundTrendAsync(Guid tenantId, int months = 6)
     {
         var startDate = DateTime.UtcNow.AddMonths(-months);
-        return await _db.StockLedgerEntries
+        var rows = await _db.StockLedgerEntries
             .Where(e => e.TenantId == tenantId && e.Quantity < 0 && e.CreatedAt >= startDate)
             .GroupBy(e => new { e.CreatedAt.Year, e.CreatedAt.Month })
-            .Select(g => new MonthlyData(
-                $"{g.Key.Month:D2}/{g.Key.Year % 100:D2}",
-                (int)g.Sum(e => Math.Abs(e.Quantity))
-            ))
-            .OrderBy(d => d.Label)
+            .Select(g => new { g.Key.Year, g.Key.Month, Total = g.Sum(e => Math.Abs(e.Quantity)) })
+            .OrderBy(x => x.Year).ThenBy(x => x.Month)
             .ToListAsync();
+
+        return rows
+            .Select(g => new MonthlyData($"{g.Month:D2}/{g.Year % 100:D2}", (int)g.Total))
+            .ToList();
     }
 
     public async Task<List<ModuleActivity>> GetModuleActivityAsync(Guid tenantId)

@@ -30,7 +30,7 @@ export async function apiClient<T = unknown>(
     const body = await response.json().catch(() => ({}));
     throw new ApiError(
       response.status,
-      body.code || "UNKNOWN_ERROR",
+      body.code || body.message || body.detail || response.statusText,
       body.message || response.statusText,
     );
   }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useProfile, useUpdateProfile } from "@/hooks/useProfile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,15 @@ export function ProfileTab() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [saved, setSaved] = useState(false);
-  const initialized = useState(false);
+  const [initialized, setInitialized] = useState(false);
+
+  useEffect(() => {
+    if (profile && !initialized) {
+      setInitialized(true);
+      setName(profile.name);
+      setEmail(profile.email);
+    }
+  }, [profile, initialized]);
 
   if (isLoading) {
     return (
@@ -23,12 +31,6 @@ export function ProfileTab() {
         <Skeleton className="h-9 w-24" />
       </div>
     );
-  }
-
-  if (profile && !initialized[0]) {
-    initialized[0] = true;
-    setName(profile.name);
-    setEmail(profile.email);
   }
 
   function handleSubmit(e: React.FormEvent) {

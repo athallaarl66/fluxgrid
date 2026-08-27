@@ -17,7 +17,7 @@ public class FinanceDashboardService
     public async Task<DashboardResponse> GetDashboardAsync(Guid tenantId, int? year = null)
     {
         var currentPeriod = await _db.AccountingPeriods
-            .Where(p => p.TenantId == tenantId && p.Status == "OPEN")
+            .Where(p => p.TenantId == tenantId)
             .OrderByDescending(p => p.StartDate)
             .FirstOrDefaultAsync();
 

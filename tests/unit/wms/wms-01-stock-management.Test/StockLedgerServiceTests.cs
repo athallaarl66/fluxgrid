@@ -1,6 +1,7 @@
 using FluxGrid.Api.Modules.WMS.Application;
 using FluxGrid.Api.Modules.WMS.Domain.Entities;
 using FluxGrid.Api.Modules.WMS.Domain.Enums;
+using FluxGrid.Api.Modules.Notifications.Domain;
 using FluxGrid.Api.Shared.Infrastructure.Audit;
 using FluxGrid.Api.Shared.Infrastructure.Caching;
 using FluxGrid.Api.Shared.Infrastructure.Data;
@@ -30,7 +31,8 @@ public class StockLedgerServiceTests : IDisposable
         _auditMock = new Mock<AuditService>(_db) { CallBase = true };
         _dispatcherMock = new Mock<DomainEventDispatcher>() { CallBase = true };
         _cacheMock = new Mock<ICacheService>();
-        _service = new StockLedgerService(_db, _auditMock.Object, _dispatcherMock.Object, _cacheMock.Object);
+        _service = new StockLedgerService(_db, _auditMock.Object, _dispatcherMock.Object, _cacheMock.Object,
+            Mock.Of<INotificationService>());
     }
 
     public void Dispose()
@@ -46,7 +48,7 @@ public class StockLedgerServiceTests : IDisposable
         SeedLedgerEntries(5).ForEach(e => _db.StockLedgerEntries.Add(e));
         await _db.SaveChangesAsync();
 
-        var result = await _service.GetLedgerAsync(_tenantId, null, null, null, null, 1, 2);
+        var result = await _service.GetLedgerAsync(_tenantId, null, null, null, null, null, 1, 2);
 
         Assert.Equal(5, result.Total);
         Assert.Equal(2, result.Items.Count);
@@ -64,7 +66,7 @@ public class StockLedgerServiceTests : IDisposable
         SeedLedgerEntries(2, itemB).ForEach(e => _db.StockLedgerEntries.Add(e));
         await _db.SaveChangesAsync();
 
-        var result = await _service.GetLedgerAsync(_tenantId, "SKU-A", null, null, null, 1, 20);
+        var result = await _service.GetLedgerAsync(_tenantId, "SKU-A", null, null, null, null, 1, 20);
 
         Assert.Equal(3, result.Total);
     }
@@ -81,7 +83,7 @@ public class StockLedgerServiceTests : IDisposable
 
         var start = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc);
         var end = new DateTime(2026, 6, 30, 0, 0, 0, DateTimeKind.Utc);
-        var result = await _service.GetLedgerAsync(_tenantId, null, null, start, end, 1, 20);
+        var result = await _service.GetLedgerAsync(_tenantId, null, null, null, start, end, 1, 20);
 
         Assert.Equal(2, result.Total);
     }
@@ -95,7 +97,7 @@ public class StockLedgerServiceTests : IDisposable
         SeedLedgerEntries(2, _itemId, locB).ForEach(e => _db.StockLedgerEntries.Add(e));
         await _db.SaveChangesAsync();
 
-        var result = await _service.GetLedgerAsync(_tenantId, null, locA, null, null, 1, 20);
+        var result = await _service.GetLedgerAsync(_tenantId, null, locA, null, null, null, 1, 20);
 
         Assert.Equal(3, result.Total);
     }
@@ -115,7 +117,7 @@ public class StockLedgerServiceTests : IDisposable
         });
         await _db.SaveChangesAsync();
 
-        var result = await _service.GetLedgerAsync(_tenantId, null, null, null, null, 1, 20);
+        var result = await _service.GetLedgerAsync(_tenantId, null, null, null, null, null, 1, 20);
 
         Assert.Equal(3, result.Total);
     }
@@ -123,7 +125,7 @@ public class StockLedgerServiceTests : IDisposable
     [Fact]
     public async Task GetLedgerAsync_ReturnsEmptyForNoMatches()
     {
-        var result = await _service.GetLedgerAsync(_tenantId, "NONEXISTENT", null, null, null, 1, 20);
+        var result = await _service.GetLedgerAsync(_tenantId, "NONEXISTENT", null, null, null, null, 1, 20);
 
         Assert.Empty(result.Items);
         Assert.Equal(0, result.Total);
@@ -139,7 +141,7 @@ public class StockLedgerServiceTests : IDisposable
         entries.ForEach(e => _db.StockLedgerEntries.Add(e));
         await _db.SaveChangesAsync();
 
-        var result = await _service.GetLedgerAsync(_tenantId, null, null, null, null, 1, 20);
+        var result = await _service.GetLedgerAsync(_tenantId, null, null, null, null, null, 1, 20);
 
         for (int i = 0; i < result.Items.Count - 1; i++)
             Assert.True(result.Items[i].CreatedAt >= result.Items[i + 1].CreatedAt);

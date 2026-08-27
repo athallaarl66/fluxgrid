@@ -10,17 +10,21 @@ export function DonutChart({ segments, size = 120, strokeWidth = 14 }: DonutChar
   const total = segments.reduce((s, d) => s + d.value, 0);
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
-  let cumulative = 0;
+  // Pre-compute offsets so render body stays pure (React 19: no reassign during render).
+  const positioned = segments.reduce<{ label: string; value: number; color: string; pct: number; dash: number; offset: number }[]>(
+    (acc, seg) => {
+      const pct = total > 0 ? seg.value / total : 0;
+      const prevPct = acc.reduce((s, a) => s + a.pct, 0);
+      const offset = -prevPct * circumference;
+      return [...acc, { ...seg, pct, dash: pct * circumference, offset }];
+    },
+    []
+  );
 
   return (
     <div className="flex items-center gap-4">
       <svg width={size} height={size} className="-rotate-90">
-        {segments.map((seg, i) => {
-          const pct = total > 0 ? seg.value / total : 0;
-          const dash = pct * circumference;
-          const offset = cumulative * circumference;
-          cumulative += pct;
-          return (
+        {positioned.map((seg, i) => (
             <circle
               key={i}
               cx={size / 2}
@@ -29,12 +33,11 @@ export function DonutChart({ segments, size = 120, strokeWidth = 14 }: DonutChar
               fill="none"
               stroke={seg.color}
               strokeWidth={strokeWidth}
-              strokeDasharray={`${dash} ${circumference - dash}`}
-              strokeDashoffset={-offset}
+              strokeDasharray={`${seg.dash} ${circumference - seg.dash}`}
+              strokeDashoffset={seg.offset}
               className="transition-all duration-500"
             />
-          );
-        })}
+        ))}
         <circle
           cx={size / 2}
           cy={size / 2}

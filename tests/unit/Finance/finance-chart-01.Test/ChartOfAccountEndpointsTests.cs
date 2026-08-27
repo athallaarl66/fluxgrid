@@ -10,12 +10,19 @@ namespace FluxGrid.Api.Tests.Finance;
 
 public class ChartOfAccountEndpointsTests : IClassFixture<WebApplicationFactory<Program>>
 {
+    static ChartOfAccountEndpointsTests()
+    {
+        Environment.SetEnvironmentVariable("SEED_ADMIN_PASSWORD", "admin123");
+    }
+
     private readonly WebApplicationFactory<Program> _factory;
 
     public ChartOfAccountEndpointsTests(WebApplicationFactory<Program> factory)
     {
         _factory = factory.WithWebHostBuilder(builder =>
         {
+            builder.UseSetting("Jwt:SecretKey", "test-secret-key-for-integration-tests-min-32-chars!");
+            builder.UseSetting("ConnectionStrings:DefaultConnection", "Host=localhost;Port=5432;Database=fluxgrid_test;Username=postgres;Password=test");
             builder.ConfigureServices(services =>
             {
                 var descriptor = services.SingleOrDefault(

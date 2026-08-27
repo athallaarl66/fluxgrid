@@ -11,17 +11,23 @@ public static class FinanceDataSeeder
         var currentYear = DateTime.UtcNow.Year;
         var currentMonth = DateTime.UtcNow.Month;
 
-        if (await db.JournalEntries.AnyAsync(e => e.TenantId == tenantId && e.TransactionDate.Year == currentYear))
+        if (await db.JournalEntries.AnyAsync(e => e.TenantId == tenantId && e.TransactionDate.Year == currentYear && e.TransactionDate.Month == currentMonth))
             return;
 
-        await db.Database.ExecuteSqlRawAsync(
-            "DELETE FROM journal_entry_lines WHERE \"EntryId\" IN (SELECT \"Id\" FROM journal_entries WHERE \"TenantId\" = {0})", tenantId);
-        await db.Database.ExecuteSqlRawAsync(
-            "DELETE FROM journal_entries WHERE \"TenantId\" = {0}", tenantId);
-        await db.Database.ExecuteSqlRawAsync(
-            "DELETE FROM budgets WHERE \"TenantId\" = {0}", tenantId);
-        await db.Database.ExecuteSqlRawAsync(
-            "DELETE FROM accounting_periods WHERE \"TenantId\" = {0}", tenantId);
+        var hasAnyCurrentYearData = await db.JournalEntries.AnyAsync(e => e.TenantId == tenantId && e.TransactionDate.Year == currentYear);
+
+        // Raw SQL is PostgreSQL-only; skip destructive reset on non-relational providers (unit-test InMemory).
+        if (!hasAnyCurrentYearData && db.Database.IsRelational())
+        {
+            await db.Database.ExecuteSqlRawAsync(
+                "DELETE FROM journal_entry_lines WHERE \"EntryId\" IN (SELECT \"Id\" FROM journal_entries WHERE \"TenantId\" = {0})", tenantId);
+            await db.Database.ExecuteSqlRawAsync(
+                "DELETE FROM journal_entries WHERE \"TenantId\" = {0}", tenantId);
+            await db.Database.ExecuteSqlRawAsync(
+                "DELETE FROM budgets WHERE \"TenantId\" = {0}", tenantId);
+            await db.Database.ExecuteSqlRawAsync(
+                "DELETE FROM accounting_periods WHERE \"TenantId\" = {0}", tenantId);
+        }
 
         await ChartOfAccountSeeder.SeedAsync(db, tenantId);
 
@@ -31,7 +37,7 @@ public static class FinanceDataSeeder
 
         var adminId = (await db.Users.FirstOrDefaultAsync(u => u.Username == "admin"))?.Id ?? Guid.Empty;
 
-        var monthlyData = new (int year, int month, decimal revenue, decimal expense)[]
+        var monthlyData = new List<(int year, int month, decimal revenue, decimal expense)>
         {
             (2025, 1, 450_000_000m, 420_000_000m),
             (2025, 2, 480_000_000m, 435_000_000m),
@@ -54,15 +60,45 @@ public static class FinanceDataSeeder
             (2026, 7, 380_000_000m, 290_000_000m),
         };
 
+        // Extend seed sampai bulan berjalan supaya selalu ada periode OPEN untuk dashboard finance.
+        var lastSeed = monthlyData[^1];
+        var (y, m, rev, exp) = lastSeed;
+        while (y < currentYear || (y == currentYear && m < currentMonth))
+        {
+            m++;
+            if (m > 12) { m = 1; y++; }
+            rev *= 1.1m;
+            exp *= 1.1m;
+            monthlyData.Add((y, m, rev, exp));
+        }
+
+        var existingPeriodMonths = (await db.AccountingPeriods
+            .Where(p => p.TenantId == tenantId)
+            .Select(p => new { p.StartDate.Year, p.StartDate.Month })
+            .ToListAsync())
+            .Select(x => (x.Year, x.Month))
+            .ToHashSet();
+
         var periods = new List<AccountingPeriod>();
         var seenPeriods = new HashSet<(int year, int month)>();
 
         var entries = new List<JournalEntry>();
         var lines = new List<JournalEntryLine>();
-        var entryNo = 1;
+
+        // Lanjutkan nomor jurnal dari yang sudah ada (unique index per tenant).
+        var existingEntryNos = await db.JournalEntries
+            .Where(e => e.TenantId == tenantId)
+            .Select(e => e.EntryNo)
+            .ToListAsync();
+        var entryNo = existingEntryNos
+            .Select(s => int.TryParse(s.Replace("JE-", ""), out var n) ? n : 0)
+            .DefaultIfEmpty(0)
+            .Max() + 1;
 
         foreach (var (year, month, revenue, expense) in monthlyData)
         {
+            if (existingPeriodMonths.Contains((year, month)))
+                continue;
             if (seenPeriods.Add((year, month)))
             {
                 var startDate = new DateTime(year, month, 1, 0, 0, 0, DateTimeKind.Utc);
@@ -81,7 +117,7 @@ public static class FinanceDataSeeder
                 });
             }
 
-            var period = periods[seenPeriods.Count - 1];
+            var period = periods.First(p => p.StartDate.Year == year && p.StartDate.Month == month);
             var txDate = new DateTime(year, month, 15, 0, 0, 0, DateTimeKind.Utc);
 
             var revenueEntry = new JournalEntry
