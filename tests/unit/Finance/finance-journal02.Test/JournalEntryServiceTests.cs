@@ -184,13 +184,16 @@ public class JournalEntryServiceTests : IDisposable
 
     // ─── GetListAsync Tests ─────────────────────────────────────────
 
+    private static List<JournalEntry> GetItems(object result)
+        => (List<JournalEntry>)result.GetType().GetProperty("items")!.GetValue(result)!;
+
     [Fact]
     public async Task GetListAsync_ReturnsAllEntriesForTenant()
     {
         await SeedTestEntries();
         var result = await _service.GetListAsync(_tenantId, null, 1, 20);
 
-        Assert.Equal(3, result.Count);
+        Assert.Equal(3, GetItems(result).Count);
     }
 
     [Fact]
@@ -199,7 +202,7 @@ public class JournalEntryServiceTests : IDisposable
         await SeedTestEntries();
         var result = await _service.GetListAsync(_tenantId, "POSTED", 1, 20);
 
-        Assert.All(result, e => Assert.Equal("POSTED", e.Status));
+        Assert.All(GetItems(result), e => Assert.Equal("POSTED", e.Status));
     }
 
     [Fact]
@@ -208,7 +211,7 @@ public class JournalEntryServiceTests : IDisposable
         await SeedTestEntries();
         var result = await _service.GetListAsync(_tenantId, "VOID", 1, 20);
 
-        Assert.Empty(result);
+        Assert.Empty(GetItems(result));
     }
 
     [Fact]
@@ -217,7 +220,7 @@ public class JournalEntryServiceTests : IDisposable
         await SeedTestEntries();
         var result = await _service.GetListAsync(_tenantId, null, 1, 2);
 
-        Assert.Equal(2, result.Count);
+        Assert.Equal(2, GetItems(result).Count);
     }
 
     [Fact]
@@ -225,10 +228,11 @@ public class JournalEntryServiceTests : IDisposable
     {
         await SeedTestEntries();
         var result = await _service.GetListAsync(_tenantId, null, 1, 20);
+        var items = GetItems(result);
 
-        for (int i = 0; i < result.Count - 1; i++)
+        for (int i = 0; i < items.Count - 1; i++)
         {
-            Assert.True(result[i].TransactionDate >= result[i + 1].TransactionDate);
+            Assert.True(items[i].TransactionDate >= items[i + 1].TransactionDate);
         }
     }
 
@@ -242,9 +246,10 @@ public class JournalEntryServiceTests : IDisposable
             _userId);
 
         var result = await _service.GetListAsync(_tenantId, null, 1, 20);
+        var items = GetItems(result);
 
-        Assert.Equal(3, result.Count);
-        Assert.All(result, e => Assert.Equal(_tenantId, e.TenantId));
+        Assert.Equal(3, items.Count);
+        Assert.All(items, e => Assert.Equal(_tenantId, e.TenantId));
     }
 
     // ─── GetByIdAsync Tests ─────────────────────────────────────────

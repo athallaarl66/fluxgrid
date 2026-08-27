@@ -10,7 +10,7 @@ import { ShortPickDialog } from "@/components/wms/ShortPickDialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { WmsNav } from "@/components/wms/WmsNav";
 import { useToast } from "@/components/ui/toast";
-import type { PickListItem } from "@/lib/wms-types";
+import type { PickListItem, PickList } from "@/lib/wms-types";
 
 export default function PickExecutionPage() {
   const router = useRouter();
@@ -26,7 +26,7 @@ export default function PickExecutionPage() {
   const [pickResults, setPickResults] = useState<Record<string, { qty: number; shortPickReason?: string }>>({});
   const [shortPickTarget, setShortPickTarget] = useState<PickListItem | null>(null);
   const [showShortDialog, setShowShortDialog] = useState(false);
-  const [pickListId, setPickListId] = useState<string | null>(null);
+  const [pickList, setPickList] = useState<PickList | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -36,7 +36,7 @@ export default function PickExecutionPage() {
 
   useEffect(() => {
     if (orderId) {
-      getPickListByOrder(orderId).then((pl) => setPickListId(pl.id)).catch(() => {});
+      getPickListByOrder(orderId).then(setPickList).catch(() => {});
     }
   }, [orderId]);
 
@@ -62,18 +62,16 @@ export default function PickExecutionPage() {
     setShortPickTarget(null);
   }, [shortPickTarget]);
 
-  const handleFinish = useCallback(async () => {
-    if (!order || !pickListId) return;
-    const items = order.lines
-      .filter((l) => pickResults[l.id] !== undefined)
-      .map((l) => ({
-        itemId: l.id,
-        qtyPicked: pickResults[l.id].qty,
-        shortPickReason: pickResults[l.id].shortPickReason ?? null,
-      }));
+  const handleFinish = useCallback(() => {
+    if (!order || !pickList) return;
+    const items = pickList.items.map((i) => ({
+      itemId: i.id,
+      qtyPicked: pickResults[i.id]?.qty ?? 0,
+      shortPickReason: pickResults[i.id]?.shortPickReason ?? null,
+    }));
 
-    await executePick.mutateAsync(
-      { id: pickListId, data: { items } },
+    executePick.mutate(
+      { id: pickList.id, data: { items } },
       {
         onSuccess: () => {
           toast("Pick execution completed", "success");
@@ -84,9 +82,25 @@ export default function PickExecutionPage() {
         },
       },
     );
-  }, [order, pickListId, pickResults, executePick, router, toast]);
+  }, [order, pickList, pickResults, executePick, router, toast]);
 
-  const items = order?.lines ?? [];
+  // Source of truth: pick-list items (real ids/location/expected qty).
+  // Fallback: order lines (view-only when no pick list exists yet).
+  const items: PickListItem[] = pickList?.items?.length
+    ? pickList.items
+    : (order?.lines ?? []).map((l) => ({
+        id: l.id,
+        orderLineId: l.id,
+        itemId: l.itemId,
+        itemSku: l.itemSku,
+        itemName: l.itemName,
+        locationId: null,
+        locationCode: null,
+        qtyExpected: l.qtyOrdered - l.qtyReserved + l.qtyPicked,
+        qtyPicked: 0,
+        shortPickReason: null,
+      }));
+
   const progress = currentStep > 0 ? Math.min(1, currentStep / items.length) : 0;
 
   const activeItem = items[currentStep];
@@ -137,18 +151,7 @@ export default function PickExecutionPage() {
 
       {currentStep < items.length && activeItem ? (
         <PickItemCard
-          item={{
-            id: activeItem.id,
-            orderLineId: activeItem.id,
-            itemId: activeItem.itemId,
-            itemSku: activeItem.itemSku,
-            itemName: activeItem.itemName,
-            locationId: null,
-            locationCode: null,
-            qtyExpected: activeItem.qtyOrdered - activeItem.qtyReserved + activeItem.qtyPicked,
-            qtyPicked: 0,
-            shortPickReason: null,
-          }}
+          item={activeItem}
           onConfirm={handleConfirm}
           onShortPick={handleShortPick}
         />
@@ -159,12 +162,12 @@ export default function PickExecutionPage() {
             {items.length} item{items.length !== 1 ? "s" : ""} picked. Review and finish to submit.
           </p>
           <div className="space-y-1 text-xs text-left max-w-sm mx-auto">
-            {items.map((l) => (
-              <div key={l.id} className="flex justify-between">
-                <span className="text-muted-foreground">{l.itemSku || l.itemName || l.itemId.slice(0, 8)}</span>
+            {items.map((i) => (
+              <div key={i.id} className="flex justify-between">
+                <span className="text-muted-foreground">{i.itemSku || i.itemName || i.itemId.slice(0, 8)}</span>
                 <span className="font-medium">
-                  {pickResults[l.id]?.qty ?? 0} / {l.qtyOrdered}
-                  {pickResults[l.id]?.shortPickReason ? ` (short: ${pickResults[l.id].shortPickReason})` : ""}
+                  {pickResults[i.id]?.qty ?? 0} / {i.qtyExpected}
+                  {pickResults[i.id]?.shortPickReason ? ` (short: ${pickResults[i.id].shortPickReason})` : ""}
                 </span>
               </div>
             ))}
@@ -172,7 +175,7 @@ export default function PickExecutionPage() {
           <button
             type="button"
             onClick={handleFinish}
-            disabled={executePick.isPending}
+            disabled={executePick.isPending || !pickList}
             className="h-10 px-5 rounded-lg bg-[#8B9B6F] text-white text-sm font-medium cursor-pointer hover:bg-[#7A8B5F] disabled:opacity-40"
           >
             {executePick.isPending ? "Submitting..." : "Finish & Submit"}

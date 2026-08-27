@@ -9,7 +9,7 @@ public static class WmsDataSeeder
 {
     public static async Task SeedAsync(AppDbContext db, Guid tenantId)
     {
-        if (!await db.Locations.AnyAsync())
+        if (!await db.Locations.AnyAsync(l => l.TenantId == tenantId))
         {
             db.Locations.AddRange(
                 new Location { Id = Guid.NewGuid(), Code = "SUPPLIER-TRANSIT", Type = LocationType.TRANSIT, TenantId = tenantId },
@@ -19,7 +19,7 @@ public static class WmsDataSeeder
             );
         }
 
-        if (!await db.InventoryItems.AnyAsync())
+        if (!await db.InventoryItems.AnyAsync(i => i.TenantId == tenantId))
         {
             db.InventoryItems.AddRange(
                 new InventoryItem { Id = Guid.NewGuid(), Sku = "SKU-001", Name = "Safety Helmet", Uom = "pcs", TenantId = tenantId },
@@ -27,7 +27,7 @@ public static class WmsDataSeeder
             );
         }
 
-        if (!await db.PurchaseOrders.AnyAsync())
+        if (!await db.PurchaseOrders.AnyAsync(p => p.TenantId == tenantId))
         {
             await db.SaveChangesAsync();
 
@@ -100,7 +100,7 @@ public static class WmsDataSeeder
             }
         }
 
-        if (!await db.SalesOrders.AnyAsync())
+        if (!await db.SalesOrders.AnyAsync(s => s.TenantId == tenantId))
         {
             var items = await db.InventoryItems.Where(i => i.TenantId == tenantId).ToListAsync();
             var sku001 = items.FirstOrDefault(i => i.Sku == "SKU-001");

@@ -8,6 +8,12 @@ namespace FluxGrid.Api.Tests;
 
 public class DataSeederTests
 {
+    static DataSeederTests()
+    {
+        // DataSeeder only creates the admin user when SEED_ADMIN_PASSWORD is set.
+        Environment.SetEnvironmentVariable("SEED_ADMIN_PASSWORD", "admin123");
+    }
+
     private AppDbContext CreateDbContext()
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()

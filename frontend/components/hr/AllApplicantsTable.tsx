@@ -100,7 +100,7 @@ export function AllApplicantsTable({
                     </span>
                   </td>
                   <td className="px-3 py-2">
-                    <CandidateStatusBadge status={"ACTIVE" as any} />
+                    <CandidateStatusBadge status={"ACTIVE"} />
                   </td>
                   <td className="px-3 py-2 text-right">
                     <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>

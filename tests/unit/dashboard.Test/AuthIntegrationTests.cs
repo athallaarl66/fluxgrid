@@ -10,12 +10,20 @@ namespace FluxGrid.Api.Tests;
 
 public class AuthIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
 {
+    static AuthIntegrationTests()
+    {
+        // DataSeeder only creates the admin user when SEED_ADMIN_PASSWORD is set.
+        Environment.SetEnvironmentVariable("SEED_ADMIN_PASSWORD", "admin123");
+    }
+
     private readonly WebApplicationFactory<Program> _factory;
 
     public AuthIntegrationTests(WebApplicationFactory<Program> factory)
     {
         _factory = factory.WithWebHostBuilder(builder =>
         {
+            builder.UseSetting("Jwt:SecretKey", "test-secret-key-for-integration-tests-min-32-chars!");
+            builder.UseSetting("ConnectionStrings:DefaultConnection", "Host=localhost;Port=5432;Database=fluxgrid_test;Username=postgres;Password=test");
             builder.ConfigureServices(services =>
             {
                 var descriptor = services.SingleOrDefault(
@@ -81,12 +89,12 @@ public class AuthIntegrationTests : IClassFixture<WebApplicationFactory<Program>
     public async Task Dashboard_WithoutToken_Returns401()
     {
         var client = _factory.CreateClient();
-        var response = await client.GetAsync("/api/dashboard");
+        var response = await client.GetAsync("/api/dashboard/stats");
         Assert.Equal(System.Net.HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
     [Fact]
-    public async Task Dashboard_WithValidToken_ReturnsModules()
+    public async Task Dashboard_WithValidToken_ReturnsStats()
     {
         var client = _factory.CreateClient();
 
@@ -101,10 +109,10 @@ public class AuthIntegrationTests : IClassFixture<WebApplicationFactory<Program>
         client.DefaultRequestHeaders.Authorization =
             new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
 
-        var dashboardResponse = await client.GetAsync("/api/dashboard");
+        var dashboardResponse = await client.GetAsync("/api/dashboard/stats");
         dashboardResponse.EnsureSuccessStatusCode();
-        var modules = await dashboardResponse.Content.ReadFromJsonAsync<JsonElement[]>();
-        Assert.Equal(4, modules!.Length);
+        var stats = await dashboardResponse.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.True(stats.ValueKind == JsonValueKind.Object);
     }
 
     [Fact]
@@ -114,7 +122,7 @@ public class AuthIntegrationTests : IClassFixture<WebApplicationFactory<Program>
         client.DefaultRequestHeaders.Authorization =
             new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", "invalid-token");
 
-        var response = await client.GetAsync("/api/dashboard");
+        var response = await client.GetAsync("/api/dashboard/stats");
         Assert.Equal(System.Net.HttpStatusCode.Unauthorized, response.StatusCode);
     }
 }

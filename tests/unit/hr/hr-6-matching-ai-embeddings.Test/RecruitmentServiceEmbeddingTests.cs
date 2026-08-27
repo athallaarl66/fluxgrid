@@ -3,6 +3,7 @@ using FluxGrid.Api.Modules.HR.Application;
 using FluxGrid.Api.Modules.HR.Domain.Entities;
 using FluxGrid.Api.Modules.HR.Domain.Enums;
 using FluxGrid.Api.Modules.HR.Domain.Events;
+using FluxGrid.Api.Modules.Notifications.Domain;
 using FluxGrid.Api.Shared.Infrastructure.Audit;
 using FluxGrid.Api.Shared.Infrastructure.Data;
 using FluxGrid.Api.Shared.Infrastructure.Events;
@@ -45,7 +46,8 @@ public class RecruitmentServiceEmbeddingTests : IDisposable
 
         _service = new RecruitmentService(
             _db, _storageMock.Object, audit, events,
-            _embeddingMock.Object, _scopeFactoryMock.Object, configMock.Object);
+            _embeddingMock.Object, _scopeFactoryMock.Object,
+            new ActivityLogService(_db), Mock.Of<INotificationService>(), configMock.Object);
     }
 
     public void Dispose() => _db.Dispose();

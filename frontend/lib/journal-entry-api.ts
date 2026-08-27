@@ -8,7 +8,7 @@ export interface CreateJournalEntryPayload {
   status: "DRAFT" | "SUBMIT";
 }
 
-export interface UpdateJournalEntryPayload extends CreateJournalEntryPayload {}
+export type UpdateJournalEntryPayload = CreateJournalEntryPayload;
 
 export interface PaginatedJournalEntries {
   items: JournalEntry[];

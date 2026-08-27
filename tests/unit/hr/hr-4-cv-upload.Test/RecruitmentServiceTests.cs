@@ -6,8 +6,11 @@ using FluxGrid.Api.Shared.Infrastructure.Audit;
 using FluxGrid.Api.Shared.Infrastructure.Data;
 using FluxGrid.Api.Shared.Infrastructure.Events;
 using FluxGrid.Api.Shared.Infrastructure.Storage;
+using FluxGrid.Api.Modules.Notifications.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using System.Net.Http;
 using Moq;
 
 namespace FluxGrid.Api.Tests.HR;
@@ -35,7 +38,13 @@ public class RecruitmentServiceTests : IDisposable
         _configMock = new Mock<IConfiguration>();
         _configMock.Setup(c => c["Storage:BucketName"]).Returns("test-bucket");
 
-        _service = new RecruitmentService(_db, _storageMock.Object, audit, _dispatcher, _configMock.Object);
+        var embeddingMock = new Mock<EmbeddingService>(
+            Mock.Of<IHttpClientFactory>(), Mock.Of<IConfiguration>());
+
+        _service = new RecruitmentService(
+            _db, _storageMock.Object, audit, _dispatcher,
+            embeddingMock.Object, Mock.Of<IServiceScopeFactory>(),
+            new ActivityLogService(_db), Mock.Of<INotificationService>(), _configMock.Object);
     }
 
     public void Dispose()
@@ -202,7 +211,7 @@ public class RecruitmentServiceTests : IDisposable
         SeedCandidates(5);
         await _db.SaveChangesAsync();
 
-        var result = await _service.GetCandidatesAsync(_tenantId, null, null, 1, 2);
+        var result = await _service.GetCandidatesAsync(_tenantId, null, null, null, 1, 2);
 
         Assert.Equal(5, result.Total);
         Assert.Equal(2, result.Items.Count);
@@ -221,7 +230,7 @@ public class RecruitmentServiceTests : IDisposable
         });
         await _db.SaveChangesAsync();
 
-        var result = await _service.GetCandidatesAsync(_tenantId, "zara", null, 1, 20);
+        var result = await _service.GetCandidatesAsync(_tenantId, "zara", null, null, 1, 20);
 
         Assert.Equal(1, result.Total);
         Assert.Contains("Zara", result.Items[0].Name);
@@ -238,7 +247,7 @@ public class RecruitmentServiceTests : IDisposable
         });
         await _db.SaveChangesAsync();
 
-        var result = await _service.GetCandidatesAsync(_tenantId, null, "ACTIVE", 1, 20);
+        var result = await _service.GetCandidatesAsync(_tenantId, null, "ACTIVE", null, 1, 20);
 
         Assert.Equal(1, result.Total);
     }
@@ -267,7 +276,7 @@ public class RecruitmentServiceTests : IDisposable
         _db.Candidates.AddRange(old, mid, recent);
         await _db.SaveChangesAsync();
 
-        var result = await _service.GetCandidatesAsync(_tenantId, null, null, 1, 20);
+        var result = await _service.GetCandidatesAsync(_tenantId, null, null, null, 1, 20);
 
         Assert.Equal("Recent", result.Items[0].Name);
         Assert.Equal("Mid", result.Items[1].Name);
@@ -286,7 +295,7 @@ public class RecruitmentServiceTests : IDisposable
         });
         await _db.SaveChangesAsync();
 
-        var result = await _service.GetCandidatesAsync(_tenantId, null, null, 1, 20);
+        var result = await _service.GetCandidatesAsync(_tenantId, null, null, null, 1, 20);
 
         Assert.Equal(3, result.Total);
     }
