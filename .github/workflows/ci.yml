@@ -22,7 +22,7 @@ jobs:
       - name: Build
         run: dotnet build backend/FluxGrid.Api/FluxGrid.Api.csproj --configuration Release --no-restore
       - name: Test
-        run: dotnet test tests/unit/**/*.csproj --configuration Release --no-restore
+        run: dotnet test tests/unit/**/*.csproj --configuration Release
 
   frontend:
     runs-on: ubuntu-latest
